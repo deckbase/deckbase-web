@@ -9,7 +9,7 @@ import { Suspense } from "react";
 import MetaPixelEvents from "@/components/MetaPixelEvents";
 import Head from "next/head";
 
-// ✅ Load Meta Pixel only on the client (Prevents SSR issues)
+// ✅ Ensure Meta Pixel is only loaded on the client side
 const MetaPixelNoSSR = dynamic(() => import("@/components/MetaPixelEvents"), {
   ssr: false,
 });
@@ -30,17 +30,15 @@ const Layout = ({ children }) => {
   };
 
   return (
-    <html lang="en">
-      {" "}
-      {/* ✅ Ensure <html> tag exists */}
-      <head>
+    <>
+      <Head>
         <title>Ever Journal</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta
           name="description"
-          content="Ever Journal is more than just a journal app—it’s your personal biographer. With the help of Eve, your AI biographer, you’ll embark on a journey of self-reflection, rediscovery, and storytelling."
+          content="Ever Journal is more than just a journal app—it’s your personal biographer. With the help of Eve, your AI biographer, you’ll embark on a journey of self-reflection, rediscovery, and storytelling"
         />
-        <link rel="icon" href="/favicon.ico" type="image/png" />
+        <link rel="icon" href="/favicon.png" type="image/png" />
         <meta
           property="og:title"
           content="Ever Journal | Your Personal Biographer"
@@ -69,7 +67,8 @@ const Layout = ({ children }) => {
           name="twitter:image"
           content="https://www.ever-journal.com/ever.svg"
         />
-      </head>
+      </Head>
+
       <body className="bg-secondary text-primary min-h-screen flex flex-col">
         {/* ✅ Ensure Meta Pixel loads only on the client */}
         <Suspense fallback={null}>
@@ -92,7 +91,7 @@ const Layout = ({ children }) => {
 
         <Footer />
       </body>
-    </html>
+    </>
   );
 };
 

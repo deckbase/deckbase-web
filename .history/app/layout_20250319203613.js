@@ -40,7 +40,7 @@ const Layout = ({ children }) => {
           name="description"
           content="Ever Journal is more than just a journal app—it’s your personal biographer. With the help of Eve, your AI biographer, you’ll embark on a journey of self-reflection, rediscovery, and storytelling."
         />
-        <link rel="icon" href="/favicon.ico" type="image/png" />
+        <link rel="icon" href="/favicon.png" type="image/png" />
         <meta
           property="og:title"
           content="Ever Journal | Your Personal Biographer"

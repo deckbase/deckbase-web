@@ -1,20 +1,22 @@
 "use client";
 
 import "./globals.css";
+import { useRouter } from "next/navigation";
+import Head from "next/head";
 import { motion } from "framer-motion";
 import Navbar from "@/components/NavBar";
 import Footer from "@/components/Footer";
 import dynamic from "next/dynamic";
 import { Suspense } from "react";
 import MetaPixelEvents from "@/components/MetaPixelEvents";
-import Head from "next/head";
 
-// ✅ Load Meta Pixel only on the client (Prevents SSR issues)
-const MetaPixelNoSSR = dynamic(() => import("@/components/MetaPixelEvents"), {
-  ssr: false,
-});
+// const PixelTracker = dynamic(() => import("../components/MetaPixelEvents"), {
+//   ssr: false,
+// });
 
 const Layout = ({ children }) => {
+  const router = useRouter();
+
   const pageVariants = {
     initial: { opacity: 0, x: -100 },
     animate: {
@@ -31,49 +33,42 @@ const Layout = ({ children }) => {
 
   return (
     <html lang="en">
-      {" "}
-      {/* ✅ Ensure <html> tag exists */}
-      <head>
+      <Head>
         <title>Ever Journal</title>
+        <link rel="icon" href="/favicon.png" type="image/png" />
+        <link rel="apple-touch-icon" href="/favicon.png"></link>
+        <link rel="shortcut icon" href="/favicon.png" type="image/png"></link>
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta
           name="description"
-          content="Ever Journal is more than just a journal app—it’s your personal biographer. With the help of Eve, your AI biographer, you’ll embark on a journey of self-reflection, rediscovery, and storytelling."
+          content="Ever Journal is more than just a journal app—it’s your personal biographer. With the help of Eve, your AI biographer, you’ll embark on a journey of self-reflection, rediscovery, and storytelling"
         />
-        <link rel="icon" href="/favicon.ico" type="image/png" />
+        <link rel="shortcut icon" href="/ever.svg" />
         <meta
           property="og:title"
           content="Ever Journal | Your Personal Biographer"
         />
-        <meta property="og:type" content="website" />
+        <meta property="og:type" content="article" />
         <meta property="og:url" content="https://www.ever-journal.com" />
         <meta
           property="og:image"
-          content="https://www.ever-journal.com/ever.svg"
+          content="hhttps://www.ever-journal.com/ever.svg"
         />
         <meta
           property="og:description"
-          content="Ever Journal helps you preserve your memories and turn them into a structured biography."
+          content="Ever Journal is more than just a journal app—it’s your personal biographer."
         />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:site" content="@EverJournal" />
-        <meta
-          name="twitter:title"
-          content="Ever Journal | Your Personal Biographer"
-        />
-        <meta
-          name="twitter:description"
-          content="Ever Journal helps you preserve your memories and turn them into a structured biography."
-        />
-        <meta
-          name="twitter:image"
-          content="https://www.ever-journal.com/ever.svg"
-        />
-      </head>
+        <meta name="twitter:card" content="summary" />
+        <meta name="twitter:site" content="" />
+        <meta name="twitter:title" content="" />
+        <meta name="twitter:description" content="" />
+        <meta name="twitter:creator" content="" />
+        <meta name="twitter:image" content="https://www.ever-journal.com" />
+      </Head>
+
       <body className="bg-secondary text-primary min-h-screen flex flex-col">
-        {/* ✅ Ensure Meta Pixel loads only on the client */}
         <Suspense fallback={null}>
-          <MetaPixelNoSSR />
+          <MetaPixelEvents />
         </Suspense>
 
         <header className="w-full">
@@ -82,6 +77,7 @@ const Layout = ({ children }) => {
 
         <motion.main
           className="w-full mx-auto py-8"
+          key={router.route}
           variants={pageVariants}
           initial="initial"
           animate="animate"
