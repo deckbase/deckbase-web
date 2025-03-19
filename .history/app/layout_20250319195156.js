@@ -6,7 +6,6 @@ import Head from "next/head";
 import { motion } from "framer-motion";
 import Navbar from "@/components/NavBar";
 import Footer from "@/components/Footer";
-import Script from "next/script";
 
 const Layout = ({ children }) => {
   const router = useRouter();
@@ -61,7 +60,8 @@ const Layout = ({ children }) => {
       </Head>
 
       <body className="bg-secondary text-primary min-h-screen flex flex-col">
-        <Script
+
+      <Script
           id="meta-pixel"
           strategy="afterInteractive"
           dangerouslySetInnerHTML={{
@@ -81,7 +81,7 @@ const Layout = ({ children }) => {
             `,
           }}
         />
-
+        
         <header className="w-full">
           <Navbar />
         </header>

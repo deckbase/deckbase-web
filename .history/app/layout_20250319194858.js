@@ -3,10 +3,10 @@
 import "./globals.css";
 import { useRouter } from "next/navigation";
 import Head from "next/head";
+import Script from "next/script";
 import { motion } from "framer-motion";
 import Navbar from "@/components/NavBar";
 import Footer from "@/components/Footer";
-import Script from "next/script";
 
 const Layout = ({ children }) => {
   const router = useRouter();
@@ -27,39 +27,50 @@ const Layout = ({ children }) => {
 
   return (
     <html lang="en">
-      <Head>
+      <head>
         <title>Ever Journal</title>
-        <link rel="icon" href="/favicon.png" type="image/png" />
-        <link rel="apple-touch-icon" href="/favicon.png"></link>
-        <link rel="shortcut icon" href="/favicon.png" type="image/png"></link>
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta
           name="description"
-          content="Ever Journal is more than just a journal app—it’s your personal biographer. With the help of Eve, your AI biographer, you’ll embark on a journey of self-reflection, rediscovery, and storytelling"
+          content="Ever Journal is more than just a journal app—it’s your personal biographer. With the help of Eve, your AI biographer, you’ll embark on a journey of self-reflection, rediscovery, and storytelling."
         />
+        <link rel="icon" href="/favicon.ico" />
         <link rel="shortcut icon" href="/ever.svg" />
+
+        {/* Open Graph Meta Tags for Social Sharing */}
         <meta
           property="og:title"
           content="Ever Journal | Your Personal Biographer"
         />
-        <meta property="og:type" content="article" />
-        <meta property="og:url" content="https://www.ever-journal.com" />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://ever-journal.vercel.app" />
         <meta
           property="og:image"
-          content="hhttps://www.ever-journal.com/ever.svg"
+          content="https://ever-journal.vercel.app/ever.svg"
         />
         <meta
           property="og:description"
           content="Ever Journal is more than just a journal app—it’s your personal biographer."
         />
-        <meta name="twitter:card" content="summary" />
-        <meta name="twitter:site" content="" />
-        <meta name="twitter:title" content="" />
-        <meta name="twitter:description" content="" />
-        <meta name="twitter:creator" content="" />
-        <meta name="twitter:image" content="https://www.ever-journal.com" />
-      </Head>
 
+        {/* Twitter Card Meta Tags */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:site" content="@EverJournal" />
+        <meta
+          name="twitter:title"
+          content="Ever Journal | Your Personal Biographer"
+        />
+        <meta
+          name="twitter:description"
+          content="Ever Journal helps you preserve your memories and turn them into a structured biography."
+        />
+        <meta
+          name="twitter:image"
+          content="https://ever-journal.vercel.app/ever.svg"
+        />
+      </head>
+
+      {/* Meta Pixel Tracking (Now in <body> for Performance) */}
       <body className="bg-secondary text-primary min-h-screen flex flex-col">
         <Script
           id="meta-pixel"
