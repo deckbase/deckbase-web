@@ -1,19 +1,18 @@
 import { motion } from "framer-motion";
 import Image from "next/image";
 import { MdCancel } from "react-icons/md";
-import ReactPixel from "react-facebook-pixel";
+import MetaPixelEvents from "./MetaPixelEvents";
 
 const Success = ({ closeForm }) => {
   useEffect(() => {
-    if (typeof window !== "undefined" && window.fbq) {
-      ReactPixel.track("Lead", {
-        content_name: "Waitlist signup",
-        content_category: "Waitlist",
-      });
+    // ✅ Track the "Lead" event when the success modal is shown
+    FacebookPixel.track("Lead", {
+      content_name: "Signup Success",
+      content_category: "User Registration",
+    });
 
-      console.log("Meta Pixel Event: Lead triggered");
-    }
-  }, []);
+    console.log("Meta Pixel Event: Lead triggered");
+  }, []); // Runs only once when the component mounts
   return (
     <motion.section
       initial={{ opacity: 0, x: "-100%" }}

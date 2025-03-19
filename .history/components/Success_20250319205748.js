@@ -7,7 +7,7 @@ const Success = ({ closeForm }) => {
   useEffect(() => {
     if (typeof window !== "undefined" && window.fbq) {
       ReactPixel.track("Lead", {
-        content_name: "Waitlist signup",
+        content_name: "Waitlist ",
         content_category: "Waitlist",
       });
 

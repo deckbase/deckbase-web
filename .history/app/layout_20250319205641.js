@@ -6,6 +6,7 @@ import Navbar from "@/components/NavBar";
 import Footer from "@/components/Footer";
 import dynamic from "next/dynamic";
 import { Suspense } from "react";
+import Head from "next/head";
 
 // ✅ Load Meta Pixel only on the client (Prevents SSR issues)
 const MetaPixelNoSSR = dynamic(() => import("@/components/MetaPixelEvents"), {

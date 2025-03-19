@@ -5,10 +5,11 @@ import ReactPixel from "react-facebook-pixel";
 
 const Success = ({ closeForm }) => {
   useEffect(() => {
+    // ✅ Ensure Meta Pixel is available before tracking event
     if (typeof window !== "undefined" && window.fbq) {
       ReactPixel.track("Lead", {
-        content_name: "Waitlist signup",
-        content_category: "Waitlist",
+        content_name: "Signup Success",
+        content_category: "User Registration",
       });
 
       console.log("Meta Pixel Event: Lead triggered");

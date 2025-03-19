@@ -6,7 +6,7 @@ import ReactPixel from "react-facebook-pixel";
 const Success = ({ closeForm }) => {
   useEffect(() => {
     if (typeof window !== "undefined" && window.fbq) {
-      ReactPixel.track("Lead", {
+      ReactPixel.track("W", {
         content_name: "Waitlist signup",
         content_category: "Waitlist",
       });
