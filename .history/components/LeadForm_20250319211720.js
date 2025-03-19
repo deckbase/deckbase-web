@@ -72,7 +72,7 @@ function LeadForm({ handleClose }) {
         <InfinitySpin visible width="200" color="#505050" ariaLabel="infinity-spin-loading" />
       </motion.section>
     )
-}
+  }
 
   return (
     <motion.div

@@ -8,7 +8,7 @@ const Success = ({ closeForm }) => {
     if (typeof window !== "undefined") {
       import("react-facebook-pixel")
         .then((ReactPixel) => {
-          ReactPixel.init(process.env.META_PIXEL_ID);
+          ReactPixel.init("489803712"
           ReactPixel.track("Lead", {
             content_name: "Waitlist Signup Success",
             content_category: "Waitlist",
