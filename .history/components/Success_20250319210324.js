@@ -9,7 +9,7 @@ const Success = ({ closeForm }) => {
         .then((ReactPixel) => {
           ReactPixel.default.track("Lead", {
             content_name: "Waitlist Signup Success",
-            content_category: "Waitlist",
+            content_category: "Wait",
           });
 
           console.log("Meta Pixel Event: Lead triggered");

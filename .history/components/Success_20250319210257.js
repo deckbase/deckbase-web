@@ -2,19 +2,16 @@ import { motion } from "framer-motion";
 import Image from "next/image";
 import { MdCancel } from "react-icons/md";
 
+
 const Success = ({ closeForm }) => {
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      import("react-facebook-pixel")
-        .then((ReactPixel) => {
-          ReactPixel.default.track("Lead", {
-            content_name: "Waitlist Signup Success",
-            content_category: "Waitlist",
-          });
+    if (typeof window !== "undefined" && window.fbq) {
+      ReactPixel.track("Lead", {
+        content_name: "Waitlist signup",
+        content_category: "Waitlist",
+      });
 
-          console.log("Meta Pixel Event: Lead triggered");
-        })
-        .catch((error) => console.error("Meta Pixel Error:", error));
+      console.log("Meta Pixel Event: Lead triggered");
     }
   }, []);
   return (

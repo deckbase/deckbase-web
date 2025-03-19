@@ -8,8 +8,8 @@ const Success = ({ closeForm }) => {
       import("react-facebook-pixel")
         .then((ReactPixel) => {
           ReactPixel.default.track("Lead", {
-            content_name: "Waitlist Signup Success",
-            content_category: "Waitlist",
+            content_name: "Signup Success",
+            content_category: "User Registration",
           });
 
           console.log("Meta Pixel Event: Lead triggered");
