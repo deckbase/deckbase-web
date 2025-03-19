@@ -1,14 +1,13 @@
 import { motion } from "framer-motion";
 import Image from "next/image";
 import { MdCancel } from "react-icons/md";
-import { useEffect } from "react";
 
 const Success = ({ closeForm }) => {
   useEffect(() => {
     if (typeof window !== "undefined") {
       import("react-facebook-pixel")
         .then((ReactPixel) => {
-          ReactPixel.track("Lead", {
+          ReactPixel.default.track("Lead", {
             content_name: "Waitlist Signup Success",
             content_category: "Waitlist",
           });

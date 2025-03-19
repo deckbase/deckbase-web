@@ -1,7 +1,6 @@
 import { motion } from "framer-motion";
 import Image from "next/image";
 import { MdCancel } from "react-icons/md";
-import { useEffect } from "react";
 
 const Success = ({ closeForm }) => {
   useEffect(() => {
