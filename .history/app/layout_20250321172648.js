@@ -63,7 +63,7 @@ const Layout = ({ children }) => {
         />
         <meta
           name="twitter:image"
-          content="https://www.ever-journal.com/og.png"
+          content="https://www.ever-journal.com//og.png"
         />
       </head>
       <body className="bg-secondary text-primary min-h-screen flex flex-col">
