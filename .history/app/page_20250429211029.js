@@ -7,7 +7,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import TypewriterHeader from "@/components/Heading";
 import Button from "@/components/Button";
-import HowItWorks from "@/components/HowItWorks";
+import OurPhilosophy from "@/components/OurPhilosophy";
 import OurStory from "@/components/OurStory";
 import Benefits from "@/components/Benefits";
 import Legacy from "@/components/Legacy";
@@ -75,7 +75,7 @@ export default function Home() {
           </motion.article>
         </section>
       </motion.article>
-      <HowItWorks />
+      <OurPhilosophy />
       <OurStory />
       <Benefits />
       <Legacy />

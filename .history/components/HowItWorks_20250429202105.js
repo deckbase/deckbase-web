@@ -10,7 +10,7 @@ const how = [
   "Everything you write stays between you and Eve. Your journals are safe, and you choose what to include in your biography.",
 ];
 
-const HowItWorks = () => {
+const OurPhilosophy = () => {
   return (
     <motion.section
       initial={{ opacity: 0 }}
@@ -67,4 +67,4 @@ const HowItWorks = () => {
   );
 };
 
-export default HowItWorks;
+export default OurPhilosophy;

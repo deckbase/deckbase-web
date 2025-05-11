@@ -7,7 +7,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import TypewriterHeader from "@/components/Heading";
 import Button from "@/components/Button";
-import HowItWorks from "@/components/HowItWorks";
+import OurPhilosophy from "@/components/OurPhilosophy";
 import OurStory from "@/components/OurStory";
 import Benefits from "@/components/Benefits";
 import Legacy from "@/components/Legacy";
@@ -39,7 +39,8 @@ export default function Home() {
               transition={{ delay: 0.8, duration: 0.5 }}
               className="mt-52 lg:mt-60 text-white w-[80%] md:w-[60%] md:leading-8 text-center"
             >
-              Capture your experiences, reflect on your past, and discover your purpose - one story at a time, with the help of AI.
+              Capture your experiences, reflect on your past, and discover your
+              purpose - one story at a time, with the help of AI.
             </motion.p>
 
             <div className="mt-8 flex space-x-4">
@@ -54,12 +55,24 @@ export default function Home() {
             animate={{ opacity: 1, transition: { duration: 0.5 } }}
             className="flex items-center w-full justify-center"
           >
-            <Image src="/mockups/heroImgMob.svg" alt="Ever Journal Mockup" className="max-w-[90%] md:hidden" width={500} height={200} />
-            <Image src="/mockups/heroImgDesk.png" alt="Ever Journal Mockup" className="hidden w-full md:block" width={500} height={200} />
+            <Image
+              src="/mockups/heroImgMob.svg"
+              alt="Ever Journal Mockup"
+              className="max-w-[90%] md:hidden"
+              width={500}
+              height={200}
+            />
+            <Image
+              src="/mockups/heroImgDesk.png"
+              alt="Ever Journal Mockup"
+              className="hidden w-full md:block"
+              width={500}
+              height={200}
+            />
           </motion.article>
         </section>
       </motion.article>
-      <HowItWorks />
+      <OurPhilosophy />
       <OurStory />
       <Benefits />
       <Legacy />
