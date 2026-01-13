@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { motion } from "framer-motion";
-import { privacyPolicy } from "@/components/data/legal";
+import { privacyPolicy } from "@/components/data/legal-new";
 import LegalDocs from "@/components/LegalDocs";
 
 const Privacy = () => {
@@ -24,15 +24,15 @@ const Privacy = () => {
       <div className="mx-auto px-5 md:px-[5%] 2xl:px-0 py-10 container max-w-[1200px]">
         <article className="flex flex-col gap-5 text-white">
           <p className="py-5">
-            <strong>Privacy Policy — TaskGate</strong>
+            <strong>Privacy Policy — Deckbase</strong>
             <br />
-            Last updated: November 25, 2025
+            Last updated: January 13, 2026
           </p>
           <p className="text-base">
-            Thank you for using TaskGate (&quot;we&quot;, &quot;our&quot;, or
+            Thank you for using Deckbase (&quot;we&quot;, &quot;our&quot;, or
             &quot;us&quot;). Your privacy is important to us. This Privacy
             Policy explains how we collect, use, and protect your information
-            when you use the TaskGate mobile application (&quot;App&quot;).
+            when you use the Deckbase mobile application (&quot;App&quot;).
           </p>
           <LegalDocs mou={privacyPolicy} />
           <p className="text-center mt-6">

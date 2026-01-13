@@ -3,7 +3,7 @@ User-agent: *
 Allow: /
 
 # Sitemap location
-Sitemap: https://taskgate.co/sitemap.xml
+Sitemap: https://deckbase.co/sitemap.xml
 
 # Block admin and partner routes
 Disallow: /admin

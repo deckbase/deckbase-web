@@ -40,14 +40,14 @@ const Navbar = () => {
           onClick={() => setIsOpen(false)}
         >
           <Image
-            src="/app_logo.svg"
-            alt="TaskGate Logo"
+            src="/app_logo.png"
+            alt="Deckbase Logo"
             width={32}
             height={32}
             className="mr-2"
             priority
           />
-          TaskGate
+          Deckbase
         </Link>
 
         <ul className="hidden md:flex space-x-12">
@@ -66,20 +66,10 @@ const Navbar = () => {
             </Link>
           </li>
           <li>
-            <Link href="/partnership" className={isActive("/partnership")}>
-              Partnership
-            </Link>
-          </li>
-          <li>
-            <Link href="/developers" className={isActive("/developers")}>
-              Developers
-            </Link>
-          </li>
-          {/* <li>
             <Link href="/premium" className={isActive("/premium")}>
               Premium
             </Link>
-          </li> */}
+          </li>
           <li>
             <Link href="/contact-us" className={isActive("/contact-us")}>
               Contact
@@ -161,31 +151,13 @@ const Navbar = () => {
           </li>
           <li className="text-3xl">
             <Link
-              href="/partnership"
-              className={isActive("/partnership")}
-              onClick={toggleMenu}
-            >
-              Partnership
-            </Link>
-          </li>
-          <li className="text-3xl">
-            <Link
-              href="/developers"
-              className={isActive("/developers")}
-              onClick={toggleMenu}
-            >
-              Developers
-            </Link>
-          </li>
-          {/* <li className="text-3xl">
-            <Link
               href="/premium"
               className={isActive("/premium")}
               onClick={toggleMenu}
             >
               Premium
             </Link>
-          </li> */}
+          </li>
           <li className="text-3xl">
             <Link
               href="/contact-us"

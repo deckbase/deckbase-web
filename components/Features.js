@@ -5,56 +5,56 @@ import Image from "next/image";
 const features = [
   {
     id: "01",
-    title: "Break Impulsive Habits",
+    title: "AI-Powered Card Generation",
     desc: [
-      "Stop mindless scrolling before it starts by intercepting automatic app opens.",
-      "Build awareness of your phone usage patterns and replace bad habits with good ones.",
-      "Transform unconscious phone reaching into intentional, purposeful actions.",
+      "Capture any text and let AI instantly create well-structured flashcards.",
+      "Our AI extracts key concepts, generates examples, and formats cards for optimal learning.",
+      "Edit and customize generated cards to match your personal study style.",
     ],
   },
   {
     id: "02",
-    title: "Personalized Habit Building",
+    title: "Spaced Repetition System",
     desc: [
-      "Customize which apps require tasks and create your own habit-building rules.",
-      "Choose from breathing exercises, reflections, gratitude prompts, or custom tasks.",
-      "Design a system that matches your goals—whether it's reducing social media or building mindfulness.",
+      "Review cards at scientifically optimal intervals for maximum retention.",
+      "Algorithm adapts to your performance, showing difficult cards more often.",
+      "Never waste time reviewing what you already know—focus on what needs work.",
     ],
   },
   {
     id: "03",
-    title: "Track Your Progress",
+    title: "Multi-Source Import",
     desc: [
-      "See exactly how your habits are changing with detailed analytics and insights.",
-      "Monitor task completion rates, streak tracking, and time saved from distractions.",
-      "Celebrate milestones as you build stronger, healthier digital habits over time.",
+      "Import content from PDFs, web articles, ebooks, and handwritten notes.",
+      "Use share extension to capture content directly from any app.",
+      "Scan physical books and documents using your device camera.",
     ],
   },
   {
     id: "04",
-    title: "Flexible & Adaptive System",
+    title: "Smart Organization",
     desc: [
-      "Adjust task difficulty and frequency as your habits strengthen.",
-      "Set different rules for different times of day—stricter during work, relaxed in the evening.",
-      "Your habit-building system evolves with you as you grow and improve.",
+      "Organize cards into decks and folders by subject, course, or topic.",
+      "Tag cards for cross-referencing and create smart filtered views.",
+      "Search across all your cards to quickly find what you need.",
     ],
   },
   {
     id: "05",
-    title: "Expand With Partner Apps",
+    title: "Learning Analytics",
     desc: [
-      "Integrate with partner apps to add even more productive habits to your routine.",
-      "Complete language flashcards, fitness challenges, or learning tasks before app access.",
-      "Turn every impulsive moment into an opportunity to practice something valuable.",
+      "Track your progress with detailed insights and performance metrics.",
+      "See mastery levels, review streaks, and time spent studying.",
+      "Identify weak areas and get recommendations for improvement.",
     ],
   },
   {
     id: "06",
-    title: "Your Data, Your Device",
+    title: "Share & Collaborate",
     desc: [
-      "All habit tracking and personal data stays completely private on your device.",
-      "No accounts, no cloud sync, no data collection—just you building better habits.",
-      "Focus on your growth without worrying about privacy or data security.",
+      "Share decks with friends, classmates, or study groups instantly.",
+      "Browse and import community-created decks for popular subjects.",
+      "Collaborate on shared decks with real-time sync across devices.",
     ],
   },
 ];
@@ -75,11 +75,10 @@ const Feature = () => {
 
           <article className="flex flex-col items-center justify-center mt-16">
             <p className="mt-5 text-justify md:max-w-[60%] md:text-center text-white/90">
-              TaskGate is your personalized habit-building companion that helps
-              you replace impulsive scrolling with intentional actions.
-              Customize your experience, track your progress, and build lasting
-              digital wellness habits that actually stick—one mindful moment at
-              a time.
+              Deckbase is your AI-powered learning companion that turns any text
+              into effective flashcards. Master new subjects, retain what you
+              read, and learn faster with spaced repetition—all with minimal
+              effort on your part.
             </p>
           </article>
         </div>

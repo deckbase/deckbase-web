@@ -18,20 +18,20 @@ import GooglePlayDownloadButton from "@/components/GooglePlayDownloadButton";
 const values = [
   {
     id: 1,
-    title: "Intentional Digital Living",
-    desc: "We believe technology should serve you, not distract you. TaskGate creates intentional pauses that help you align your digital interactions with your goals and priorities.",
+    title: "Learning Made Effortless",
+    desc: "We believe learning should work with your brain, not against it. Deckbase uses AI to eliminate the friction of creating study materials, so you can focus on what matters—actually learning.",
     icon: <RiSecurePaymentFill className="w-6 h-6 text-white" />,
   },
   {
     id: 2,
-    title: "Habits Through Action",
-    desc: "Every task screen is an opportunity to build better habits. By completing a quick activity before accessing distracting apps, you transform impulsive behavior into intentional choices.",
+    title: "Science-Backed Methods",
+    desc: "Spaced repetition is proven to dramatically improve retention. Our algorithms schedule reviews at optimal intervals based on your performance, ensuring you remember what you learn.",
     icon: <MdOutlineWifiFind className="w-6 h-6 text-white" />,
   },
   {
     id: 3,
     title: "Privacy-First Approach",
-    desc: "Your habit-building journey and personal data are yours alone. TaskGate keeps all data on your device, ensuring your path toward better digital habits remains completely private and secure.",
+    desc: "Your learning data and personal information are yours alone. Deckbase keeps your study materials secure and private, with optional cloud sync for convenience.",
     icon: <TbClockRecord className="w-6 h-6 text-white" />,
   },
 ];
@@ -56,7 +56,7 @@ export default function About() {
               transition={{ delay: 0.5, duration: 0.5 }}
               className="text-white text-h2 md:max-w-[70%] lg:mt-12 font-bold text-center"
             >
-              Helping You Design Better Digital Habits
+              Helping You Remember Everything You Learn
             </motion.h1>
             <motion.p
               initial={{ opacity: 0, scale: 1.25 }}
@@ -64,9 +64,9 @@ export default function About() {
               transition={{ delay: 0.8, duration: 0.5 }}
               className="my-4 mb-6 text-white w-[80%] md:w-[60%] md:leading-8 text-center"
             >
-              We believe technology should serve you, not distract you. TaskGate
-              helps you create intentional moments between impulse and action,
-              transforming mindless scrolling into purposeful habits.
+              We believe that reading without retention is wasted time. Deckbase
+              uses AI and spaced repetition to turn what you read into lasting
+              knowledge that stays with you forever.
             </motion.p>
 
             <div className="mt-8 flex space-x-4">
@@ -85,7 +85,7 @@ export default function About() {
             >
               <Image
                 src="/mock/mock13.png"
-                alt="TaskGate App Screenshot"
+                alt="Deckbase App Screenshot"
                 width={1500}
                 height={1125}
                 quality={100}
@@ -101,42 +101,38 @@ export default function About() {
         <article className="container mx-auto py-20 pb-32 p-4 px-5 md:px-[5%] 2xl:px-0 max-w-[1200px] flex flex-col items-center justify-center gap-12">
           <div className="flex flex-col items-center pt-8">
             <h2 className="text-h2 lg:text-h3 font-bold text-center">
-              Our Mission: Help People Build Intentional Relationships with
-              Technology
+              Our Mission: Help People Learn Smarter, Not Harder
             </h2>
             <span className="w-16 h-1 mt-3 bg-gradient-to-r from-accent to-purple-600 rounded-full" />
           </div>
           <div className=" text-left w-full max-w-3xl mt-8 space-y-10">
             <div>
-              <h3 className="text-xl font-bold">📱 Break the Scroll Cycle</h3>
+              <h3 className="text-xl font-bold">🧠 AI-Powered Learning</h3>
               <p>
-                No judgment, just awareness. TaskGate tracks your app usage
-                patterns and creates gentle interruptions that help you pause
-                and reflect before diving into potentially time-consuming
-                applications.
+                Stop spending hours creating flashcards manually. Our AI
+                understands context, extracts key concepts, and generates
+                well-structured cards that focus on what matters most.
               </p>
             </div>
             <div>
               <h3 className="text-xl font-bold">
-                🧘 Mindfulness Meets Productivity
+                ⏰ Spaced Repetition Science
               </h3>
               <p>
-                Transform every app open into an opportunity for intentional
-                choice. Our mini-tasks help you practice mindfulness and build
-                better habits, turning impulsive scrolling into purposeful
-                moments.
+                Our algorithm schedules reviews at the optimal moment—right
+                before you&apos;re about to forget. This scientifically proven
+                method dramatically improves long-term retention.
               </p>
             </div>
             <div>
-              <h3 className="text-xl font-bold">📊 Insights Without Shame</h3>
+              <h3 className="text-xl font-bold">📚 Learn From Anything</h3>
               <p>
-                Knowledge is power, but only when it&apos;s used with
-                compassion. TaskGate provides clear insights into your digital
-                habits without judgment, helping you make intentional decisions
-                about your screen time.
+                Whether it&apos;s articles, textbooks, PDFs, or your own notes,
+                Deckbase turns any text into study material. Capture knowledge
+                from everywhere and consolidate it in one place.
               </p>
               <p className="mt-2 font-semibold">
-                Because awareness is the first step toward positive change.
+                Because knowledge that isn&apos;t remembered is knowledge lost.
               </p>
             </div>
           </div>

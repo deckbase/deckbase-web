@@ -163,7 +163,7 @@ const PartnerApps = () => {
               Want to Become a Partner?
             </h3>
             <p className="text-gray-300 mb-6 max-w-2xl mx-auto">
-              Integrate your app with TaskGate and help users build better
+              Integrate your app with Deckbase and help users build better
               habits while discovering your product. Our deep link API makes
               integration simple and seamless.
             </p>

@@ -22,18 +22,17 @@ const Footer = () => {
               className="flex items-center cursor-pointer font-ubuntu text-white md:text-xl font-bold"
             >
               <Image
-                src="/app_logo.svg"
-                alt="TaskGate Logo"
+                src="/app_logo.png"
+                alt="Deckbase Logo"
                 width={32}
                 height={32}
                 className="mr-2"
               />
-              TaskGate
+              Deckbase
             </Link>
             <small className="max-w-[80%] text-[#fff] text-[15] leading-[20.46px] lg:max-w-[50%]">
-              TaskGate helps you build intentional digital habits by creating
-              mindful pauses before you open distracting apps. Transform
-              impulsive scrolling into conscious choices.
+              Scan. Build. Remember. Deckbase is an AI-powered platform that
+              turns what you read into lasting knowledge with spaced repetition.
             </small>
           </section>
           <section className="">
@@ -93,7 +92,7 @@ const Footer = () => {
         <small className="flex items-center justify-center gap-1 text-white py-1">
           &copy;
           <span className="text-[14px] lg:text-[15px] text-[#fff]">
-            {`${currentYear} TaskGate AI. All Rights Reserved`}
+            {`${currentYear} Deckbase AI. All Rights Reserved`}
           </span>
         </small>
       </div>

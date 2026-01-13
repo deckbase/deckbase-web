@@ -4,33 +4,33 @@ import { motion } from "framer-motion";
 export const features = [
   {
     id: "01",
-    title: "Conscious App Interruption",
-    desc: "Transform mindless scrolling into mindful moments. TaskGate gently interrupts app usage with personalized affirmations and manifestation reminders to keep you aligned with your highest self.",
+    title: "AI-Powered Card Generation",
+    desc: "Transform any text into effective flashcards instantly. Our AI extracts key concepts, generates questions, and creates study materials that are optimized for long-term retention.",
   },
   {
     id: "02",
-    title: "Personalized Affirmation Screens",
-    desc: "Receive customized Law of Attraction affirmations based on your goals, energy patterns, and manifestation intentions. Each screen is designed to elevate your vibration and attract abundance.",
+    title: "Spaced Repetition Algorithm",
+    desc: "Review cards at scientifically optimal intervals. Our algorithm schedules each card based on your performance, ensuring you study right before you would forget.",
   },
   {
     id: "03",
-    title: "Digital Energy Tracking",
-    desc: "Monitor your digital energy patterns and see how your phone usage affects your manifestation practice. Gain insights into when you're most aligned and when you need energetic realignment.",
+    title: "Multi-Source Import",
+    desc: "Capture content from anywhere—PDFs, articles, books, web pages, or your own notes. Deckbase works with any text source to create comprehensive study materials.",
   },
   {
     id: "04",
-    title: "Manifestation Goal Integration",
-    desc: "Connect your digital habits with your manifestation goals. TaskGate helps you stay focused on attracting your desires by creating conscious pauses before potentially energy-draining activities.",
+    title: "Smart Organization",
+    desc: "Keep your learning organized with decks, folders, and tags. Search across all your cards and create filtered study sessions based on topics or difficulty.",
   },
   {
     id: "05",
-    title: "Visualization & Vision Board Tools",
-    desc: "Access powerful visualization exercises and digital vision boards during app interruptions. Turn every digital interaction into an opportunity to visualize and attract your dream life.",
+    title: "Learning Analytics",
+    desc: "Track your progress with detailed insights. See mastery levels, review streaks, study time, and identify areas that need more attention.",
   },
   {
     id: "06",
-    title: "Privacy-First Spiritual Practice",
-    desc: "Your manifestation journey stays completely private. All affirmations, goals, and spiritual insights are stored securely on your device, ensuring your path to conscious living remains personal.",
+    title: "Privacy-First Learning",
+    desc: "Your study materials and learning data stay private. All cards are stored securely, with optional cloud sync for convenience across your devices.",
   },
 ];
 
@@ -53,7 +53,7 @@ const Benefits = () => {
               className="mb-6 text-4xl font-bold tracking-tight sm:text-5xl md:text-4xl lg:max-w-[60%] lg:text-center"
               style={{ lineHeight: 1.2 }}
             >
-              Transform Your Digital Habits with
+              Transform Your Reading with
               <span className="relative whitespace-nowrap text-[#505050]">
                 <svg
                   aria-hidden="true"
@@ -63,15 +63,15 @@ const Benefits = () => {
                 >
                   <path d="M203.371.916c-26.013-2.078-76.686 1.963-124.73 9.946L67.3 12.749C35.421 18.062 18.2 21.766 6.004 25.934 1.244 27.561.828 27.778.874 28.61c.07 1.214.828 1.121 9.595-1.176 9.072-2.377 17.15-3.92 39.246-7.496C123.565 7.986 157.869 4.492 195.942 5.046c7.461.108 19.25 1.696 19.17 2.582-.107 1.183-7.874 4.31-25.75 10.366-21.992 7.45-35.43 12.534-36.701 13.884-2.173 2.308-.202 4.407 4.442 4.734 2.654.187 3.263.157 15.593-.780 35.401-2.686 57.944-3.488 88.365-3.143 46.327.526 75.721 2.23 130.788 7.584 19.787 1.924 20.814 1.98 24.557 1.332l.066-.011c1.201-.203 1.53-1.825.399-2.335-2.911-1.31-4.893-1.604-22.048-3.261-57.509-5.556-87.871-7.36-132.059-7.842-23.239-.254-33.617-.116-50.627.674-11.629.540-42.371 2.494-46.696 2.967-2.359.259 8.133-3.625 26.504-9.810 23.239-7.825 27.934-10.149 28.304-14.005 .417-4.348-3.529-6-16.878-7.066Z"></path>
                 </svg>
-                <span className="relative "> Manifestation</span>
+                <span className="relative "> AI Flashcards</span>
               </span>
               !
             </h3>
             <p className="mt-5 text-justify md:max-w-[60%] md:text-center">
-              Every digital interaction becomes an opportunity for conscious
-              growth. TaskGate transforms mindless scrolling into mindful
-              manifestation moments, helping you align your technology use with
-              your spiritual journey and attract your desires.
+              Every piece of content you read becomes an opportunity for lasting
+              knowledge. Deckbase transforms passive reading into active
+              learning, helping you remember what you study and master any
+              subject.
             </p>
           </article>
         </div>

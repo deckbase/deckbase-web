@@ -4,28 +4,28 @@ import { motion } from "framer-motion";
 const values = [
   {
     id: "01",
-    title: "Intention Over Impulse",
-    desc: `Every digital interaction should serve your goals, not distract from them. TaskGate creates intentional pauses that help you choose awareness over autopilot, transforming mindless habits into moments of conscious choice.<br /><span class="italic text-black/60">💡 Your attention is your most valuable resource — invest it wisely.</span>`,
+    title: "Learning Should Be Effortless",
+    desc: `Creating study materials shouldn't take longer than learning itself. Deckbase uses AI to do the heavy lifting, so you can focus on what matters — actually remembering what you learn.<br /><span class="italic text-black/60">💡 Great learning happens when friction is removed.</span>`,
   },
   {
     id: "02",
-    title: "Your Data Stays Private",
-    desc: `Your habits, goals, and personal data belong to you alone. We keep everything private on your device because your journey toward better habits shouldn't be data to be harvested — it's personal work that deserves protection.<br /><span class="italic text-black/60">💡 True habit change happens in private, focused spaces — not public feeds.</span>`,
+    title: "Science-Backed Methods",
+    desc: `We believe in evidence-based learning. Spaced repetition is proven to dramatically improve long-term retention, and our algorithms are built on decades of cognitive science research.<br /><span class="italic text-black/60">💡 Memory isn't magic — it's a skill you can master with the right tools.</span>`,
   },
   {
     id: "03",
-    title: "Small Shifts Create Big Changes",
-    desc: `You don't need to overhaul your entire life overnight. With each mindful pause and intentional task, TaskGate helps you gradually build better habits — creating powerful momentum one moment at a time.<br /><span class="italic text-black/60">💡 Consistency in small practices creates lasting behavioral change.</span>`,
+    title: "Your Data Stays Private",
+    desc: `Your learning materials and study progress belong to you. We keep your data secure and private because your educational journey deserves protection, not exploitation.<br /><span class="italic text-black/60">💡 True learning happens in focused, private spaces.</span>`,
   },
   {
     id: "04",
-    title: "Technology Should Serve You",
-    desc: `Instead of technology draining your time, it should support your goals. TaskGate transforms your phone from a distraction device into a habit-building tool that supports your journey toward intentional living.<br /><span class="italic text-black/60">💡 When technology serves your intentions, productivity happens naturally.</span>`,
+    title: "Consistency Over Intensity",
+    desc: `You don't need marathon study sessions. With short daily reviews, Deckbase helps you build lasting knowledge through consistent practice — creating powerful momentum one card at a time.<br /><span class="italic text-black/60">💡 Small daily efforts compound into extraordinary results.</span>`,
   },
   {
     id: "05",
-    title: "Balance Over Productivity",
-    desc: `We're not building another productivity app focused on doing more. We're creating space for doing what matters — helping you align your digital habits with your priorities and focus on what truly serves your goals.<br /><span class="italic text-black/60">💡 When you're intentional, building better habits becomes effortless.</span>`,
+    title: "Technology Should Serve Learning",
+    desc: `AI should make education more accessible, not replace understanding. Deckbase uses technology to enhance your learning process while keeping you in control of what and how you study.<br /><span class="italic text-black/60">💡 When AI assists learning, knowledge becomes limitless.</span>`,
   },
 ];
 
@@ -39,18 +39,18 @@ const CoreValues = () => {
       <article className="container mx-auto py-14 p-4 px-5 md:px-[5%] 2xl:px-0 max-w-[1200px] flex flex-col items-center justify-center gap-10">
         <div className="flex flex-col items-center justify-center text-center">
           <h2 className="text-h2 lg:text-h3 font-bold max-w-[80%]">
-            TaskGate – Our Core Values
+            Deckbase – Our Core Values
           </h2>
           <span className="w-16 h-1 mt-3 bg-gradient-to-r from-accent to-purple-600 rounded-full" />
           <p className="mt-5 text-justify md:max-w-[60%] md:text-center">
-            At <strong>TaskGate</strong>, we believe your digital habits should
-            support your goals — not distract from them. Our values reflect our
-            commitment to helping you{" "}
+            At <strong>Deckbase</strong>, we believe everyone deserves access to
+            effective learning tools. Our values reflect our commitment to
+            helping you{" "}
             <strong>
-              transform technology into a tool for focus, intention, and mindful
-              living
+              transform reading into lasting knowledge using AI and proven
+              learning science
             </strong>
-            , one purposeful interaction at a time.
+            , one flashcard at a time.
           </p>
         </div>
 

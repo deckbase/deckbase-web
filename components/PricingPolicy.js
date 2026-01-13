@@ -6,18 +6,27 @@ const plans = [
     id: "01",
     title: "Free Tier",
     price: "$0",
-    billing: "Free",
+    billing: "Free Forever",
     benefits: [
-      "Basic mindful pause before opening blocked apps",
-      "Basic streak tracking",
+      "Manual flashcard creation",
+      "Basic spaced repetition",
+      "Up to 500 cards",
+      "Basic analytics",
     ],
   },
   {
     id: "02",
     title: "Premium Tier",
     price: "$4.99",
-    billing: "Billed Annually at $29.99",
-    benefits: ["Unlimited Affirmation"],
+    billing: "Billed Annually at $49.99",
+    benefits: [
+      "Unlimited AI card generation",
+      "Priority AI processing",
+      "Unlimited cards & decks",
+      "Advanced analytics",
+      "Cloud backup & sync",
+      "Deck sharing",
+    ],
   },
 ];
 
@@ -47,8 +56,8 @@ const PricingPlans = () => {
 
           <article className="flex flex-col items-center justify-center mt-16">
             <p className="text-justify md:max-w-[60%] md:text-center">
-              Compare our Basic and Premium plans to find the perfect fit for
-              your journaling and biography goals. Start your free trial now.
+              Compare our Free and Premium plans to find the perfect fit for
+              your learning goals. Start learning smarter today.
             </p>
           </article>
         </div>

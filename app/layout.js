@@ -3,37 +3,39 @@ import LayoutClient from "@/components/LayoutClient";
 
 // ✅ Export metadata for SEO - this runs on the server
 export const metadata = {
-  title: "TaskGate — Design Your Digital Habits",
+  title: "Deckbase — Scan. Build. Remember.",
   description:
-    "TaskGate prevents impulsive app opens by requiring you to complete a quick task first. Break the cycle of mindless scrolling with breathing exercises, reflections, flashcards, or partner app challenges.",
+    "Scan. Build. Remember. Deckbase is an AI-powered flashcard platform that turns what you read into learning material instantly with spaced repetition.",
   keywords: [
-    "digital habits",
-    "screen time",
-    "app blocker",
-    "focus app",
-    "productivity",
-    "mindfulness",
-    "TaskGate",
+    "flashcards",
+    "AI flashcards",
+    "spaced repetition",
+    "learning app",
+    "study tool",
+    "memory",
+    "Deckbase",
+    "smart learning",
+    "PDF to flashcards",
   ],
-  authors: [{ name: "TaskGate" }],
-  creator: "TaskGate",
-  publisher: "TaskGate",
-  metadataBase: new URL("https://taskgate.co"),
+  authors: [{ name: "Deckbase" }],
+  creator: "Deckbase",
+  publisher: "Deckbase",
+  metadataBase: new URL("https://deckbase.co"),
   alternates: {
     canonical: "/",
   },
   openGraph: {
-    title: "TaskGate — Design Your Digital Habits",
+    title: "Deckbase — Scan. Build. Remember.",
     description:
-      "Break impulsive scrolling habits. TaskGate intercepts app opens and requires a mini-task before access. Supports partner app integration.",
-    url: "https://taskgate.co",
-    siteName: "TaskGate",
+      "Scan. Build. Remember. AI-powered flashcards with spaced repetition for long-term memory.",
+    url: "https://deckbase.co",
+    siteName: "Deckbase",
     images: [
       {
         url: "/og.png",
         width: 1200,
         height: 630,
-        alt: "TaskGate — Design Your Digital Habits",
+        alt: "Deckbase — AI-Powered Flashcards",
       },
     ],
     locale: "en_US",
@@ -41,10 +43,10 @@ export const metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "TaskGate — Design Your Digital Habits",
+    title: "Deckbase — Scan. Build. Remember.",
     description:
-      "Break impulsive scrolling habits. TaskGate intercepts app opens and requires a mini-task before access. Supports partner app integration.",
-    site: "@TaskGateApp",
+      "Scan. Build. Remember. AI-powered flashcards with spaced repetition for long-term memory.",
+    site: "@DeckbaseApp",
     images: ["/og.png"],
   },
   icons: {
@@ -83,12 +85,12 @@ export const metadata = {
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "Organization",
-  name: "TaskGate",
-  url: "https://taskgate.co",
-  logo: "https://taskgate.co/favicon/android-chrome-512x512.png",
+  name: "Deckbase",
+  url: "https://deckbase.co",
+  logo: "https://deckbase.co/favicon/android-chrome-512x512.png",
   sameAs: [],
   description:
-    "TaskGate prevents impulsive app opens by requiring you to complete a quick task first.",
+    "Deckbase is an AI-powered flashcard platform that turns what you read into learning material instantly with spaced repetition.",
 };
 
 export default function RootLayout({ children }) {

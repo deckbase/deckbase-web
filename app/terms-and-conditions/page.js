@@ -22,39 +22,38 @@ const TermsAndConditions = () => {
       <div className="mx-auto px-5 md:px-[5%] 2xl:px-0 py-10 container max-w-[1200px]">
         <article className="flex flex-col gap-5 text-white">
           <p className="py-5">
-            <strong>Terms and Conditions — TaskGate</strong>
+            <strong>Terms and Conditions — Deckbase</strong>
             <br />
-            Last updated: November 25, 2025
+            Last updated: January 13, 2026
           </p>
           <p className="text-base">
-            Welcome to TaskGate (&quot;we&quot;, &quot;our&quot;, or
+            Welcome to Deckbase (&quot;we&quot;, &quot;our&quot;, or
             &quot;us&quot;). These Terms and Conditions (&quot;Terms&quot;)
-            govern your use of the TaskGate mobile application (&quot;App&quot;)
+            govern your use of the Deckbase mobile application (&quot;App&quot;)
             and any related services we provide.
           </p>
           <p className="text-base">
             By downloading or using the App, you agree to these Terms. If you do
-            not agree, please do not use TaskGate.
+            not agree, please do not use Deckbase.
           </p>
 
           <h3 className="text-lg font-bold mt-6">1. Overview</h3>
           <p className="text-base">
-            TaskGate is a mindful app usage tool that helps users build
-            intentional digital habits. The app intercepts impulsive app opens
-            and requires you to complete a quick task—such as breathing
-            exercises, reflections, flashcards, or partner app challenges—before
-            granting access. TaskGate promotes conscious awareness and healthier
-            relationships with technology.
+            Deckbase is an AI-powered flashcard platform that helps users turn
+            what they read into lasting knowledge. The app allows you to capture
+            text from various sources, automatically generate flashcards using
+            AI, and review them using spaced repetition for optimal retention.
+            Deckbase promotes efficient learning and long-term memory.
           </p>
 
           <h3 className="text-lg font-bold mt-6">2. Eligibility</h3>
           <p className="text-base">
             You must be at least 13 years old to use this app. By using
-            TaskGate, you confirm that you meet this age requirement and are
+            Deckbase, you confirm that you meet this age requirement and are
             legally able to accept these Terms.
           </p>
           <h3 className="text-lg font-bold mt-6">3. Use of the App</h3>
-          <p className="text-base">When using TaskGate, you agree to:</p>
+          <p className="text-base">When using Deckbase, you agree to:</p>
           <ul className="list-disc list-inside text-base ml-4">
             <li>Use the app only for lawful purposes</li>
             <li>
@@ -65,28 +64,36 @@ const TermsAndConditions = () => {
               or other users
             </li>
             <li>
-              Not copy or redistribute any part of TaskGate without written
+              Not copy or redistribute any part of Deckbase without written
               permission
+            </li>
+            <li>
+              Not use AI-generated content to violate copyright or intellectual
+              property rights
             </li>
           </ul>
           <p className="text-base">
-            TaskGate is intended for personal, non-commercial use only.
+            Deckbase is intended for personal, educational, and non-commercial
+            use.
           </p>
 
-          <h3 className="text-lg font-bold mt-6">4. Permissions</h3>
+          <h3 className="text-lg font-bold mt-6">
+            4. Content and AI Generation
+          </h3>
           <p className="text-base">
-            TaskGate may request specific system permissions (such as Usage
-            Access or Overlay permissions) to detect when you open certain apps
-            and display task prompts. These permissions are used only to
-            intercept app launches and show tasks—TaskGate does not access or
-            read your personal data, messages, or browsing history.
+            Deckbase uses AI to generate flashcards from text you provide. You
+            are responsible for ensuring you have the right to use any content
+            you input into the app. AI-generated flashcards are created for your
+            personal learning use. We do not guarantee the accuracy of
+            AI-generated content, and you should verify important information
+            independently.
           </p>
 
           <h3 className="text-lg font-bold mt-6">
             5. Subscription & Purchases (If Applicable)
           </h3>
           <p className="text-base">
-            If TaskGate offers premium or paid features in the future, all
+            If Deckbase offers premium or paid features in the future, all
             purchases will be processed securely through Google Play Billing. By
             subscribing or purchasing, you agree to the terms provided by Google
             Play, including:
@@ -105,8 +112,8 @@ const TermsAndConditions = () => {
 
           <h3 className="text-lg font-bold mt-6">6. Intellectual Property</h3>
           <p className="text-base">
-            All content, design, graphics, text, and code in TaskGate are the
-            intellectual property of TaskGate and are protected by copyright and
+            All content, design, graphics, text, and code in Deckbase are the
+            intellectual property of Deckbase and are protected by copyright and
             trademark laws. You may not copy, modify, distribute, or use any
             materials from the app for commercial purposes without prior written
             consent.
@@ -115,37 +122,37 @@ const TermsAndConditions = () => {
             7. Disclaimer of Warranties
           </h3>
           <p className="text-base">
-            TaskGate is provided on an &quot;as is&quot; and &quot;as
+            Deckbase is provided on an &quot;as is&quot; and &quot;as
             available&quot; basis. We make no warranties, express or implied,
             regarding:
           </p>
           <ul className="list-disc list-inside text-base ml-4">
-            <li>The accuracy or reliability of tasks or prompts</li>
+            <li>The accuracy or reliability of AI-generated flashcards</li>
             <li>The uninterrupted or error-free operation of the app</li>
             <li>
-              The suitability of TaskGate for your specific goals or
-              productivity outcomes
+              The suitability of Deckbase for your specific learning goals or
+              outcomes
             </li>
           </ul>
           <p className="text-base">
-            TaskGate is a digital wellness and productivity tool, not a
-            substitute for professional therapy, coaching, or medical advice.
+            Deckbase is an educational learning tool and is not a substitute for
+            professional instruction, tutoring, or academic guidance.
           </p>
 
           <h3 className="text-lg font-bold mt-6">8. Limitation of Liability</h3>
           <p className="text-base">
-            To the fullest extent permitted by law, TaskGate and its creators
+            To the fullest extent permitted by law, Deckbase and its creators
             are not liable for any direct, indirect, incidental, or
             consequential damages arising from your use of the app — including
             data loss, emotional distress, or productivity outcomes.
           </p>
           <p className="text-base">
-            You use TaskGate at your own discretion and risk.
+            You use Deckbase at your own discretion and risk.
           </p>
 
           <h3 className="text-lg font-bold mt-6">9. Privacy</h3>
           <p className="text-base">
-            Your use of TaskGate is also governed by our Privacy Policy. Please
+            Your use of Deckbase is also governed by our Privacy Policy. Please
             review it to understand how we collect, use, and protect your
             information.
           </p>
@@ -174,11 +181,11 @@ const TermsAndConditions = () => {
             </li>
           </ul>
           <p className="text-base">
-            You should be aware that there are certain things that TaskGate will
+            You should be aware that there are certain things that Deckbase will
             not take responsibility for. Certain functions of the app will
             require the app to have an active internet connection. The
             connection can be Wi-Fi, or provided by your mobile network
-            provider, but TaskGate cannot take responsibility for the app not
+            provider, but Deckbase cannot take responsibility for the app not
             working at full functionality if you don&apos;t have access to
             Wi-Fi, and you don&apos;t have any of your data allowance left.
           </p>
@@ -197,7 +204,7 @@ const TermsAndConditions = () => {
           </p>
           <h3 className="text-lg font-bold mt-6">11. Termination</h3>
           <p className="text-base">
-            We may suspend or terminate your access to TaskGate at any time if
+            We may suspend or terminate your access to Deckbase at any time if
             we believe you have violated these Terms. You may also stop using
             the app at any time by uninstalling it from your device.
           </p>
@@ -206,9 +213,9 @@ const TermsAndConditions = () => {
             12. Updates and Modifications
           </h3>
           <p className="text-base">
-            We may update TaskGate and these Terms from time to time. When we
+            We may update Deckbase and these Terms from time to time. When we
             do, we&apos;ll post the updated version in the app or on our
-            website. By continuing to use TaskGate after updates, you agree to
+            website. By continuing to use Deckbase after updates, you agree to
             the new Terms.
           </p>
 
@@ -216,7 +223,7 @@ const TermsAndConditions = () => {
           <p className="text-base">
             These Terms are governed by and construed under the laws of Japan,
             without regard to conflict of law principles. You agree that any
-            disputes arising from your use of TaskGate will be handled by courts
+            disputes arising from your use of Deckbase will be handled by courts
             located in Tokyo, Japan.
           </p>
 
@@ -230,7 +237,7 @@ const TermsAndConditions = () => {
             this page.
           </p>
           <p className="text-base">
-            These terms and conditions are effective as of November 25, 2025.
+            These terms and conditions are effective as of January 13, 2026.
           </p>
 
           <h3 className="text-lg font-bold mt-6">15. Contact Us</h3>

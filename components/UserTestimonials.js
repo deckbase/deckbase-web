@@ -6,45 +6,45 @@ import Link from "next/link";
 const testimonials = [
   {
     name: "Sarah Chen",
-    role: "Product Designer",
+    role: "Medical Student",
     avatar: "/avatars/sarah.jpg",
     rating: 5,
-    text: "TaskGate has completely changed my relationship with my phone. The breathing exercises before opening Instagram help me stay mindful. I've reduced my social media time by 60% in just two weeks!",
+    text: "Deckbase has transformed how I study for exams. Instead of spending hours making flashcards, I just highlight my textbook and the AI does the rest. My retention has improved dramatically!",
   },
   {
     name: "Marcus Rodriguez",
     role: "Software Engineer",
     avatar: "/avatars/marcus.jpg",
     rating: 5,
-    text: "I love how TaskGate makes me pause before mindlessly scrolling. The mini-tasks are quick but effective. The partner app integration is genius – I'm learning languages through quick flashcards before checking Twitter.",
+    text: "I use Deckbase to learn new programming concepts. The AI creates perfect flashcards from documentation and tutorials. The spaced repetition keeps everything fresh in my memory.",
   },
   {
     name: "Emma Thompson",
-    role: "Marketing Manager",
+    role: "Language Learner",
     avatar: "/avatars/emma.jpg",
     rating: 5,
-    text: "TaskGate transformed my impulsive phone habits. Instead of immediately opening TikTok, I complete a quick journal prompt. It's helped me be more intentional about my screen time. Highly recommend!",
+    text: "Learning Japanese vocabulary has never been easier. I capture sentences from articles and Deckbase creates cards with context. The spaced repetition scheduling is a game-changer!",
   },
   {
     name: "David Park",
-    role: "Student",
+    role: "Law Student",
     avatar: "/avatars/david.jpg",
     rating: 5,
-    text: "What I love about TaskGate is how it interrupts the scroll cycle without completely blocking apps. The tasks are short enough that they don't feel like a burden, but long enough to make me reconsider if I really need to open the app.",
+    text: "Law school requires memorizing countless cases and statutes. Deckbase helps me turn dense legal text into digestible flashcards. I've cut my study time in half while improving my grades.",
   },
   {
     name: "Lisa Johnson",
-    role: "Freelance Writer",
+    role: "Product Manager",
     avatar: "/avatars/lisa.jpg",
     rating: 5,
-    text: "TaskGate helps me maintain focus during work hours. The breathing exercises before opening distracting apps help me refocus. I've become so much more productive since I started using it.",
+    text: "I read tons of articles and books for work. Deckbase ensures I actually retain the key insights instead of forgetting them a week later. It's like having a personal memory assistant.",
   },
   {
     name: "Alex Kumar",
-    role: "Entrepreneur",
+    role: "PhD Researcher",
     avatar: "/avatars/alex.jpg",
     rating: 5,
-    text: "The partner app integration is brilliant! I use a meditation app's mini-sessions as my gate. It's a win-win – I get more mindful and my impulsive phone checking has dropped dramatically.",
+    text: "The AI understands academic papers remarkably well. It extracts the key findings and methodologies into study-ready flashcards. Essential for keeping up with literature in my field.",
   },
 ];
 
@@ -83,7 +83,7 @@ const UserTestimonials = () => {
             viewport={{ once: true }}
             className="text-base text-secondary max-w-2xl mx-auto"
           >
-            Here&apos;s the kind of experience we&apos;re building TaskGate to
+            Here&apos;s the kind of experience we&apos;re building Deckbase to
             deliver. Real user testimonials coming soon!
           </motion.p>
         </div>
@@ -146,12 +146,11 @@ const UserTestimonials = () => {
         >
           <div className="bg-bg-secondary border border-border p-8 rounded-lg">
             <h3 className="text-2xl font-bold mb-4 text-primary">
-              Be Among the First to Break the Scroll Cycle
+              Be Among the First to Learn Smarter
             </h3>
             <p className="text-secondary mb-6 max-w-2xl mx-auto">
-              Start your journey to more intentional phone usage today.
-              Transform impulsive app opens into moments of mindfulness and
-              purpose.
+              Start your journey to remembering everything you read. Transform
+              passive reading into lasting knowledge with AI-powered flashcards.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button
@@ -160,7 +159,7 @@ const UserTestimonials = () => {
                     navigator.userAgent || navigator.vendor || window.opera;
                   if (/android/i.test(userAgent)) {
                     window.open(
-                      "https://play.google.com/store/apps/details?id=com.tkg.taskgate",
+                      "https://play.google.com/store/apps/details?id=com.tkg.deckbase",
                       "_blank"
                     );
                   } else if (

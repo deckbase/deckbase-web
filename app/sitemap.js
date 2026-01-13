@@ -1,14 +1,12 @@
 export default function sitemap() {
-  const baseUrl = "https://taskgate.co";
+  const baseUrl = "https://deckbase.co";
 
   // Define all your public pages
   const routes = [
     "",
     "/about-us",
     "/contact-us",
-    "/developers",
     "/features",
-    "/partnership",
     "/premium",
     "/privacy-policy",
     "/terms-and-conditions",

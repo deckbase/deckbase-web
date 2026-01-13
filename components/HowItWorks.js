@@ -4,33 +4,33 @@ import { motion } from "framer-motion";
 const steps = [
   {
     number: "01",
-    title: "Select Apps to Gate",
+    title: "Capture Any Text",
     description:
-      "Choose which apps you want to gate - social media, games, or any apps that tend to trigger impulsive usage.",
+      "Highlight and capture text from articles, PDFs, books, web pages, or your own notes—anywhere you find valuable information.",
   },
   {
     number: "02",
-    title: "Customize Your Tasks",
+    title: "AI Generates Flashcards",
     description:
-      "Pick from built-in tasks like breathing exercises, journal prompts, and flashcards - or connect partner apps for more variety.",
+      "Our AI analyzes the content, extracts key concepts, and automatically creates well-structured flashcards optimized for learning.",
   },
   {
     number: "03",
-    title: "TaskGate Intercepts",
+    title: "Review with Spaced Repetition",
     description:
-      "When you try to open a gated app, TaskGate intercepts the launch and presents a mini-task instead.",
+      "Cards are scheduled using proven spaced repetition algorithms, so you review at the optimal time for long-term retention.",
   },
   {
     number: "04",
-    title: "Complete the Task",
+    title: "Track Your Progress",
     description:
-      "Finish the quick activity - it only takes seconds. Partner apps open via deep links and return automatically when done.",
+      "Monitor your learning with detailed analytics. See which topics you've mastered and where you need more practice.",
   },
   {
     number: "05",
-    title: "Access Granted",
+    title: "Remember Forever",
     description:
-      "After completing the task, you can proceed to your app - but now with intentionality instead of impulse.",
+      "With consistent review sessions, transform fleeting information into lasting knowledge that stays with you.",
   },
 ];
 
@@ -46,10 +46,10 @@ const HowItWorks = () => {
           className="text-center mb-16"
         >
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4 text-primary">
-            How TaskGate Works
+            How Deckbase Works
           </h2>
           <p className="text-secondary text-lg md:text-xl max-w-3xl mx-auto">
-            Break the cycle of impulsive app opens with meaningful micro-tasks
+            Turn any content into lasting knowledge with AI-powered flashcards
           </p>
         </motion.div>
 
@@ -129,10 +129,10 @@ const HowItWorks = () => {
           <div className="inline-block bg-gradient-to-r from-accent/5 to-purple-600/5 border border-accent/20 rounded-lg px-8 py-4">
             <p className="text-primary text-base">
               <span className="font-semibold text-accent">
-                Partner apps integrate seamlessly
+                Powered by advanced AI
               </span>{" "}
-              - TaskGate opens their mini-task via app link, and they redirect
-              back automatically when complete
+              - Deckbase understands context and creates flashcards that focus
+              on what matters most for effective learning
             </p>
           </div>
         </motion.div>

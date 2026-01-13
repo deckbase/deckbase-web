@@ -4,12 +4,11 @@ import "./globals.css";
 import { useEffect } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { Target, Eye, Heart, Zap } from "lucide-react";
+import { Sparkles, Brain, Clock, Zap } from "lucide-react";
 import AppStoreDownloadButton from "@/components/AppStoreDownloadButton";
 import GooglePlayDownloadButton from "@/components/GooglePlayDownloadButton";
 import HowItWorks from "@/components/HowItWorks";
 import AppFeatures from "@/components/AppFeatures";
-import PartnerApps from "@/components/PartnerApps";
 import UserTestimonials from "@/components/UserTestimonials";
 import Start from "@/components/Start";
 import Faqs from "@/components/Faqs";
@@ -37,9 +36,9 @@ export default function Home() {
               transition={{ delay: 0.3, duration: 0.8 }}
               className="inline-flex items-center gap-2 mb-8 px-4 py-2 rounded-full bg-gradient-to-r from-accent/10 to-purple-600/10 backdrop-blur-md border border-accent/30 shadow-lg"
             >
-              <Target className="w-4 h-4 text-accent" />
+              <Sparkles className="w-4 h-4 text-accent" />
               <span className="bg-gradient-to-r from-accent to-purple-600 bg-clip-text text-transparent font-medium text-sm">
-                Build Better Habits, One Task at a Time
+                AI-Powered Learning, Effortlessly
               </span>
             </motion.div>
 
@@ -51,9 +50,9 @@ export default function Home() {
               className="relative mb-8"
             >
               <h1 className="relative text-5xl md:text-7xl lg:text-8xl font-bold mb-4 leading-tight">
-                <span className="block mb-2 text-white">Design Your</span>
+                <span className="block mb-2 text-white">Scan. Build.</span>
                 <span className="relative inline-block bg-gradient-to-r from-accent to-purple-600 bg-clip-text text-transparent">
-                  Digital Habits
+                  Remember.
                 </span>
               </h1>
             </motion.div>
@@ -67,12 +66,14 @@ export default function Home() {
             >
               <div className="relative bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-8 shadow-2xl">
                 <p className="text-lg md:text-xl text-white/90 leading-relaxed">
-                  TaskGate intercepts impulsive app opens and requires you to
-                  complete a{" "}
-                  <span className="text-accent font-semibold">quick task</span>{" "}
-                  before access is granted. Choose from built-in mini-tasks like
-                  breathing exercises, reflections, and flashcards—or connect
-                  with partner apps for even more variety.
+                  Deckbase is an{" "}
+                  <span className="text-accent font-semibold">
+                    AI-powered flashcard platform
+                  </span>{" "}
+                  that helps you turn what you read into learning material
+                  instantly. Capture text from articles, PDFs, books, or notes
+                  and automatically convert it into well-structured flashcards
+                  optimized for long-term memory.
                 </p>
               </div>
             </motion.div>
@@ -96,33 +97,33 @@ export default function Home() {
             className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-20"
           >
             <div className="text-center p-6 rounded-lg bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/15 transition-all">
-              <Eye className="w-10 h-10 text-accent mx-auto mb-4" />
+              <Brain className="w-10 h-10 text-accent mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-white mb-2">
-                Impulse Interception
+                AI-Powered Generation
               </h3>
               <p className="text-white/80 text-sm">
-                TaskGate catches impulsive app opens before they happen, giving
-                you a moment to pause and reflect.
+                Our AI extracts key ideas, generates examples, and formats cards
+                in a way that&apos;s optimized for long-term memory retention.
               </p>
             </div>
             <div className="text-center p-6 rounded-lg bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/15 transition-all">
-              <Heart className="w-10 h-10 text-notion-red mx-auto mb-4" />
+              <Clock className="w-10 h-10 text-notion-red mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-white mb-2">
-                Meaningful Tasks
+                Spaced Repetition
               </h3>
               <p className="text-white/80 text-sm">
-                Complete short activities like breathing exercises, journal
-                prompts, or partner app challenges to earn access.
+                Cards are reviewed at the right time based on learning science,
+                making studying more efficient and consistent.
               </p>
             </div>
             <div className="text-center p-6 rounded-lg bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/15 transition-all">
               <Zap className="w-10 h-10 text-notion-purple mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-white mb-2">
-                Partner Integration
+                Instant Capture
               </h3>
               <p className="text-white/80 text-sm">
-                Connect with partner apps via deep links—complete their
-                mini-tasks and get redirected back automatically.
+                Capture text from anywhere—articles, PDFs, books, or notes—and
+                instantly convert it into well-structured flashcards.
               </p>
             </div>
           </motion.div>
@@ -137,7 +138,7 @@ export default function Home() {
             <div className="">
               <Image
                 src="/mock/mock1.png"
-                alt="TaskGate App Screenshot"
+                alt="Deckbase App Screenshot"
                 width={1500}
                 height={1125}
                 quality={100}
@@ -165,7 +166,7 @@ export default function Home() {
             transition={{ duration: 0.8 }}
             className="text-4xl md:text-5xl font-bold mb-8 text-white"
           >
-            &quot;Pause before you scroll&quot;
+            &quot;Read once, remember forever&quot;
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 30 }}
@@ -174,11 +175,10 @@ export default function Home() {
             transition={{ delay: 0.2, duration: 0.8 }}
             className="text-xl text-gray-400 leading-relaxed mb-12"
           >
-            Most app usage is impulsive—you reach for your phone without
-            thinking. TaskGate adds intentionality by requiring a small
-            commitment before access. Whether it&apos;s a breathing exercise, a
-            reflection, or a partner app&apos;s challenge, you&apos;ll build
-            healthier digital habits one task at a time.
+            Most of what we read is forgotten within days. Deckbase changes that
+            by turning passive reading into active learning. Instead of manually
+            creating flashcards, our AI does the heavy lifting—extracting key
+            concepts and generating study material that sticks.
           </motion.p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
@@ -190,11 +190,12 @@ export default function Home() {
               className="p-6 bg-white/5 rounded-lg border border-white/10"
             >
               <h3 className="text-xl font-semibold mb-3 text-white">
-                Before: Impulsive Opening
+                Before: Passive Reading
               </h3>
               <p className="text-gray-400">
-                You tap Instagram or TikTok without thinking, losing minutes (or
-                hours) to endless scrolling and distraction.
+                You read articles, books, and PDFs but forget most of the
+                content within a week. Information is consumed but never
+                retained.
               </p>
             </motion.div>
             <motion.div
@@ -205,12 +206,12 @@ export default function Home() {
               className="p-6 bg-gradient-to-r from-accent/20 to-purple-600/20 rounded-lg border border-accent/30"
             >
               <h3 className="text-xl font-semibold mb-3 bg-gradient-to-r from-accent to-purple-600 bg-clip-text text-transparent">
-                After: Intentional Access
+                After: Active Learning
               </h3>
               <p className="text-white">
-                TaskGate intercepts the impulse, presents a quick task, and
-                gives you the choice—continue with purpose or redirect your
-                time.
+                Deckbase captures key ideas, generates smart flashcards, and
+                uses spaced repetition to ensure you actually remember what you
+                learn.
               </p>
             </motion.div>
           </div>
@@ -219,7 +220,6 @@ export default function Home() {
 
       <HowItWorks />
       <AppFeatures />
-      <PartnerApps />
       <UserTestimonials />
       <Start />
       <Faqs />

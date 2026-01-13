@@ -23,15 +23,15 @@ const Updates = () => {
       </h2>
       <div className="mx-auto px-5 md:px-[5%] 2xl:px-0 pb-20 container max-w-[1200px]">
         <article className="flex items-center justify-center flex-col gap-12">
-          <h3 className="font-extrabold text-h3">Join the Waitlist</h3>
-          <Button text="Be the first to know" />
-          <Image
-            src="/mockups/mockupJournal.png"
-            alt="About TaskGate"
-            className="w-[40%]"
-            width={300}
-            height={300}
-          />
+          <h3 className="font-extrabold text-h3 text-white text-center">
+            Coming Soon: AI-Powered Flashcards
+          </h3>
+          <p className="text-white/80 text-center max-w-2xl">
+            We&apos;re building the future of learning. Sign up to be notified
+            when Deckbase launches with AI-powered flashcard generation and
+            spaced repetition.
+          </p>
+          <Button text="Join the Waitlist" />
         </article>
       </div>
     </motion.section>

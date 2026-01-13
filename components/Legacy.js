@@ -16,7 +16,7 @@ const Legacy = () => {
             Want to leave a legacy but don&apos;t know how?
           </h2>
           <p className="my-6 text-center max-w-[80%] lg:max-w-[60%] lg:leading-8">
-            TaskGate makes capturing your life story both effortless and
+            Deckbase makes capturing your life story both effortless and
             insightful.
           </p>
           <div className="mt-8 flex space-x-4">

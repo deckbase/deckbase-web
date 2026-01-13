@@ -61,7 +61,7 @@ const Testimonial = () => {
 
           <article className="flex flex-col items-center justify-center mt-10">
             <p className="mt-5 text-center max-w-[80%] lg:max-w-[60%] lg:leading-8">
-              Here&apos;s the kind of experience we&apos;re building TaskGate to
+              Here&apos;s the kind of experience we&apos;re building Deckbase to
               deliver. Real user testimonials coming soon!
             </p>
           </article>

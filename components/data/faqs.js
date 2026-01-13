@@ -1,53 +1,53 @@
 const faqs = [
   {
-    question: "What is TaskGate and how does it work?",
+    question: "What is Deckbase and how does it work?",
     answer:
-      "TaskGate is an app blocker that intercepts impulsive app opens. When you try to launch a gated app (like Instagram or TikTok), TaskGate intercepts it and presents a quick mini-task instead—such as a breathing exercise, journal prompt, or flashcard. After completing the task, you can proceed to the app, but now with intention rather than impulse.",
+      "Deckbase is an AI-powered flashcard platform that helps you turn what you read into learning material instantly. Simply capture text from articles, PDFs, books, or notes, and our AI automatically converts it into well-structured flashcards. The app uses spaced repetition to schedule reviews at optimal times, so you don't just collect information—you actually remember it.",
   },
   {
-    question: "What kinds of tasks do I need to complete?",
+    question: "How does the AI generate flashcards?",
     answer:
-      "TaskGate offers various built-in mini-tasks including breathing exercises, mindful reflections, journal prompts, and flashcards. You can customize which tasks appear. Additionally, TaskGate supports partner apps—when selected, TaskGate opens the partner app via a deep link, you complete their mini-task, and they send a callback to return you to TaskGate and unlock your app.",
+      "Our AI analyzes your captured text to identify key concepts, definitions, facts, and relationships. It then generates question-answer pairs, adds helpful context and examples, and formats cards in a way that's optimized for long-term memory retention. You can always edit or customize the generated cards to match your learning style.",
   },
   {
-    question: "How does partner app integration work?",
+    question: "What is spaced repetition and why does it matter?",
     answer:
-      "TaskGate can integrate with partner apps using app links (Android) or universal links (iOS). When you select a partner app task, TaskGate launches that app with a special link. After you complete their mini-task, the partner app sends a 'task complete' callback link back to TaskGate, which then grants access to your originally requested app. It's seamless and automatic.",
+      "Spaced repetition is a scientifically proven learning technique where you review information at increasing intervals over time. Instead of cramming, you review cards right before you're about to forget them. This approach is proven to dramatically improve long-term retention—studies show it can reduce study time by up to 50% while improving recall.",
   },
   {
-    question: "Can I choose which apps to block?",
+    question: "What sources can I create flashcards from?",
     answer:
-      "Yes! You have full control over which apps get 'gated.' Most users gate social media apps (Instagram, TikTok, Facebook), streaming apps (YouTube, Netflix), and games—but you can select any app that triggers impulsive usage. Productivity apps can remain ungated.",
+      "Deckbase works with virtually any text source. You can capture content from web articles, PDFs, ebooks, physical books (using your camera), handwritten notes, academic papers, and more. Our share extension makes it easy to send content directly from other apps to Deckbase.",
   },
   {
-    question: "Will TaskGate completely block my apps?",
+    question: "Can I organize my flashcards into different subjects?",
     answer:
-      "No, TaskGate doesn't permanently block apps. It adds a small 'speed bump' by requiring a quick task before access. This creates a moment of conscious choice: do I really want to open this app right now, or should I redirect my time? Many users find that after completing a task, they naturally choose not to proceed.",
+      "Yes! Deckbase lets you organize cards into decks and folders. Create separate decks for different subjects, courses, or topics. You can also add tags to cards for cross-referencing and use smart filters to create focused study sessions based on topics, difficulty, or due date.",
   },
   {
-    question: "How long do the mini-tasks take?",
+    question: "How much time do I need to study each day?",
     answer:
-      "Most tasks take 10-30 seconds. The goal isn't to waste your time but to break the automatic impulse and create a moment of awareness. Quick tasks like '3 deep breaths' or 'name one thing you're grateful for' are fast yet effective at interrupting mindless scrolling.",
+      "Most users spend just 10-15 minutes per day reviewing their cards. The spaced repetition algorithm prioritizes cards that need attention, so you're always making the most efficient use of your study time. Consistency beats intensity—short daily sessions are more effective than long, infrequent cramming.",
   },
   {
-    question: "Can I customize my tasks?",
+    question: "Can I share decks with others?",
     answer:
-      "Absolutely! You can choose which types of tasks appear (breathing, reflection, flashcards, etc.), customize prompts, and integrate partner apps. TaskGate is designed to adapt to your personal goals—whether that's mindfulness, learning, or habit change.",
+      "Absolutely! You can share your decks with friends, classmates, or study groups. You can also browse and import decks created by the Deckbase community. Shared decks can be customized once imported, so you can adapt them to your specific needs.",
   },
   {
-    question: "Does TaskGate track my usage?",
+    question: "Does Deckbase work offline?",
     answer:
-      "Yes, TaskGate provides analytics showing how often you're intercepted, which tasks you complete, and trends over time. This helps you see your progress toward more intentional phone usage. All data stays private on your device—we don't collect or sell your information.",
+      "Yes, Deckbase works fully offline. Your cards and study progress are stored on your device, so you can review anywhere—on a plane, in the subway, or anywhere without internet. Progress syncs across devices when you're back online.",
   },
   {
-    question: "What if I need to access an app immediately?",
+    question: "What subjects work best with Deckbase?",
     answer:
-      "In urgent situations, TaskGate offers an 'override' option. However, using it frequently reduces effectiveness. The whole point is to break the impulse—if you genuinely need the app, 10 seconds to complete a task won't make a difference. Most users find they rarely need the override.",
+      "Deckbase is versatile and works great for languages, medicine, law, history, science, programming, and any subject that requires memorizing facts, vocabulary, concepts, or procedures. If you need to remember it, Deckbase can help you learn it.",
   },
   {
     question: "Is there a premium version?",
     answer:
-      "Yes, TaskGate Premium includes advanced features like unlimited partner app integrations, detailed usage analytics, custom task creation, scheduled gating (e.g., only during work hours), and exclusive content from mindfulness and productivity experts.",
+      "Yes, Deckbase Premium includes advanced features like unlimited AI card generation, priority processing, advanced analytics, unlimited deck sharing, cloud backup, and cross-device sync. Free users can create cards manually and use basic spaced repetition features.",
   },
 ];
 

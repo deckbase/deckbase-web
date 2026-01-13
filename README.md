@@ -1,6 +1,6 @@
 # 📗 Table of Contents
 
-- [📖 TaskGate](#about-project)
+- [📖 Deckbase](#about-project)
   - [🛠 Built With](#built-with)
     - [Tech Stack](#tech-stack)
     - [Key Features](#key-features)
@@ -19,12 +19,12 @@
 
 ---
 
-# 🌟 TaskGate — Design Your Digital Habits <a name="about-project"></a>
+# 🌟 Deckbase — AI-Powered Flashcards for Smarter Learning <a name="about-project"></a>
 
-**TaskGate** is a digital wellness tool that prevents impulsive app usage.  
-Instead of opening distracting apps immediately, TaskGate **intercepts the launch** and requires users to complete a short **mini-task**—such as a breathing exercise, reflection, flashcard, or a partner app’s micro-task—before granting access.
+**Deckbase** is an AI-powered flashcard platform that helps people turn what they read into learning material instantly.  
+Instead of manually creating flashcards, Deckbase lets users capture text from articles, PDFs, books, or notes and automatically converts it into well-structured flashcards optimized for long-term memory using spaced repetition.
 
-This repository contains the **TaskGate Landing Page**, built with Next.js and Firebase. It introduces TaskGate, collects waitlist sign-ups, and stores contact submissions securely.
+This repository contains the **Deckbase Landing Page**, built with Next.js and Firebase. It introduces Deckbase, collects waitlist sign-ups, and stores contact submissions securely.
 
 ---
 
@@ -69,8 +69,9 @@ git push origin v2.0.0
 
 ### Key Features <a name="key-features"></a>
 
-- **Impulse Control Workflow** — Explains how TaskGate turns impulsive app opens into short, intentional micro-tasks.
-- **Partner App Linking** — Supports app links/universal links that trigger partner mini-tasks and return completion callbacks.
+- **AI-Powered Card Generation** — Automatically create flashcards from any text using advanced AI.
+- **Spaced Repetition** — Review cards at scientifically optimal intervals for maximum retention.
+- **Multi-Source Import** — Capture content from PDFs, articles, books, and notes.
 - **Waitlist Sign-Up** — Stores user sign-ups in Firestore.
 - **Contact Form** — Allows users to send questions and messages securely.
 - **Responsive UI** — Mobile-first and optimized for all devices.
@@ -81,7 +82,7 @@ git push origin v2.0.0
 
 ## 🚀 Live Demo <a name="live-demo"></a>
 
-👉 https://taskgate.vercel.app/
+👉 https://deckbase.vercel.app/
 
 ---
 
@@ -104,8 +105,8 @@ Follow these steps to run the project locally.
 Clone the repository:
 
 ```sh
-git clone git@github.com:taskgate/taskgate-web-landing.git
-cd taskgate-web-landing
+git clone git@github.com:deckbase/deckbase-web-landing.git
+cd deckbase-web-landing
 npm install   # or yarn install
 ```
 

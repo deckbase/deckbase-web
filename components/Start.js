@@ -14,8 +14,8 @@ const Start = () => {
       <article className="relative z-20 container mx-auto py-14 p-4 px-5 md:px-[5%] 2xl:px-0 max-w-[1200px] flex flex-col md:flex-row items-center justify-center gap-12">
         <div className="flex flex-col gap-12 items-center md:items-start justify-center">
           <h2 className="text-h3 lg:text-h4 font-bold text-center md:text-left max-w-[80%] leading-relaxed">
-            Transform Your Digital Life Today. <br />
-            Your Conscious Journey Begins with TaskGate
+            Start Learning Smarter Today. <br />
+            Turn What You Read Into Knowledge That Lasts
           </h2>
           <div className="mt-8 flex space-x-4">
             <div className="flex flex-col md:flex-row gap-4">

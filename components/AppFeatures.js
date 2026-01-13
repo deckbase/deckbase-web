@@ -1,11 +1,11 @@
 "use client";
 import { motion } from "framer-motion";
 import {
+  Sparkles,
   Clock,
-  Heart,
-  Target,
+  BookOpen,
   BarChart3,
-  Smartphone,
+  Share2,
   Brain,
 } from "lucide-react";
 import AppStoreDownloadButton from "./AppStoreDownloadButton";
@@ -13,40 +13,40 @@ import GooglePlayDownloadButton from "./GooglePlayDownloadButton";
 
 const features = [
   {
-    icon: <Heart className="w-8 h-8" />,
-    title: "Impulse Interception",
+    icon: <Sparkles className="w-8 h-8" />,
+    title: "AI-Powered Generation",
     description:
-      "TaskGate catches impulsive app opens before they happen, breaking the automatic reach-for-phone cycle.",
-  },
-  {
-    icon: <Target className="w-8 h-8" />,
-    title: "Diverse Mini-Tasks",
-    description:
-      "Choose from breathing exercises, journal prompts, flashcards, quick reflections, and more to complete before app access.",
-  },
-  {
-    icon: <Brain className="w-8 h-8" />,
-    title: "Partner App Integration",
-    description:
-      "Connect with partner apps via deep links. Complete their mini-tasks and get redirected back automatically with a completion callback.",
+      "Our AI analyzes your content, extracts key concepts, and creates well-structured flashcards automatically—no manual work needed.",
   },
   {
     icon: <Clock className="w-8 h-8" />,
-    title: "Usage Analytics",
+    title: "Spaced Repetition",
     description:
-      "Track how often you're intercepted, which tasks you complete, and see your progress toward more intentional phone habits.",
+      "Cards are reviewed at scientifically optimal intervals, ensuring you review right before you forget for maximum retention.",
   },
   {
-    icon: <Smartphone className="w-8 h-8" />,
-    title: "Selective Gating",
+    icon: <BookOpen className="w-8 h-8" />,
+    title: "Multi-Source Capture",
     description:
-      "Choose exactly which apps to gate. Leave productivity apps open while adding friction to social media and games.",
+      "Import content from articles, PDFs, books, web pages, or your own notes. Deckbase works with any text source.",
+  },
+  {
+    icon: <Brain className="w-8 h-8" />,
+    title: "Smart Formatting",
+    description:
+      "AI generates examples, context, and explanations—creating cards optimized for how your brain actually learns.",
   },
   {
     icon: <BarChart3 className="w-8 h-8" />,
-    title: "Habit Building",
+    title: "Learning Analytics",
     description:
-      "Build awareness and reduce impulsive usage over time. Each task reinforces intentional decision-making.",
+      "Track your progress with detailed insights. See mastery levels, review streaks, and areas that need more attention.",
+  },
+  {
+    icon: <Share2 className="w-8 h-8" />,
+    title: "Deck Sharing",
+    description:
+      "Share your decks with friends, classmates, or the community. Learn together and benefit from crowd-sourced knowledge.",
   },
 ];
 
@@ -65,7 +65,7 @@ const AppFeatures = () => {
             viewport={{ once: true }}
             className="text-h2 lg:text-h1 font-bold mb-4 text-white"
           >
-            Features That Put You Back in Control
+            Features That Make Learning Effortless
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 30 }}
@@ -77,9 +77,9 @@ const AppFeatures = () => {
             viewport={{ once: true }}
             className="text-lg text-gray-400 max-w-2xl mx-auto"
           >
-            Discover how TaskGate transforms impulsive app opens into
-            opportunities for mindfulness, learning, and intentional digital
-            habits.
+            Discover how Deckbase transforms passive reading into active
+            learning with AI-powered flashcards and scientifically proven study
+            methods.
           </motion.p>
         </div>
 
@@ -121,11 +121,12 @@ const AppFeatures = () => {
         >
           <div className="bg-white/5 border border-white/10 p-8 rounded-lg">
             <h3 className="text-2xl font-bold mb-4 text-white">
-              Ready to Break the Scroll Cycle?
+              Ready to Remember Everything You Read?
             </h3>
             <p className="text-gray-400 mb-6 max-w-2xl mx-auto">
-              Join thousands who are using TaskGate to build healthier digital
-              habits and transform impulsive scrolling into intentional usage.
+              Join thousands who are using Deckbase to turn their reading into
+              lasting knowledge with AI-powered flashcards and spaced
+              repetition.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <AppStoreDownloadButton />
