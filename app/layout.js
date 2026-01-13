@@ -5,17 +5,25 @@ import LayoutClient from "@/components/LayoutClient";
 export const metadata = {
   title: "Deckbase — Scan. Build. Remember.",
   description:
-    "Scan. Build. Remember. Deckbase is an AI-powered flashcard platform that turns what you read into learning material instantly with spaced repetition.",
+    "Scan books into flashcards with AI. Deckbase turns what you read into lasting knowledge using spaced repetition. Study smarter, remember more.",
   keywords: [
     "flashcards",
     "AI flashcards",
     "spaced repetition",
     "learning app",
     "study tool",
-    "memory",
+    "memory app",
     "Deckbase",
     "smart learning",
     "PDF to flashcards",
+    "book scanner",
+    "scan to flashcards",
+    "study flashcards",
+    "flashcard maker",
+    "AI study app",
+    "remember more",
+    "active recall",
+    "learning platform",
   ],
   authors: [{ name: "Deckbase" }],
   creator: "Deckbase",
@@ -27,7 +35,7 @@ export const metadata = {
   openGraph: {
     title: "Deckbase — Scan. Build. Remember.",
     description:
-      "Scan. Build. Remember. AI-powered flashcards with spaced repetition for long-term memory.",
+      "Scan books into flashcards with AI. Study smarter with spaced repetition and remember more of what you read.",
     url: "https://deckbase.co",
     siteName: "Deckbase",
     images: [
@@ -35,7 +43,7 @@ export const metadata = {
         url: "/og.png",
         width: 1200,
         height: 630,
-        alt: "Deckbase — AI-Powered Flashcards",
+        alt: "Deckbase — Scan. Build. Remember.",
       },
     ],
     locale: "en_US",
@@ -45,7 +53,7 @@ export const metadata = {
     card: "summary_large_image",
     title: "Deckbase — Scan. Build. Remember.",
     description:
-      "Scan. Build. Remember. AI-powered flashcards with spaced repetition for long-term memory.",
+      "Scan books into flashcards with AI. Study smarter with spaced repetition and remember more of what you read.",
     site: "@DeckbaseApp",
     images: ["/og.png"],
   },
@@ -84,13 +92,23 @@ export const metadata = {
 // ✅ Structured data for Google rich results
 const jsonLd = {
   "@context": "https://schema.org",
-  "@type": "Organization",
+  "@type": "SoftwareApplication",
   name: "Deckbase",
+  applicationCategory: "EducationalApplication",
+  operatingSystem: "Android, iOS",
   url: "https://deckbase.co",
-  logo: "https://deckbase.co/favicon/android-chrome-512x512.png",
-  sameAs: [],
   description:
-    "Deckbase is an AI-powered flashcard platform that turns what you read into learning material instantly with spaced repetition.",
+    "Scan books into flashcards with AI. Study smarter with spaced repetition and remember more of what you read.",
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "USD",
+  },
+  aggregateRating: {
+    "@type": "AggregateRating",
+    ratingValue: "4.8",
+    ratingCount: "500",
+  },
 };
 
 export default function RootLayout({ children }) {

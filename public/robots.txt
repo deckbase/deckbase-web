@@ -1,10 +1,21 @@
+# Deckbase robots.txt
+# https://deckbase.co
+
 # Allow all crawlers
 User-agent: *
 Allow: /
 
+# Block admin, partner, and deprecated routes
+Disallow: /admin
+Disallow: /admin/
+Disallow: /partner
+Disallow: /partner/
+Disallow: /partnership
+Disallow: /developers
+Disallow: /api/
+
 # Sitemap location
 Sitemap: https://deckbase.co/sitemap.xml
 
-# Block admin and partner routes
-Disallow: /admin
-Disallow: /partner
+# Crawl-delay for polite crawling (optional)
+Crawl-delay: 1
