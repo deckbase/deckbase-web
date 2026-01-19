@@ -50,7 +50,7 @@ const Navbar = () => {
           Deckbase
         </Link>
 
-        <ul className="hidden md:flex space-x-12">
+        <ul className="hidden md:flex space-x-12 items-center">
           <li>
             <Link
               href="/features"
@@ -71,8 +71,21 @@ const Navbar = () => {
             </Link>
           </li>
           <li>
+            <Link href="/download" className={isActive("/download")}>
+              Download
+            </Link>
+          </li>
+          <li>
             <Link href="/contact-us" className={isActive("/contact-us")}>
               Contact
+            </Link>
+          </li>
+          <li>
+            <Link
+              href="/dashboard"
+              className="px-4 py-2 bg-accent hover:bg-accent/90 text-white font-medium rounded-lg transition-colors"
+            >
+              Dashboard
             </Link>
           </li>
         </ul>
@@ -160,11 +173,29 @@ const Navbar = () => {
           </li>
           <li className="text-3xl">
             <Link
+              href="/download"
+              className={isActive("/download")}
+              onClick={toggleMenu}
+            >
+              Download
+            </Link>
+          </li>
+          <li className="text-3xl">
+            <Link
               href="/contact-us"
               className={isActive("/contact-us")}
               onClick={toggleMenu}
             >
               Contact
+            </Link>
+          </li>
+          <li className="text-2xl mt-4">
+            <Link
+              href="/dashboard"
+              className="px-6 py-3 bg-accent hover:bg-accent/90 text-white font-medium rounded-lg transition-colors"
+              onClick={toggleMenu}
+            >
+              Dashboard
             </Link>
           </li>
         </ul>

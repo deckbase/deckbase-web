@@ -6,6 +6,7 @@ import Footer from "@/components/Footer";
 import dynamic from "next/dynamic";
 import { Suspense } from "react";
 import { usePathname } from "next/navigation";
+import { AuthProvider } from "@/contexts/AuthContext";
 
 // ✅ Load Meta Pixel only on the client (Prevents SSR issues)
 const MetaPixelNoSSR = dynamic(() => import("@/components/MetaPixelEvents"), {
@@ -16,7 +17,13 @@ export default function LayoutClient({ children }) {
   const pathname = usePathname();
   const isAdminRoute = pathname?.startsWith("/admin");
   const isPartnerRoute = pathname?.startsWith("/partner");
-  const hideNavFooter = isAdminRoute || isPartnerRoute;
+  const isDashboardRoute = pathname?.startsWith("/dashboard");
+  const isAuthRoute =
+    pathname?.startsWith("/login") ||
+    pathname?.startsWith("/register") ||
+    pathname?.startsWith("/forgot-password");
+  const hideNavFooter =
+    isAdminRoute || isPartnerRoute || isDashboardRoute || isAuthRoute;
 
   const pageVariants = {
     initial: { opacity: 0, x: -100 },
@@ -33,7 +40,7 @@ export default function LayoutClient({ children }) {
   };
 
   return (
-    <>
+    <AuthProvider>
       {/* ✅ Ensure Meta Pixel loads only on the client */}
       <Suspense fallback={null}>
         <MetaPixelNoSSR />
@@ -60,6 +67,6 @@ export default function LayoutClient({ children }) {
           <Footer />
         </div>
       )}
-    </>
+    </AuthProvider>
   );
 }
