@@ -102,9 +102,9 @@ export default function DeckDetailPage() {
     return () => unsubscribe();
   }, [user, deckId, router]);
 
-  // Load templates when import modal opens
+  // Load templates on page load (for card previews with main/sub blocks)
   useEffect(() => {
-    if (showImportModal && user) {
+    if (user) {
       const loadTemplates = async () => {
         let userTemplates = await getTemplates(user.uid);
         if (userTemplates.length === 0) {
@@ -114,7 +114,7 @@ export default function DeckDetailPage() {
       };
       loadTemplates();
     }
-  }, [showImportModal, user]);
+  }, [user]);
 
   const handleDeleteCard = async () => {
     if (!selectedCard) return;
@@ -423,18 +423,45 @@ export default function DeckDetailPage() {
     setImportedCount(0);
   };
 
-  // Get preview text from card values
+  // Get preview text from card values using template's main/sub blocks
   const getCardPreview = (card) => {
-    if (!card.values || card.values.length === 0) return "Empty card";
-    const frontValue = card.values.find((v) => v.text && v.text.trim());
-    return frontValue?.text?.substring(0, 100) || "Empty card";
+    if (!card.values || card.values.length === 0) return { main: "Empty card", sub: null };
+
+    // Find the template for this card
+    const template = templates.find((t) => t.templateId === card.templateId);
+
+    if (template && (template.mainBlockId || template.subBlockId)) {
+      // Use template's main/sub block IDs
+      const mainValue = template.mainBlockId
+        ? card.values.find((v) => v.blockId === template.mainBlockId)
+        : null;
+      const subValue = template.subBlockId
+        ? card.values.find((v) => v.blockId === template.subBlockId)
+        : null;
+
+      return {
+        main: mainValue?.text?.substring(0, 100) || card.values.find((v) => v.text)?.text?.substring(0, 100) || "Empty card",
+        sub: subValue?.text?.substring(0, 80) || null,
+      };
+    }
+
+    // Fallback: use first two text values
+    const textValues = card.values.filter((v) => v.text && v.text.trim());
+    return {
+      main: textValues[0]?.text?.substring(0, 100) || "Empty card",
+      sub: textValues[1]?.text?.substring(0, 80) || null,
+    };
   };
 
   // Filter cards by search
   const filteredCards = cards.filter((card) => {
     if (!searchQuery) return true;
-    const preview = getCardPreview(card).toLowerCase();
-    return preview.includes(searchQuery.toLowerCase());
+    const preview = getCardPreview(card);
+    const searchLower = searchQuery.toLowerCase();
+    return (
+      preview.main.toLowerCase().includes(searchLower) ||
+      (preview.sub && preview.sub.toLowerCase().includes(searchLower))
+    );
   });
 
   if (loading || !deck) {
@@ -544,9 +571,21 @@ export default function DeckDetailPage() {
                 href={`/dashboard/deck/${deckId}/card/${card.cardId}`}
                 className="block p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-colors"
               >
-                <p className="text-white line-clamp-3">
-                  {getCardPreview(card)}
-                </p>
+                {(() => {
+                  const preview = getCardPreview(card);
+                  return (
+                    <>
+                      <p className="text-white font-medium line-clamp-2">
+                        {preview.main}
+                      </p>
+                      {preview.sub && (
+                        <p className="text-white/50 text-sm line-clamp-2 mt-1">
+                          {preview.sub}
+                        </p>
+                      )}
+                    </>
+                  );
+                })()}
                 <p className="text-white/30 text-xs mt-2">
                   {new Date(card.createdAt).toLocaleDateString()}
                 </p>

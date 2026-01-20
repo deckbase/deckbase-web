@@ -31,6 +31,7 @@ import {
   updateCard,
   uploadImage,
   getMedia,
+  getTemplate,
 } from "@/utils/firestore";
 import { v4 as uuidv4 } from "uuid";
 
@@ -84,6 +85,8 @@ export default function CardEditorPage() {
   const [saving, setSaving] = useState(false);
   const [showBlockPicker, setShowBlockPicker] = useState(false);
   const [mediaCache, setMediaCache] = useState({});
+  const [mainBlockId, setMainBlockId] = useState(null);
+  const [subBlockId, setSubBlockId] = useState(null);
 
   // Fetch deck and card data
   useEffect(() => {
@@ -111,6 +114,15 @@ export default function CardEditorPage() {
           });
           setValues(valuesObj);
 
+          // Fetch template to get main/sub block IDs
+          if (cardData.templateId) {
+            const template = await getTemplate(user.uid, cardData.templateId);
+            if (template) {
+              setMainBlockId(template.mainBlockId);
+              setSubBlockId(template.subBlockId);
+            }
+          }
+
           // Fetch media for image blocks
           for (const value of cardData.values || []) {
             if (value.mediaIds && value.mediaIds.length > 0) {
@@ -127,6 +139,10 @@ export default function CardEditorPage() {
           return;
         }
       } else {
+        // For new cards, use default main/sub (first two blocks)
+        setMainBlockId(DEFAULT_BLOCKS[0]?.blockId || null);
+        setSubBlockId(DEFAULT_BLOCKS[1]?.blockId || null);
+
         // Initialize empty values for default blocks
         const initialValues = {};
         DEFAULT_BLOCKS.forEach((block) => {
@@ -327,6 +343,8 @@ export default function CardEditorPage() {
             block={block}
             value={values[block.blockId]}
             mediaCache={mediaCache}
+            isMainBlock={mainBlockId === block.blockId}
+            isSubBlock={subBlockId === block.blockId}
             onValueChange={(text) => updateBlockValue(block.blockId, text)}
             onRemove={() => removeBlock(block.blockId)}
             onImageUpload={(files) => handleImageUpload(block.blockId, files)}
@@ -387,6 +405,8 @@ function BlockEditor({
   block,
   value,
   mediaCache,
+  isMainBlock,
+  isSubBlock,
   onValueChange,
   onRemove,
   onImageUpload,
@@ -533,10 +553,22 @@ function BlockEditor({
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-white/40 text-xs uppercase tracking-wide">
-              {block.label}
-              {block.required && <span className="text-accent ml-1">*</span>}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-white/40 text-xs uppercase tracking-wide">
+                {block.label}
+                {block.required && <span className="text-accent ml-1">*</span>}
+              </span>
+              {isMainBlock && (
+                <span className="px-2 py-0.5 bg-accent/20 text-accent text-xs rounded-full">
+                  Main
+                </span>
+              )}
+              {isSubBlock && (
+                <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 text-xs rounded-full">
+                  Sub
+                </span>
+              )}
+            </div>
             {!block.required && (
               <button
                 onClick={onRemove}

@@ -226,7 +226,9 @@ export const createTemplate = async (
   name,
   description = "",
   blocks = [],
-  rendering = null
+  rendering = null,
+  mainBlockId = null,
+  subBlockId = null
 ) => {
   const templateId = uuidv4();
   const now = Timestamp.now();
@@ -243,6 +245,8 @@ export const createTemplate = async (
           back_block_ids: rendering.backBlockIds || [],
         }
       : null,
+    main_block_id: mainBlockId,
+    sub_block_id: subBlockId,
     created_at: now,
     updated_at: now,
     is_deleted: false,
@@ -309,6 +313,10 @@ export const updateTemplate = async (uid, templateId, updates) => {
         }
       : null;
   }
+  if (updates.mainBlockId !== undefined)
+    updateData.main_block_id = updates.mainBlockId;
+  if (updates.subBlockId !== undefined)
+    updateData.sub_block_id = updates.subBlockId;
   if (updates.isDeleted !== undefined)
     updateData.is_deleted = updates.isDeleted;
 
@@ -538,6 +546,8 @@ const transformTemplateFromFirestore = (data) => {
           backBlockIds: data.rendering.back_block_ids || [],
         }
       : null,
+    mainBlockId: data.main_block_id || null,
+    subBlockId: data.sub_block_id || null,
     createdAt,
     updatedAt,
     isDeleted: data.is_deleted || false,
