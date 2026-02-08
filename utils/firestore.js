@@ -572,6 +572,90 @@ export const uploadSpeechTranscript = async ({
   return { docId, ...docData };
 };
 
+export const createSpeechDiarizationJob = async ({
+  youtubeUrl,
+  speakers,
+  speakerSamples = [],
+  requestedBy,
+}) => {
+  if (!db || !storage) throw new Error("Storage is not available");
+  const trimmedUrl = (youtubeUrl || "").trim();
+  if (!trimmedUrl) throw new Error("YouTube URL is required");
+
+  const normalizeLabel = (label) => label.trim().replace(/\s+/g, " ");
+  const seenLabels = new Set();
+  const normalizedSpeakers = (speakers || [])
+    .map((speaker) => ({
+      label: normalizeLabel(speaker?.label || ""),
+      personId: speaker?.personId || null,
+    }))
+    .filter((speaker) => speaker.label)
+    .filter((speaker) => {
+      const key = speaker.label.toLowerCase();
+      if (seenLabels.has(key)) return false;
+      seenLabels.add(key);
+      return true;
+    });
+
+  if (normalizedSpeakers.length < 2) {
+    throw new Error("At least two speakers are required");
+  }
+
+  const jobRef = doc(collection(db, "speech_diarization_jobs"));
+  const jobId = jobRef.id;
+  const now = Timestamp.now();
+
+  const slugify = (value) =>
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+
+  const uploadedSamples = [];
+  for (const sample of speakerSamples) {
+    if (!sample?.file || !sample?.label) continue;
+    const labelSlug = slugify(sample.label) || "speaker";
+    const extension = sample.file.name?.split(".").pop() || "wav";
+    const sampleId = uuidv4();
+    const storagePath = `speech-diarization-samples/${jobId}/${labelSlug}/${sampleId}.${extension}`;
+    const storageRef = ref(storage, storagePath);
+    await uploadBytes(storageRef, sample.file, {
+      contentType: sample.file.type || "audio/mpeg",
+    });
+    const downloadUrl = await getDownloadURL(storageRef);
+    uploadedSamples.push({
+      label: sample.label,
+      personId: sample.personId || null,
+      storagePath,
+      downloadUrl,
+      fileName: sample.file.name,
+      fileSize: sample.file.size,
+      mimeType: sample.file.type || null,
+    });
+  }
+
+  const jobData = {
+    jobId,
+    sourceType: "youtube",
+    assignmentMode: "voice",
+    youtubeUrl: trimmedUrl,
+    speakers: normalizedSpeakers,
+    speakerLabels: normalizedSpeakers.map((speaker) => speaker.label),
+    speakerSamples: uploadedSamples,
+    status: "queued",
+    progress: {
+      status: "queued",
+      percent: 0,
+    },
+    requestedBy: requestedBy || null,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  await setDoc(jobRef, jobData);
+  return { jobId, ...jobData };
+};
+
 // ============== BLOCK TYPES ==============
 // Must match mobile's BlockType enum order
 
