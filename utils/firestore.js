@@ -160,20 +160,30 @@ export const getCards = async (uid, deckId) => {
 
 export const getDueCards = async (uid, deckId, limitCount = 50) => {
   const now = Date.now();
-  const q = query(
-    getCardsCollection(uid),
-    where("deck_id", "==", deckId),
-    where("is_deleted", "==", false),
-    where("srs_due", "<=", now),
-    orderBy("srs_due", "asc"),
-    limit(limitCount)
-  );
+  try {
+    const q = query(
+      getCardsCollection(uid),
+      where("deck_id", "==", deckId),
+      where("is_deleted", "==", false),
+      where("srs_due", "<=", now),
+      orderBy("srs_due", "asc"),
+      limit(limitCount)
+    );
 
-  const snapshot = await getDocs(q);
-  const cards = snapshot.docs.map((doc) =>
-    transformCardFromFirestore(doc.data())
-  );
-  return cards;
+    const snapshot = await getDocs(q);
+    const cards = snapshot.docs.map((doc) =>
+      transformCardFromFirestore(doc.data())
+    );
+    return cards;
+  } catch (error) {
+    console.error("Error querying due cards:", error);
+    // Fallback when Firestore requires a composite index.
+    const allCards = await getCards(uid, deckId);
+    return allCards
+      .filter((card) => card.srsDue == null || card.srsDue <= now)
+      .sort((a, b) => (a.srsDue || 0) - (b.srsDue || 0))
+      .slice(0, limitCount);
+  }
 };
 
 export const subscribeToCards = (uid, deckId, callback) => {
