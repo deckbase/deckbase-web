@@ -1,15 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Mic, Plus } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import { useAuth } from "@/contexts/AuthContext";
 import {
+  createSpeechPerson,
   createCard,
   getDecks,
   getSpeechPeople,
   subscribeToSpeechAnalysis,
+  uploadSpeechTranscript,
 } from "@/utils/firestore";
 
 const SECTION_LIMIT = 20;
@@ -88,6 +90,11 @@ export default function SpeechAnalysisPage() {
   const [decks, setDecks] = useState([]);
   const [selectedDeckId, setSelectedDeckId] = useState("");
   const [search, setSearch] = useState("");
+  const [newSpeakerName, setNewSpeakerName] = useState("");
+  const [isCreatingSpeaker, setIsCreatingSpeaker] = useState(false);
+  const [transcriptText, setTranscriptText] = useState("");
+  const [transcriptFile, setTranscriptFile] = useState(null);
+  const [isUploadingTranscript, setIsUploadingTranscript] = useState(false);
   const [expanded, setExpanded] = useState({
     vocabulary: false,
     learning: false,
@@ -96,6 +103,7 @@ export default function SpeechAnalysisPage() {
   });
   const [notice, setNotice] = useState(null);
   const [addingKey, setAddingKey] = useState(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     if (!user) return;
@@ -235,9 +243,105 @@ export default function SpeechAnalysisPage() {
     : 0;
   const statusStyle = STATUS_STYLES[status] || STATUS_STYLES.idle;
   const speakerLabel = selectedPerson?.displayName || selectedPersonId;
+  const canUploadTranscript = Boolean(
+    selectedPersonId && (transcriptText.trim() || transcriptFile)
+  );
 
   const toggleSection = (key) => {
     setExpanded((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleCreateSpeaker = async () => {
+    if (!newSpeakerName.trim()) {
+      setNotice({ type: "error", message: "Enter a speaker name first." });
+      return;
+    }
+    setIsCreatingSpeaker(true);
+    setNotice(null);
+    try {
+      const person = await createSpeechPerson(newSpeakerName);
+      setPeople((prev) => {
+        const next = [...prev, person];
+        next.sort((a, b) =>
+          (a.displayName || "").localeCompare(b.displayName || "")
+        );
+        return next;
+      });
+      setSelectedPersonId(person.personId);
+      setNewSpeakerName("");
+      setNotice({
+        type: "success",
+        message: `Speaker "${person.displayName}" created.`,
+      });
+    } catch (error) {
+      console.error("Error creating speaker:", error);
+      setNotice({
+        type: "error",
+        message: "Unable to create speaker. Please try again.",
+      });
+    } finally {
+      setIsCreatingSpeaker(false);
+    }
+  };
+
+  const handleTranscriptFileChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const isTxt = file.name?.toLowerCase().endsWith(".txt");
+    if (file.type && file.type !== "text/plain" && !isTxt) {
+      setNotice({
+        type: "error",
+        message: "Please upload a plain text (.txt) file.",
+      });
+      return;
+    }
+    setTranscriptFile(file);
+    setNotice(null);
+  };
+
+  const resetTranscriptInputs = () => {
+    setTranscriptText("");
+    setTranscriptFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleUploadTranscript = async () => {
+    if (!selectedPersonId) {
+      setNotice({ type: "error", message: "Select a speaker first." });
+      return;
+    }
+    if (!transcriptText.trim() && !transcriptFile) {
+      setNotice({
+        type: "error",
+        message: "Paste a transcript or upload a .txt file.",
+      });
+      return;
+    }
+
+    setIsUploadingTranscript(true);
+    setNotice(null);
+    try {
+      await uploadSpeechTranscript({
+        personId: selectedPersonId,
+        text: transcriptText,
+        file: transcriptFile,
+      });
+      resetTranscriptInputs();
+      setNotice({
+        type: "success",
+        message: "Transcript uploaded and queued for analysis.",
+      });
+    } catch (error) {
+      console.error("Error uploading transcript:", error);
+      setNotice({
+        type: "error",
+        message: "Unable to upload transcript. Please try again.",
+      });
+    } finally {
+      setIsUploadingTranscript(false);
+    }
   };
 
   const handleAddToDeck = async (item, type) => {
@@ -377,6 +481,90 @@ export default function SpeechAnalysisPage() {
               placeholder="Search phrases or patterns..."
               className="w-full px-3 py-2 bg-black/40 border border-white/10 rounded-lg text-white placeholder-white/30 focus:outline-none focus:border-accent/50"
             />
+          </div>
+        </div>
+
+        <div className="mt-6 border-t border-white/10 pt-4 grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-white/60 text-xs uppercase tracking-wide mb-2">
+              Add speaker
+            </label>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <input
+                type="text"
+                value={newSpeakerName}
+                onChange={(event) => setNewSpeakerName(event.target.value)}
+                placeholder="Enter speaker name"
+                className="flex-1 px-3 py-2 bg-black/40 border border-white/10 rounded-lg text-white placeholder-white/30 focus:outline-none focus:border-accent/50"
+              />
+              <button
+                onClick={handleCreateSpeaker}
+                disabled={isCreatingSpeaker || !newSpeakerName.trim()}
+                className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isCreatingSpeaker ? "Creating..." : "Create speaker"}
+              </button>
+            </div>
+            <p className="text-white/40 text-xs mt-2">
+              Use this if the speaker is not in the list.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-white/60 text-xs uppercase tracking-wide mb-2">
+              Upload transcript
+            </label>
+            <textarea
+              value={transcriptText}
+              onChange={(event) => setTranscriptText(event.target.value)}
+              placeholder="Paste dialog text here..."
+              rows={5}
+              className="w-full px-3 py-2 bg-black/40 border border-white/10 rounded-lg text-white placeholder-white/30 focus:outline-none focus:border-accent/50 resize-none"
+            />
+            <div className="flex flex-wrap items-center gap-3 mt-2">
+              <label className="inline-flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 text-white text-xs rounded-lg cursor-pointer transition-colors">
+                Upload dialog.txt
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".txt,text/plain"
+                  onChange={handleTranscriptFileChange}
+                  className="hidden"
+                />
+              </label>
+              {transcriptFile ? (
+                <span className="text-white/50 text-xs">
+                  {transcriptFile.name}
+                </span>
+              ) : (
+                <span className="text-white/40 text-xs">No file selected</span>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-3 mt-3">
+              <button
+                onClick={handleUploadTranscript}
+                disabled={isUploadingTranscript || !canUploadTranscript}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent hover:bg-accent/90 text-white text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isUploadingTranscript ? "Uploading..." : "Start analysis"}
+              </button>
+              <button
+                onClick={resetTranscriptInputs}
+                disabled={isUploadingTranscript}
+                className="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Clear
+              </button>
+              {!selectedPersonId && (
+                <span className="text-white/40 text-xs">
+                  Select a speaker to enable uploads.
+                </span>
+              )}
+            </div>
+            <p className="text-white/40 text-xs mt-2">
+              Uploads are queued for processing under{" "}
+              {speakerLabel || "the selected speaker"}.
+            </p>
           </div>
         </div>
       </div>
