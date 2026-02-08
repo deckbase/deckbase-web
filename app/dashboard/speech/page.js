@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Mic, Plus } from "lucide-react";
+import { ArrowLeft, Mic, Plus, X } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import { useAuth } from "@/contexts/AuthContext";
 import {
+  createSpeechDiarizationJob,
   createSpeechPerson,
   createCard,
   getDecks,
@@ -95,6 +96,11 @@ export default function SpeechAnalysisPage() {
   const [transcriptText, setTranscriptText] = useState("");
   const [transcriptFile, setTranscriptFile] = useState(null);
   const [isUploadingTranscript, setIsUploadingTranscript] = useState(false);
+  const [youtubeUrl, setYoutubeUrl] = useState("");
+  const [existingSpeakerId, setExistingSpeakerId] = useState("");
+  const [speakerLabelInput, setSpeakerLabelInput] = useState("");
+  const [diarizationSpeakers, setDiarizationSpeakers] = useState([]);
+  const [isCreatingDiarization, setIsCreatingDiarization] = useState(false);
   const [expanded, setExpanded] = useState({
     vocabulary: false,
     learning: false,
@@ -246,9 +252,93 @@ export default function SpeechAnalysisPage() {
   const canUploadTranscript = Boolean(
     selectedPersonId && (transcriptText.trim() || transcriptFile)
   );
+  const diarizationMissingSamples = diarizationSpeakers.some(
+    (speaker) => !speaker.sampleFile
+  );
+  const canStartDiarization = Boolean(
+    youtubeUrl.trim() &&
+      diarizationSpeakers.length >= 2 &&
+      !diarizationMissingSamples
+  );
 
   const toggleSection = (key) => {
     setExpanded((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const normalizeSpeakerLabel = (label) =>
+    label.trim().replace(/\s+/g, " ");
+
+  const speakerLabelExists = (label) => {
+    const normalized = normalizeSpeakerLabel(label).toLowerCase();
+    return diarizationSpeakers.some(
+      (speaker) => speaker.label.toLowerCase() === normalized
+    );
+  };
+
+  const addDiarizationSpeaker = (label, personId = null) => {
+    const normalized = normalizeSpeakerLabel(label);
+    if (!normalized) {
+      setNotice({ type: "error", message: "Enter a speaker label." });
+      return;
+    }
+    if (speakerLabelExists(normalized)) {
+      setNotice({ type: "error", message: "Speaker already added." });
+      return;
+    }
+
+    setDiarizationSpeakers((prev) => [
+      ...prev,
+      {
+        id: uuidv4(),
+        label: normalized,
+        personId,
+        sampleFile: null,
+      },
+    ]);
+    setSpeakerLabelInput("");
+    setExistingSpeakerId("");
+  };
+
+  const removeDiarizationSpeaker = (speakerId) => {
+    setDiarizationSpeakers((prev) =>
+      prev.filter((speaker) => speaker.id !== speakerId)
+    );
+  };
+
+  const handleSpeakerSampleChange = (speakerId, file) => {
+    if (!file) return;
+    const isAudio =
+      file.type?.startsWith("audio/") ||
+      [".wav", ".mp3", ".m4a", ".aac", ".flac", ".ogg"].some((ext) =>
+        file.name.toLowerCase().endsWith(ext)
+      );
+    if (!isAudio) {
+      setNotice({
+        type: "error",
+        message: "Please upload an audio file (wav, mp3, m4a).",
+      });
+      return;
+    }
+    setDiarizationSpeakers((prev) =>
+      prev.map((speaker) =>
+        speaker.id === speakerId ? { ...speaker, sampleFile: file } : speaker
+      )
+    );
+  };
+
+  const clearSpeakerSample = (speakerId) => {
+    setDiarizationSpeakers((prev) =>
+      prev.map((speaker) =>
+        speaker.id === speakerId ? { ...speaker, sampleFile: null } : speaker
+      )
+    );
+  };
+
+  const handleAddExistingSpeaker = () => {
+    if (!existingSpeakerId) return;
+    const person = people.find((item) => item.personId === existingSpeakerId);
+    if (!person) return;
+    addDiarizationSpeaker(person.displayName || person.personId, person.personId);
   };
 
   const handleCreateSpeaker = async () => {
@@ -341,6 +431,100 @@ export default function SpeechAnalysisPage() {
       });
     } finally {
       setIsUploadingTranscript(false);
+    }
+  };
+
+  const resetDiarizationInputs = () => {
+    setYoutubeUrl("");
+    setSpeakerLabelInput("");
+    setExistingSpeakerId("");
+    setDiarizationSpeakers([]);
+  };
+
+  const handleStartDiarization = async () => {
+    if (!youtubeUrl.trim()) {
+      setNotice({ type: "error", message: "Enter a YouTube URL first." });
+      return;
+    }
+    if (diarizationSpeakers.length < 2) {
+      setNotice({
+        type: "error",
+        message: "Add at least two speakers for diarization.",
+      });
+      return;
+    }
+    if (diarizationMissingSamples) {
+      setNotice({
+        type: "error",
+        message: "Upload a voice sample for each speaker.",
+      });
+      return;
+    }
+
+    setIsCreatingDiarization(true);
+    setNotice(null);
+
+    try {
+      let updatedPeople = [...people];
+      const speakerEntries = [];
+      for (const speaker of diarizationSpeakers) {
+        let resolvedPersonId = speaker.personId;
+        if (!resolvedPersonId) {
+          const match = updatedPeople.find(
+            (person) =>
+              person.displayName?.toLowerCase() ===
+              speaker.label.toLowerCase()
+          );
+          if (match) {
+            resolvedPersonId = match.personId;
+          } else {
+            const created = await createSpeechPerson(speaker.label);
+            updatedPeople = [...updatedPeople, created];
+            resolvedPersonId = created.personId;
+          }
+        }
+
+        speakerEntries.push({
+          label: speaker.label,
+          personId: resolvedPersonId,
+          sampleFile: speaker.sampleFile,
+        });
+      }
+
+      updatedPeople.sort((a, b) =>
+        (a.displayName || "").localeCompare(b.displayName || "")
+      );
+      setPeople(updatedPeople);
+
+      await createSpeechDiarizationJob({
+        youtubeUrl: youtubeUrl.trim(),
+        speakers: speakerEntries.map(({ label, personId }) => ({
+          label,
+          personId,
+        })),
+        speakerSamples: speakerEntries
+          .filter((speaker) => speaker.sampleFile)
+          .map((speaker) => ({
+            label: speaker.label,
+            personId: speaker.personId,
+            file: speaker.sampleFile,
+          })),
+        requestedBy: user?.uid || null,
+      });
+
+      resetDiarizationInputs();
+      setNotice({
+        type: "success",
+        message: "Diarization job queued. We'll process the video shortly.",
+      });
+    } catch (error) {
+      console.error("Error creating diarization job:", error);
+      setNotice({
+        type: "error",
+        message: "Unable to queue diarization job. Please try again.",
+      });
+    } finally {
+      setIsCreatingDiarization(false);
     }
   };
 
@@ -566,6 +750,184 @@ export default function SpeechAnalysisPage() {
               {speakerLabel || "the selected speaker"}.
             </p>
           </div>
+        </div>
+      </div>
+
+      <div className="bg-white/5 border border-white/10 rounded-xl p-4 mb-6">
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div>
+            <h2 className="text-lg font-semibold text-white">
+              Multi-speaker diarization (YouTube)
+            </h2>
+            <p className="text-white/40 text-sm">
+              Provide a YouTube link and speaker labels. We will classify by
+              voice and split transcripts per speaker.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-white/60 text-xs uppercase tracking-wide mb-2">
+              YouTube URL
+            </label>
+            <input
+              type="url"
+              value={youtubeUrl}
+              onChange={(event) => setYoutubeUrl(event.target.value)}
+              placeholder="https://www.youtube.com/watch?v=..."
+              className="w-full px-3 py-2 bg-black/40 border border-white/10 rounded-lg text-white placeholder-white/30 focus:outline-none focus:border-accent/50"
+            />
+          </div>
+          <div className="text-white/40 text-sm flex items-center">
+            <p>
+              Add at least two speakers. Upload voice samples so we can match
+              speakers by voice.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-white/60 text-xs uppercase tracking-wide mb-2">
+              Add existing speaker
+            </label>
+            <div className="flex gap-2">
+              <select
+                value={existingSpeakerId}
+                onChange={(event) => setExistingSpeakerId(event.target.value)}
+                className="flex-1 px-3 py-2 bg-black/40 border border-white/10 rounded-lg text-white focus:outline-none focus:border-accent/50"
+              >
+                <option value="">Select speaker</option>
+                {people.map((person) => (
+                  <option key={person.personId} value={person.personId}>
+                    {person.displayName || person.personId}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={handleAddExistingSpeaker}
+                disabled={!existingSpeakerId}
+                className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Add
+              </button>
+            </div>
+          </div>
+          <div>
+            <label className="block text-white/60 text-xs uppercase tracking-wide mb-2">
+              Add speaker manually
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={speakerLabelInput}
+                onChange={(event) => setSpeakerLabelInput(event.target.value)}
+                placeholder="Speaker name"
+                className="flex-1 px-3 py-2 bg-black/40 border border-white/10 rounded-lg text-white placeholder-white/30 focus:outline-none focus:border-accent/50"
+              />
+              <button
+                onClick={() => addDiarizationSpeaker(speakerLabelInput)}
+                disabled={!speakerLabelInput.trim()}
+                className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Add
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-5 space-y-3">
+          {diarizationSpeakers.length === 0 ? (
+            <p className="text-white/40 text-sm">
+              No speakers added yet.
+            </p>
+          ) : (
+            diarizationSpeakers.map((speaker) => (
+              <div
+                key={speaker.id}
+                className="rounded-lg border border-white/10 bg-black/30 p-3"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-white font-medium">{speaker.label}</p>
+                    {speaker.personId && (
+                      <p className="text-white/40 text-xs">
+                        Linked to existing speaker
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => removeDiarizationSpeaker(speaker.id)}
+                    className="text-white/40 hover:text-red-300 transition-colors"
+                    title="Remove speaker"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-3">
+                  <label className="inline-flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 text-white text-xs rounded-lg cursor-pointer transition-colors">
+                    Upload voice sample (required)
+                    <input
+                      type="file"
+                      accept="audio/*"
+                      onChange={(event) =>
+                        handleSpeakerSampleChange(
+                          speaker.id,
+                          event.target.files?.[0]
+                        )
+                      }
+                      className="hidden"
+                    />
+                  </label>
+                  {speaker.sampleFile ? (
+                    <>
+                      <span className="text-white/50 text-xs">
+                        {speaker.sampleFile.name}
+                      </span>
+                      <button
+                        onClick={() => clearSpeakerSample(speaker.id)}
+                        className="text-white/40 text-xs hover:text-white"
+                      >
+                        Remove sample
+                      </button>
+                    </>
+                  ) : (
+                    <span className="text-white/40 text-xs">
+                      No sample uploaded
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <button
+            onClick={handleStartDiarization}
+            disabled={isCreatingDiarization || !canStartDiarization}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent hover:bg-accent/90 text-white text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isCreatingDiarization ? "Starting..." : "Start diarization"}
+          </button>
+          <button
+            onClick={resetDiarizationInputs}
+            disabled={isCreatingDiarization}
+            className="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Clear
+          </button>
+          {diarizationSpeakers.length > 0 && diarizationSpeakers.length < 2 && (
+            <span className="text-white/40 text-xs">
+              Add at least two speakers.
+            </span>
+          )}
+          {diarizationSpeakers.length >= 2 && diarizationMissingSamples && (
+            <span className="text-white/40 text-xs">
+              Upload a voice sample for each speaker.
+            </span>
+          )}
         </div>
       </div>
 
