@@ -7,6 +7,7 @@ import {
   query,
   where,
   orderBy,
+  limit,
   onSnapshot,
   deleteDoc,
   Timestamp,
@@ -130,6 +131,7 @@ export const createCard = async (
     srs_step: 0,
     srs_due: Date.now(),
     srs_last_review: null,
+    review_count: 0,
   };
 
   await setDoc(doc(getCardsCollection(uid), cardId), card);
@@ -153,6 +155,24 @@ export const getCards = async (uid, deckId) => {
   );
   // Sort by createdAt descending
   cards.sort((a, b) => b.createdAt - a.createdAt);
+  return cards;
+};
+
+export const getDueCards = async (uid, deckId, limitCount = 50) => {
+  const now = Date.now();
+  const q = query(
+    getCardsCollection(uid),
+    where("deck_id", "==", deckId),
+    where("is_deleted", "==", false),
+    where("srs_due", "<=", now),
+    orderBy("srs_due", "asc"),
+    limit(limitCount)
+  );
+
+  const snapshot = await getDocs(q);
+  const cards = snapshot.docs.map((doc) =>
+    transformCardFromFirestore(doc.data())
+  );
   return cards;
 };
 
@@ -202,6 +222,24 @@ export const updateCard = async (
 
   // Update deck's updatedAt
   await updateDeck(uid, deckId, {});
+};
+
+export const updateCardReview = async (uid, cardId, updates) => {
+  const cardRef = doc(getCardsCollection(uid), cardId);
+  await setDoc(
+    cardRef,
+    {
+      srs_state: updates.srsState,
+      srs_step: updates.srsStep,
+      srs_stability: updates.srsStability ?? null,
+      srs_difficulty: updates.srsDifficulty ?? null,
+      srs_due: updates.srsDue,
+      srs_last_review: updates.srsLastReview,
+      review_count: updates.reviewCount,
+      updated_at: Timestamp.now(),
+    },
+    { merge: true }
+  );
 };
 
 export const deleteCard = async (uid, cardId, deckId) => {
@@ -476,12 +514,13 @@ const transformCardFromFirestore = (data) => {
     updatedAt,
     isDeleted: data.is_deleted || false,
     // SRS fields
-    srsState: data.srs_state || 1,
+    srsState: data.srs_state ?? 1,
     srsStep: data.srs_step,
     srsStability: data.srs_stability,
     srsDifficulty: data.srs_difficulty,
     srsDue: data.srs_due,
     srsLastReview: data.srs_last_review,
+    reviewCount: data.review_count || 0,
   };
 };
 
