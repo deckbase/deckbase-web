@@ -498,6 +498,80 @@ export const subscribeToSpeechAnalysis = (personId, callback) => {
   });
 };
 
+export const createSpeechPerson = async (displayName) => {
+  if (!db) throw new Error("Firestore is not available");
+  const trimmedName = (displayName || "").trim();
+  if (!trimmedName) throw new Error("Speaker name is required");
+
+  const personRef = doc(collection(db, "people"));
+  const now = Timestamp.now();
+  const data = {
+    displayName: trimmedName,
+    status: "active",
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  await setDoc(personRef, data);
+  return { personId: personRef.id, ...data };
+};
+
+export const uploadSpeechTranscript = async ({
+  personId,
+  text,
+  file,
+  title,
+}) => {
+  if (!db || !storage) throw new Error("Storage is not available");
+  if (!personId) throw new Error("personId is required");
+
+  let transcriptText = text;
+  let sourceFile = file;
+  if (!transcriptText && !sourceFile) {
+    throw new Error("Transcript text or file is required");
+  }
+
+  if (!transcriptText && sourceFile) {
+    transcriptText = await sourceFile.text();
+  }
+
+  const trimmedText = (transcriptText || "").trim();
+  if (!trimmedText) throw new Error("Transcript text is empty");
+
+  const docRef = doc(collection(db, "people", personId, "docs"));
+  const docId = docRef.id;
+  const storagePath = `speech-transcripts/${personId}/${docId}.txt`;
+  const storageRef = ref(storage, storagePath);
+  const uploadBlob = sourceFile
+    ? sourceFile
+    : new Blob([trimmedText], { type: "text/plain" });
+  await uploadBytes(storageRef, uploadBlob, { contentType: "text/plain" });
+  const downloadUrl = await getDownloadURL(storageRef);
+  const bucketName = storage?.app?.options?.storageBucket;
+  const gsUrl = bucketName ? `gs://${bucketName}/${storagePath}` : storagePath;
+
+  const wordCount = trimmedText.split(/\s+/).filter(Boolean).length;
+  const now = Timestamp.now();
+  const docData = {
+    title:
+      title ||
+      sourceFile?.name ||
+      `Manual transcript ${now.toDate().toISOString().slice(0, 10)}`,
+    sourceType: sourceFile ? "upload" : "manual",
+    sourceUrl: null,
+    storagePath: gsUrl,
+    downloadUrl,
+    tokenCount: wordCount,
+    docDate: now,
+    status: "queued",
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  await setDoc(docRef, docData);
+  return { docId, ...docData };
+};
+
 // ============== BLOCK TYPES ==============
 // Must match mobile's BlockType enum order
 
