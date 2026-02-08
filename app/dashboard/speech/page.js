@@ -252,13 +252,8 @@ export default function SpeechAnalysisPage() {
   const canUploadTranscript = Boolean(
     selectedPersonId && (transcriptText.trim() || transcriptFile)
   );
-  const diarizationMissingSamples = diarizationSpeakers.some(
-    (speaker) => !speaker.sampleFile
-  );
   const canStartDiarization = Boolean(
-    youtubeUrl.trim() &&
-      diarizationSpeakers.length >= 2 &&
-      !diarizationMissingSamples
+    youtubeUrl.trim() && diarizationSpeakers.length >= 2
   );
 
   const toggleSection = (key) => {
@@ -302,35 +297,6 @@ export default function SpeechAnalysisPage() {
   const removeDiarizationSpeaker = (speakerId) => {
     setDiarizationSpeakers((prev) =>
       prev.filter((speaker) => speaker.id !== speakerId)
-    );
-  };
-
-  const handleSpeakerSampleChange = (speakerId, file) => {
-    if (!file) return;
-    const isAudio =
-      file.type?.startsWith("audio/") ||
-      [".wav", ".mp3", ".m4a", ".aac", ".flac", ".ogg"].some((ext) =>
-        file.name.toLowerCase().endsWith(ext)
-      );
-    if (!isAudio) {
-      setNotice({
-        type: "error",
-        message: "Please upload an audio file (wav, mp3, m4a).",
-      });
-      return;
-    }
-    setDiarizationSpeakers((prev) =>
-      prev.map((speaker) =>
-        speaker.id === speakerId ? { ...speaker, sampleFile: file } : speaker
-      )
-    );
-  };
-
-  const clearSpeakerSample = (speakerId) => {
-    setDiarizationSpeakers((prev) =>
-      prev.map((speaker) =>
-        speaker.id === speakerId ? { ...speaker, sampleFile: null } : speaker
-      )
     );
   };
 
@@ -453,14 +419,6 @@ export default function SpeechAnalysisPage() {
       });
       return;
     }
-    if (diarizationMissingSamples) {
-      setNotice({
-        type: "error",
-        message: "Upload a voice sample for each speaker.",
-      });
-      return;
-    }
-
     setIsCreatingDiarization(true);
     setNotice(null);
 
@@ -487,7 +445,6 @@ export default function SpeechAnalysisPage() {
         speakerEntries.push({
           label: speaker.label,
           personId: resolvedPersonId,
-          sampleFile: speaker.sampleFile,
         });
       }
 
@@ -502,13 +459,6 @@ export default function SpeechAnalysisPage() {
           label,
           personId,
         })),
-        speakerSamples: speakerEntries
-          .filter((speaker) => speaker.sampleFile)
-          .map((speaker) => ({
-            label: speaker.label,
-            personId: speaker.personId,
-            file: speaker.sampleFile,
-          })),
         requestedBy: user?.uid || null,
       });
 
@@ -760,8 +710,8 @@ export default function SpeechAnalysisPage() {
               Multi-speaker diarization (YouTube)
             </h2>
             <p className="text-white/40 text-sm">
-              Provide a YouTube link and speaker labels. We will classify by
-              voice and split transcripts per speaker.
+              Provide a YouTube link and speaker labels. We'll diarize by voice,
+              then you can map each cluster to the correct speaker afterward.
             </p>
           </div>
         </div>
@@ -781,8 +731,8 @@ export default function SpeechAnalysisPage() {
           </div>
           <div className="text-white/40 text-sm flex items-center">
             <p>
-              Add at least two speakers. Upload voice samples so we can match
-              speakers by voice.
+              Add at least two speakers (labels). You can rename or reassign
+              them after diarization completes.
             </p>
           </div>
         </div>
@@ -865,39 +815,6 @@ export default function SpeechAnalysisPage() {
                     <X className="w-4 h-4" />
                   </button>
                 </div>
-                <div className="mt-2 flex flex-wrap items-center gap-3">
-                  <label className="inline-flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 text-white text-xs rounded-lg cursor-pointer transition-colors">
-                    Upload voice sample (required)
-                    <input
-                      type="file"
-                      accept="audio/*"
-                      onChange={(event) =>
-                        handleSpeakerSampleChange(
-                          speaker.id,
-                          event.target.files?.[0]
-                        )
-                      }
-                      className="hidden"
-                    />
-                  </label>
-                  {speaker.sampleFile ? (
-                    <>
-                      <span className="text-white/50 text-xs">
-                        {speaker.sampleFile.name}
-                      </span>
-                      <button
-                        onClick={() => clearSpeakerSample(speaker.id)}
-                        className="text-white/40 text-xs hover:text-white"
-                      >
-                        Remove sample
-                      </button>
-                    </>
-                  ) : (
-                    <span className="text-white/40 text-xs">
-                      No sample uploaded
-                    </span>
-                  )}
-                </div>
               </div>
             ))
           )}
@@ -921,11 +838,6 @@ export default function SpeechAnalysisPage() {
           {diarizationSpeakers.length > 0 && diarizationSpeakers.length < 2 && (
             <span className="text-white/40 text-xs">
               Add at least two speakers.
-            </span>
-          )}
-          {diarizationSpeakers.length >= 2 && diarizationMissingSamples && (
-            <span className="text-white/40 text-xs">
-              Upload a voice sample for each speaker.
             </span>
           )}
         </div>

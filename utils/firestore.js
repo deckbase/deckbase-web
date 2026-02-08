@@ -578,7 +578,11 @@ export const createSpeechDiarizationJob = async ({
   speakerSamples = [],
   requestedBy,
 }) => {
-  if (!db || !storage) throw new Error("Storage is not available");
+  if (!db) throw new Error("Firestore is not available");
+  const shouldUploadSamples = Array.isArray(speakerSamples) && speakerSamples.length > 0;
+  if (shouldUploadSamples && !storage) {
+    throw new Error("Storage is not available");
+  }
   const trimmedUrl = (youtubeUrl || "").trim();
   if (!trimmedUrl) throw new Error("YouTube URL is required");
 
@@ -612,32 +616,34 @@ export const createSpeechDiarizationJob = async ({
       .replace(/^-+|-+$/g, "");
 
   const uploadedSamples = [];
-  for (const sample of speakerSamples) {
-    if (!sample?.file || !sample?.label) continue;
-    const labelSlug = slugify(sample.label) || "speaker";
-    const extension = sample.file.name?.split(".").pop() || "wav";
-    const sampleId = uuidv4();
-    const storagePath = `speech-diarization-samples/${jobId}/${labelSlug}/${sampleId}.${extension}`;
-    const storageRef = ref(storage, storagePath);
-    await uploadBytes(storageRef, sample.file, {
-      contentType: sample.file.type || "audio/mpeg",
-    });
-    const downloadUrl = await getDownloadURL(storageRef);
-    uploadedSamples.push({
-      label: sample.label,
-      personId: sample.personId || null,
-      storagePath,
-      downloadUrl,
-      fileName: sample.file.name,
-      fileSize: sample.file.size,
-      mimeType: sample.file.type || null,
-    });
+  if (shouldUploadSamples) {
+    for (const sample of speakerSamples) {
+      if (!sample?.file || !sample?.label) continue;
+      const labelSlug = slugify(sample.label) || "speaker";
+      const extension = sample.file.name?.split(".").pop() || "wav";
+      const sampleId = uuidv4();
+      const storagePath = `speech-diarization-samples/${jobId}/${labelSlug}/${sampleId}.${extension}`;
+      const storageRef = ref(storage, storagePath);
+      await uploadBytes(storageRef, sample.file, {
+        contentType: sample.file.type || "audio/mpeg",
+      });
+      const downloadUrl = await getDownloadURL(storageRef);
+      uploadedSamples.push({
+        label: sample.label,
+        personId: sample.personId || null,
+        storagePath,
+        downloadUrl,
+        fileName: sample.file.name,
+        fileSize: sample.file.size,
+        mimeType: sample.file.type || null,
+      });
+    }
   }
 
   const jobData = {
     jobId,
     sourceType: "youtube",
-    assignmentMode: "voice",
+    assignmentMode: "post_label",
     youtubeUrl: trimmedUrl,
     speakers: normalizedSpeakers,
     speakerLabels: normalizedSpeakers.map((speaker) => speaker.label),
