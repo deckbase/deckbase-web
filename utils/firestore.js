@@ -457,6 +457,47 @@ export const getCardCount = async (uid, deckId) => {
   return snapshot.size;
 };
 
+// ============== SPEECH ANALYSIS OPERATIONS ==============
+
+export const getSpeechPeople = async () => {
+  if (!db) return [];
+  const snapshot = await getDocs(collection(db, "people"));
+  const people = snapshot.docs.map((docSnap) => {
+    const data = docSnap.data() || {};
+    return {
+      personId: docSnap.id,
+      ...data,
+      displayName: data.displayName || data.name || docSnap.id,
+      status: data.status || "active",
+    };
+  });
+
+  return people
+    .filter((person) => person.status !== "disabled")
+    .sort((a, b) => (a.displayName || "").localeCompare(b.displayName || ""));
+};
+
+export const getSpeechAnalysis = async (personId) => {
+  if (!db || !personId) return null;
+  const analysisRef = doc(db, "people", personId, "analysis", "v1");
+  const analysisSnap = await getDoc(analysisRef);
+  if (analysisSnap.exists()) {
+    return analysisSnap.data();
+  }
+  return null;
+};
+
+export const subscribeToSpeechAnalysis = (personId, callback) => {
+  if (!db || !personId) {
+    callback(null);
+    return () => {};
+  }
+  const analysisRef = doc(db, "people", personId, "analysis", "v1");
+  return onSnapshot(analysisRef, (snapshot) => {
+    callback(snapshot.exists() ? snapshot.data() : null);
+  });
+};
+
 // ============== BLOCK TYPES ==============
 // Must match mobile's BlockType enum order
 
