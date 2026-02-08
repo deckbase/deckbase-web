@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Mic, Plus, X } from "lucide-react";
+import { ArrowLeft, Mic, Plus } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -12,6 +12,7 @@ import {
   getDecks,
   getSpeechPeople,
   subscribeToSpeechAnalysis,
+  subscribeToSpeechDiarizationJobs,
   uploadSpeechTranscript,
 } from "@/utils/firestore";
 
@@ -26,6 +27,7 @@ const PATTERN_KIND_LABELS = {
 };
 
 const STATUS_STYLES = {
+  queued: "bg-white/10 text-white/60 border-white/20",
   processing: "bg-blue-500/10 text-blue-200 border-blue-500/30",
   done: "bg-green-500/10 text-green-200 border-green-500/30",
   failed: "bg-red-500/10 text-red-200 border-red-500/30",
@@ -37,6 +39,65 @@ const formatNumber = (value) => {
   const numeric = Number(value);
   if (Number.isFinite(numeric)) return numeric.toLocaleString();
   return String(value);
+};
+
+const formatDate = (value) => {
+  if (!value) return "";
+  const ms =
+    typeof value?.toMillis === "function"
+      ? value.toMillis()
+      : typeof value === "number"
+      ? value
+      : value?.seconds
+      ? value.seconds * 1000
+      : null;
+  if (!ms) return "";
+  return new Date(ms).toLocaleDateString();
+};
+
+const formatTimestamp = (value) => {
+  if (value === undefined || value === null) return "";
+  const totalSeconds = Math.max(0, Math.floor(Number(value)));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = String(totalSeconds % 60).padStart(2, "0");
+  return `${minutes}:${seconds}`;
+};
+
+const getJobSpeakers = (job) => {
+  const speakers =
+    job?.result?.speakers ||
+    job?.results?.speakers ||
+    job?.speakerResults ||
+    [];
+  return Array.isArray(speakers) ? speakers : [];
+};
+
+const getSpeakerId = (speaker, index) =>
+  speaker?.speakerId ||
+  speaker?.id ||
+  speaker?.label ||
+  speaker?.name ||
+  `speaker-${index + 1}`;
+
+const getSpeakerLabel = (speaker, index) =>
+  speaker?.label || speaker?.name || `Speaker ${index + 1}`;
+
+const getSpeakerDialogueText = (speaker) => {
+  if (!speaker) return "";
+  if (typeof speaker.text === "string") return speaker.text;
+  if (typeof speaker.dialogue === "string") return speaker.dialogue;
+  if (typeof speaker.transcript === "string") return speaker.transcript;
+  if (Array.isArray(speaker.segments) && speaker.segments.length > 0) {
+    return speaker.segments
+      .map((segment) => {
+        const prefix = formatTimestamp(segment.start);
+        const content = segment.text || segment.transcript || "";
+        return prefix ? `[${prefix}] ${content}` : content;
+      })
+      .filter(Boolean)
+      .join("\n");
+  }
+  return "";
 };
 
 const formatPatternKind = (kind) => PATTERN_KIND_LABELS[kind] || kind || "Pattern";
@@ -97,10 +158,14 @@ export default function SpeechAnalysisPage() {
   const [transcriptFile, setTranscriptFile] = useState(null);
   const [isUploadingTranscript, setIsUploadingTranscript] = useState(false);
   const [youtubeUrl, setYoutubeUrl] = useState("");
-  const [existingSpeakerId, setExistingSpeakerId] = useState("");
-  const [speakerLabelInput, setSpeakerLabelInput] = useState("");
-  const [diarizationSpeakers, setDiarizationSpeakers] = useState([]);
+  const [speakerCount, setSpeakerCount] = useState(2);
   const [isCreatingDiarization, setIsCreatingDiarization] = useState(false);
+  const [diarizationJobs, setDiarizationJobs] = useState([]);
+  const [selectedJobId, setSelectedJobId] = useState("");
+  const [selectedJobSpeakerId, setSelectedJobSpeakerId] = useState("");
+  const [analysisTargetPersonId, setAnalysisTargetPersonId] = useState("");
+  const [analysisTargetName, setAnalysisTargetName] = useState("");
+  const [isSendingToAnalysis, setIsSendingToAnalysis] = useState(false);
   const [expanded, setExpanded] = useState({
     vocabulary: false,
     learning: false,
@@ -176,10 +241,56 @@ export default function SpeechAnalysisPage() {
   }, [selectedPersonId]);
 
   useEffect(() => {
+    if (!user) return () => {};
+    const unsubscribe = subscribeToSpeechDiarizationJobs(user.uid, (jobs) => {
+      setDiarizationJobs(jobs);
+    });
+    return () => unsubscribe?.();
+  }, [user]);
+
+  useEffect(() => {
+    if (!selectedJobId && diarizationJobs.length > 0) {
+      setSelectedJobId(diarizationJobs[0].jobId);
+    }
+  }, [selectedJobId, diarizationJobs]);
+
+  useEffect(() => {
+    if (!selectedJobId) return;
+    setSelectedJobSpeakerId("");
+    setAnalysisTargetPersonId("");
+    setAnalysisTargetName("");
+  }, [selectedJobId]);
+
+  useEffect(() => {
     if (!notice) return;
     const timer = setTimeout(() => setNotice(null), 4000);
     return () => clearTimeout(timer);
   }, [notice]);
+
+  useEffect(() => {
+    if (selectedJobSpeakers.length === 0) return;
+    const firstId = getSpeakerId(selectedJobSpeakers[0], 0);
+    if (!selectedJobSpeakerId) {
+      setSelectedJobSpeakerId(firstId);
+    }
+  }, [selectedJobSpeakers, selectedJobSpeakerId]);
+
+  useEffect(() => {
+    if (!selectedJobSpeaker) return;
+    if (!analysisTargetName) {
+      const label = getSpeakerLabel(
+        selectedJobSpeaker,
+        selectedJobSpeakers.indexOf(selectedJobSpeaker)
+      );
+      setAnalysisTargetName(label);
+    }
+  }, [analysisTargetName, selectedJobSpeaker, selectedJobSpeakers]);
+
+  useEffect(() => {
+    if (!selectedJobSpeakerId) return;
+    setAnalysisTargetPersonId("");
+    setAnalysisTargetName("");
+  }, [selectedJobSpeakerId]);
 
   const selectedPerson = useMemo(
     () => people.find((person) => person.personId === selectedPersonId),
@@ -189,8 +300,24 @@ export default function SpeechAnalysisPage() {
     () => decks.find((deck) => deck.deckId === selectedDeckId),
     [decks, selectedDeckId]
   );
+  const selectedJob = useMemo(
+    () => diarizationJobs.find((job) => job.jobId === selectedJobId),
+    [diarizationJobs, selectedJobId]
+  );
 
   const searchTerm = search.trim().toLowerCase();
+  const selectedJobSpeakers = useMemo(
+    () => getJobSpeakers(selectedJob),
+    [selectedJob]
+  );
+  const selectedJobSpeaker = useMemo(() => {
+    if (selectedJobSpeakers.length === 0) return null;
+    const match = selectedJobSpeakers.find(
+      (speaker, index) =>
+        getSpeakerId(speaker, index) === selectedJobSpeakerId
+    );
+    return match || selectedJobSpeakers[0];
+  }, [selectedJobSpeakers, selectedJobSpeakerId]);
 
   const vocabularyItems = useMemo(() => {
     const items = analysis?.vocabulary || [];
@@ -252,59 +379,13 @@ export default function SpeechAnalysisPage() {
   const canUploadTranscript = Boolean(
     selectedPersonId && (transcriptText.trim() || transcriptFile)
   );
+  const normalizedSpeakerCount = Number(speakerCount);
   const canStartDiarization = Boolean(
-    youtubeUrl.trim() && diarizationSpeakers.length >= 2
+    youtubeUrl.trim() && Number.isFinite(normalizedSpeakerCount) && normalizedSpeakerCount >= 2
   );
 
   const toggleSection = (key) => {
     setExpanded((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  const normalizeSpeakerLabel = (label) =>
-    label.trim().replace(/\s+/g, " ");
-
-  const speakerLabelExists = (label) => {
-    const normalized = normalizeSpeakerLabel(label).toLowerCase();
-    return diarizationSpeakers.some(
-      (speaker) => speaker.label.toLowerCase() === normalized
-    );
-  };
-
-  const addDiarizationSpeaker = (label, personId = null) => {
-    const normalized = normalizeSpeakerLabel(label);
-    if (!normalized) {
-      setNotice({ type: "error", message: "Enter a speaker label." });
-      return;
-    }
-    if (speakerLabelExists(normalized)) {
-      setNotice({ type: "error", message: "Speaker already added." });
-      return;
-    }
-
-    setDiarizationSpeakers((prev) => [
-      ...prev,
-      {
-        id: uuidv4(),
-        label: normalized,
-        personId,
-        sampleFile: null,
-      },
-    ]);
-    setSpeakerLabelInput("");
-    setExistingSpeakerId("");
-  };
-
-  const removeDiarizationSpeaker = (speakerId) => {
-    setDiarizationSpeakers((prev) =>
-      prev.filter((speaker) => speaker.id !== speakerId)
-    );
-  };
-
-  const handleAddExistingSpeaker = () => {
-    if (!existingSpeakerId) return;
-    const person = people.find((item) => item.personId === existingSpeakerId);
-    if (!person) return;
-    addDiarizationSpeaker(person.displayName || person.personId, person.personId);
   };
 
   const handleCreateSpeaker = async () => {
@@ -402,9 +483,7 @@ export default function SpeechAnalysisPage() {
 
   const resetDiarizationInputs = () => {
     setYoutubeUrl("");
-    setSpeakerLabelInput("");
-    setExistingSpeakerId("");
-    setDiarizationSpeakers([]);
+    setSpeakerCount(2);
   };
 
   const handleStartDiarization = async () => {
@@ -412,10 +491,10 @@ export default function SpeechAnalysisPage() {
       setNotice({ type: "error", message: "Enter a YouTube URL first." });
       return;
     }
-    if (diarizationSpeakers.length < 2) {
+    if (!Number.isFinite(normalizedSpeakerCount) || normalizedSpeakerCount < 2) {
       setNotice({
         type: "error",
-        message: "Add at least two speakers for diarization.",
+        message: "Enter at least two speakers for diarization.",
       });
       return;
     }
@@ -423,42 +502,9 @@ export default function SpeechAnalysisPage() {
     setNotice(null);
 
     try {
-      let updatedPeople = [...people];
-      const speakerEntries = [];
-      for (const speaker of diarizationSpeakers) {
-        let resolvedPersonId = speaker.personId;
-        if (!resolvedPersonId) {
-          const match = updatedPeople.find(
-            (person) =>
-              person.displayName?.toLowerCase() ===
-              speaker.label.toLowerCase()
-          );
-          if (match) {
-            resolvedPersonId = match.personId;
-          } else {
-            const created = await createSpeechPerson(speaker.label);
-            updatedPeople = [...updatedPeople, created];
-            resolvedPersonId = created.personId;
-          }
-        }
-
-        speakerEntries.push({
-          label: speaker.label,
-          personId: resolvedPersonId,
-        });
-      }
-
-      updatedPeople.sort((a, b) =>
-        (a.displayName || "").localeCompare(b.displayName || "")
-      );
-      setPeople(updatedPeople);
-
       await createSpeechDiarizationJob({
         youtubeUrl: youtubeUrl.trim(),
-        speakers: speakerEntries.map(({ label, personId }) => ({
-          label,
-          personId,
-        })),
+        speakerCount: normalizedSpeakerCount,
         requestedBy: user?.uid || null,
       });
 
@@ -475,6 +521,98 @@ export default function SpeechAnalysisPage() {
       });
     } finally {
       setIsCreatingDiarization(false);
+    }
+  };
+
+  const handleSendSpeakerToAnalysis = async () => {
+    if (!selectedJob || !selectedJobSpeaker) {
+      setNotice({
+        type: "error",
+        message: "Select a diarization job and speaker first.",
+      });
+      return;
+    }
+
+    const speakerIndex = selectedJobSpeakers.indexOf(selectedJobSpeaker);
+    const speakerId = getSpeakerId(selectedJobSpeaker, speakerIndex);
+    const speakerLabelValue = getSpeakerLabel(selectedJobSpeaker, speakerIndex);
+    const dialogueText = getSpeakerDialogueText(selectedJobSpeaker).trim();
+    if (!dialogueText) {
+      setNotice({
+        type: "error",
+        message: "No dialogue available for this speaker yet.",
+      });
+      return;
+    }
+
+    setIsSendingToAnalysis(true);
+    setNotice(null);
+    try {
+      let targetPersonId = analysisTargetPersonId;
+      let targetPersonName = analysisTargetName.trim();
+      if (!targetPersonId) {
+        if (!targetPersonName) {
+          setNotice({
+            type: "error",
+            message: "Select or create a speaker profile first.",
+          });
+          return;
+        }
+        const created = await createSpeechPerson(targetPersonName);
+        setPeople((prev) => {
+          const next = [...prev, created];
+          next.sort((a, b) =>
+            (a.displayName || "").localeCompare(b.displayName || "")
+          );
+          return next;
+        });
+        targetPersonId = created.personId;
+      } else {
+        const existing = people.find((person) => person.personId === targetPersonId);
+        if (!existing && targetPersonName) {
+          const created = await createSpeechPerson(targetPersonName);
+          setPeople((prev) => {
+            const next = [...prev, created];
+            next.sort((a, b) =>
+              (a.displayName || "").localeCompare(b.displayName || "")
+            );
+            return next;
+          });
+          targetPersonId = created.personId;
+        }
+      }
+
+      const title =
+        selectedJob?.title ||
+        `${speakerLabelValue} transcript (${selectedJob.jobId})`;
+
+      await uploadSpeechTranscript({
+        personId: targetPersonId,
+        text: dialogueText,
+        title,
+        sourceType: "diarization",
+        sourceUrl: selectedJob.youtubeUrl || null,
+        sourceData: {
+          jobId: selectedJob.jobId,
+          speakerId,
+          speakerLabel: speakerLabelValue,
+        },
+      });
+
+      setSelectedPersonId(targetPersonId);
+      setAnalysisTargetPersonId(targetPersonId);
+      setNotice({
+        type: "success",
+        message: "Speaker transcript sent for analysis.",
+      });
+    } catch (error) {
+      console.error("Error sending speaker to analysis:", error);
+      setNotice({
+        type: "error",
+        message: "Unable to queue analysis for this speaker.",
+      });
+    } finally {
+      setIsSendingToAnalysis(false);
     }
   };
 
@@ -710,8 +848,8 @@ export default function SpeechAnalysisPage() {
               Multi-speaker diarization (YouTube)
             </h2>
             <p className="text-white/40 text-sm">
-              Provide a YouTube link and speaker labels. We'll diarize by voice,
-              then you can map each cluster to the correct speaker afterward.
+              Provide a YouTube link and the number of speakers. We'll diarize
+              by voice, then you can map each cluster to a speaker afterward.
             </p>
           </div>
         </div>
@@ -729,95 +867,21 @@ export default function SpeechAnalysisPage() {
               className="w-full px-3 py-2 bg-black/40 border border-white/10 rounded-lg text-white placeholder-white/30 focus:outline-none focus:border-accent/50"
             />
           </div>
-          <div className="text-white/40 text-sm flex items-center">
-            <p>
-              Add at least two speakers (labels). You can rename or reassign
-              them after diarization completes.
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div>
             <label className="block text-white/60 text-xs uppercase tracking-wide mb-2">
-              Add existing speaker
+              Number of speakers
             </label>
-            <div className="flex gap-2">
-              <select
-                value={existingSpeakerId}
-                onChange={(event) => setExistingSpeakerId(event.target.value)}
-                className="flex-1 px-3 py-2 bg-black/40 border border-white/10 rounded-lg text-white focus:outline-none focus:border-accent/50"
-              >
-                <option value="">Select speaker</option>
-                {people.map((person) => (
-                  <option key={person.personId} value={person.personId}>
-                    {person.displayName || person.personId}
-                  </option>
-                ))}
-              </select>
-              <button
-                onClick={handleAddExistingSpeaker}
-                disabled={!existingSpeakerId}
-                className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Add
-              </button>
-            </div>
-          </div>
-          <div>
-            <label className="block text-white/60 text-xs uppercase tracking-wide mb-2">
-              Add speaker manually
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={speakerLabelInput}
-                onChange={(event) => setSpeakerLabelInput(event.target.value)}
-                placeholder="Speaker name"
-                className="flex-1 px-3 py-2 bg-black/40 border border-white/10 rounded-lg text-white placeholder-white/30 focus:outline-none focus:border-accent/50"
-              />
-              <button
-                onClick={() => addDiarizationSpeaker(speakerLabelInput)}
-                disabled={!speakerLabelInput.trim()}
-                className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Add
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-5 space-y-3">
-          {diarizationSpeakers.length === 0 ? (
-            <p className="text-white/40 text-sm">
-              No speakers added yet.
+            <input
+              type="number"
+              min={2}
+              value={speakerCount}
+              onChange={(event) => setSpeakerCount(event.target.value)}
+              className="w-full px-3 py-2 bg-black/40 border border-white/10 rounded-lg text-white placeholder-white/30 focus:outline-none focus:border-accent/50"
+            />
+            <p className="text-white/40 text-xs mt-2">
+              Use at least 2 speakers for diarization.
             </p>
-          ) : (
-            diarizationSpeakers.map((speaker) => (
-              <div
-                key={speaker.id}
-                className="rounded-lg border border-white/10 bg-black/30 p-3"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-white font-medium">{speaker.label}</p>
-                    {speaker.personId && (
-                      <p className="text-white/40 text-xs">
-                        Linked to existing speaker
-                      </p>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => removeDiarizationSpeaker(speaker.id)}
-                    className="text-white/40 hover:text-red-300 transition-colors"
-                    title="Remove speaker"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ))
-          )}
+          </div>
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -835,11 +899,12 @@ export default function SpeechAnalysisPage() {
           >
             Clear
           </button>
-          {diarizationSpeakers.length > 0 && diarizationSpeakers.length < 2 && (
-            <span className="text-white/40 text-xs">
-              Add at least two speakers.
-            </span>
-          )}
+          {Number.isFinite(normalizedSpeakerCount) &&
+            normalizedSpeakerCount < 2 && (
+              <span className="text-white/40 text-xs">
+                Enter at least two speakers.
+              </span>
+            )}
         </div>
       </div>
 
@@ -854,6 +919,167 @@ export default function SpeechAnalysisPage() {
           {notice.message}
         </div>
       )}
+
+      <div className="bg-white/5 border border-white/10 rounded-xl p-4 mb-6">
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div>
+            <h2 className="text-lg font-semibold text-white">
+              Diarization results
+            </h2>
+            <p className="text-white/40 text-sm">
+              Pick a job, then select a speaker to view dialogue and send to
+              analysis.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div>
+            <p className="text-white/50 text-xs uppercase tracking-wide mb-3">
+              Jobs
+            </p>
+            {diarizationJobs.length === 0 ? (
+              <p className="text-white/40 text-sm">
+                No diarization jobs yet.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {diarizationJobs.map((job) => {
+                  const jobStatus = job.status || job.progress?.status || "queued";
+                  const jobStyle = STATUS_STYLES[jobStatus] || STATUS_STYLES.idle;
+                  const isSelected = job.jobId === selectedJobId;
+                  return (
+                    <button
+                      key={job.jobId}
+                      onClick={() => setSelectedJobId(job.jobId)}
+                      className={`w-full text-left border rounded-lg p-3 transition-colors ${
+                        isSelected
+                          ? "border-accent bg-accent/10"
+                          : "border-white/10 bg-black/30 hover:bg-white/5"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-white text-sm font-semibold truncate">
+                            {job.youtubeUrl || "YouTube job"}
+                          </p>
+                          <p className="text-white/40 text-xs mt-1">
+                            {formatDate(job.createdAt)}
+                          </p>
+                        </div>
+                        <span
+                          className={`px-2 py-0.5 text-[10px] rounded-full border ${jobStyle}`}
+                        >
+                          {jobStatus}
+                        </span>
+                      </div>
+                      <p className="text-white/40 text-xs mt-2">
+                        Speakers: {formatNumber(job.speakerCount || 0)}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <p className="text-white/50 text-xs uppercase tracking-wide mb-3">
+              Speaker dialogue
+            </p>
+            {!selectedJob ? (
+              <p className="text-white/40 text-sm">Select a job to continue.</p>
+            ) : selectedJobSpeakers.length === 0 ? (
+              <p className="text-white/40 text-sm">
+                No diarization results yet for this job.
+              </p>
+            ) : (
+              <>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {selectedJobSpeakers.map((speaker, index) => {
+                    const speakerId = getSpeakerId(speaker, index);
+                    const isActive = speakerId === selectedJobSpeakerId;
+                    return (
+                      <button
+                        key={speakerId}
+                        onClick={() => setSelectedJobSpeakerId(speakerId)}
+                        className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
+                          isActive
+                            ? "border-accent text-accent bg-accent/10"
+                            : "border-white/10 text-white/60 hover:text-white"
+                        }`}
+                      >
+                        {getSpeakerLabel(speaker, index)}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="border border-white/10 rounded-lg bg-black/30 p-3 max-h-64 overflow-y-auto">
+                  <pre className="text-white/70 text-sm whitespace-pre-wrap">
+                    {getSpeakerDialogueText(selectedJobSpeaker) ||
+                      "No dialogue available yet."}
+                  </pre>
+                </div>
+
+                <div className="mt-4 border-t border-white/10 pt-4 space-y-3">
+                  <p className="text-white/60 text-sm font-semibold">
+                    Send speaker to analysis
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-white/50 text-xs uppercase tracking-wide mb-2">
+                        Existing speaker
+                      </label>
+                      <select
+                        value={analysisTargetPersonId}
+                        onChange={(event) => {
+                          const value = event.target.value;
+                          setAnalysisTargetPersonId(value);
+                          const person = people.find(
+                            (item) => item.personId === value
+                          );
+                          setAnalysisTargetName(person?.displayName || "");
+                        }}
+                        className="w-full px-3 py-2 bg-black/40 border border-white/10 rounded-lg text-white focus:outline-none focus:border-accent/50"
+                      >
+                        <option value="">Select speaker</option>
+                        {people.map((person) => (
+                          <option key={person.personId} value={person.personId}>
+                            {person.displayName || person.personId}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-white/50 text-xs uppercase tracking-wide mb-2">
+                        Or create new speaker
+                      </label>
+                      <input
+                        type="text"
+                        value={analysisTargetName}
+                        onChange={(event) => setAnalysisTargetName(event.target.value)}
+                        placeholder="Speaker name"
+                        className="w-full px-3 py-2 bg-black/40 border border-white/10 rounded-lg text-white placeholder-white/30 focus:outline-none focus:border-accent/50"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleSendSpeakerToAnalysis}
+                    disabled={
+                      isSendingToAnalysis ||
+                      !selectedJobSpeaker ||
+                      (!analysisTargetPersonId && !analysisTargetName.trim())
+                    }
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent hover:bg-accent/90 text-white text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSendingToAnalysis ? "Sending..." : "Send to analysis"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
 
       <div className="bg-white/5 border border-white/10 rounded-xl p-4 mb-6">
         <div className="flex items-start justify-between gap-4 mb-4">

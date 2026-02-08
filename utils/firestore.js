@@ -521,6 +521,9 @@ export const uploadSpeechTranscript = async ({
   text,
   file,
   title,
+  sourceType,
+  sourceUrl,
+  sourceData,
 }) => {
   if (!db || !storage) throw new Error("Storage is not available");
   if (!personId) throw new Error("personId is required");
@@ -552,13 +555,15 @@ export const uploadSpeechTranscript = async ({
 
   const wordCount = trimmedText.split(/\s+/).filter(Boolean).length;
   const now = Timestamp.now();
+  const resolvedSourceType = sourceType || (sourceFile ? "upload" : "manual");
   const docData = {
     title:
       title ||
       sourceFile?.name ||
       `Manual transcript ${now.toDate().toISOString().slice(0, 10)}`,
-    sourceType: sourceFile ? "upload" : "manual",
-    sourceUrl: null,
+    sourceType: resolvedSourceType,
+    sourceUrl: sourceUrl || null,
+    sourceData: sourceData || null,
     storagePath: gsUrl,
     downloadUrl,
     tokenCount: wordCount,
@@ -574,7 +579,8 @@ export const uploadSpeechTranscript = async ({
 
 export const createSpeechDiarizationJob = async ({
   youtubeUrl,
-  speakers,
+  speakerCount,
+  speakerLabels = [],
   speakerSamples = [],
   requestedBy,
 }) => {
@@ -586,22 +592,8 @@ export const createSpeechDiarizationJob = async ({
   const trimmedUrl = (youtubeUrl || "").trim();
   if (!trimmedUrl) throw new Error("YouTube URL is required");
 
-  const normalizeLabel = (label) => label.trim().replace(/\s+/g, " ");
-  const seenLabels = new Set();
-  const normalizedSpeakers = (speakers || [])
-    .map((speaker) => ({
-      label: normalizeLabel(speaker?.label || ""),
-      personId: speaker?.personId || null,
-    }))
-    .filter((speaker) => speaker.label)
-    .filter((speaker) => {
-      const key = speaker.label.toLowerCase();
-      if (seenLabels.has(key)) return false;
-      seenLabels.add(key);
-      return true;
-    });
-
-  if (normalizedSpeakers.length < 2) {
+  const count = Number(speakerCount);
+  if (!Number.isFinite(count) || count < 2) {
     throw new Error("At least two speakers are required");
   }
 
@@ -645,8 +637,8 @@ export const createSpeechDiarizationJob = async ({
     sourceType: "youtube",
     assignmentMode: "post_label",
     youtubeUrl: trimmedUrl,
-    speakers: normalizedSpeakers,
-    speakerLabels: normalizedSpeakers.map((speaker) => speaker.label),
+    speakerCount: count,
+    speakerLabels: Array.isArray(speakerLabels) ? speakerLabels : [],
     speakerSamples: uploadedSamples,
     status: "queued",
     progress: {
@@ -660,6 +652,25 @@ export const createSpeechDiarizationJob = async ({
 
   await setDoc(jobRef, jobData);
   return { jobId, ...jobData };
+};
+
+export const subscribeToSpeechDiarizationJobs = (requestedBy, callback) => {
+  if (!db) {
+    callback([]);
+    return () => {};
+  }
+  let q = collection(db, "speech_diarization_jobs");
+  if (requestedBy) {
+    q = query(q, where("requestedBy", "==", requestedBy));
+  }
+  q = query(q, orderBy("createdAt", "desc"));
+  return onSnapshot(q, (snapshot) => {
+    const jobs = snapshot.docs.map((docSnap) => ({
+      jobId: docSnap.id,
+      ...docSnap.data(),
+    }));
+    callback(jobs);
+  });
 };
 
 // ============== BLOCK TYPES ==============
