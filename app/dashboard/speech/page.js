@@ -848,8 +848,9 @@ export default function SpeechAnalysisPage() {
               Multi-speaker diarization (YouTube)
             </h2>
             <p className="text-white/40 text-sm">
-              Provide a YouTube link and the number of speakers. We'll diarize
-              by voice, then you can map each cluster to a speaker afterward.
+              Provide a YouTube link and the number of speakers. We&apos;ll
+              diarize by voice, then you can map each cluster to a speaker
+              afterward.
             </p>
           </div>
         </div>
