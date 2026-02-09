@@ -267,31 +267,6 @@ export default function SpeechAnalysisPage() {
     return () => clearTimeout(timer);
   }, [notice]);
 
-  useEffect(() => {
-    if (selectedJobSpeakers.length === 0) return;
-    const firstId = getSpeakerId(selectedJobSpeakers[0], 0);
-    if (!selectedJobSpeakerId) {
-      setSelectedJobSpeakerId(firstId);
-    }
-  }, [selectedJobSpeakers, selectedJobSpeakerId]);
-
-  useEffect(() => {
-    if (!selectedJobSpeaker) return;
-    if (!analysisTargetName) {
-      const label = getSpeakerLabel(
-        selectedJobSpeaker,
-        selectedJobSpeakers.indexOf(selectedJobSpeaker)
-      );
-      setAnalysisTargetName(label);
-    }
-  }, [analysisTargetName, selectedJobSpeaker, selectedJobSpeakers]);
-
-  useEffect(() => {
-    if (!selectedJobSpeakerId) return;
-    setAnalysisTargetPersonId("");
-    setAnalysisTargetName("");
-  }, [selectedJobSpeakerId]);
-
   const selectedPerson = useMemo(
     () => people.find((person) => person.personId === selectedPersonId),
     [people, selectedPersonId]
@@ -318,6 +293,31 @@ export default function SpeechAnalysisPage() {
     );
     return match || selectedJobSpeakers[0];
   }, [selectedJobSpeakers, selectedJobSpeakerId]);
+
+  useEffect(() => {
+    if (selectedJobSpeakers.length === 0) return;
+    const firstId = getSpeakerId(selectedJobSpeakers[0], 0);
+    if (!selectedJobSpeakerId) {
+      setSelectedJobSpeakerId(firstId);
+    }
+  }, [selectedJobSpeakers, selectedJobSpeakerId]);
+
+  useEffect(() => {
+    if (!selectedJobSpeaker) return;
+    if (!analysisTargetName) {
+      const label = getSpeakerLabel(
+        selectedJobSpeaker,
+        selectedJobSpeakers.indexOf(selectedJobSpeaker)
+      );
+      setAnalysisTargetName(label);
+    }
+  }, [analysisTargetName, selectedJobSpeaker, selectedJobSpeakers]);
+
+  useEffect(() => {
+    if (!selectedJobSpeakerId) return;
+    setAnalysisTargetPersonId("");
+    setAnalysisTargetName("");
+  }, [selectedJobSpeakerId]);
 
   const vocabularyItems = useMemo(() => {
     const items = analysis?.vocabulary || [];
