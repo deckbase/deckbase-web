@@ -166,6 +166,7 @@ export default function SpeechAnalysisPage() {
   const [analysisTargetPersonId, setAnalysisTargetPersonId] = useState("");
   const [analysisTargetName, setAnalysisTargetName] = useState("");
   const [isSendingToAnalysis, setIsSendingToAnalysis] = useState(false);
+  const [runningJobId, setRunningJobId] = useState("");
   const [expanded, setExpanded] = useState({
     vocabulary: false,
     learning: false,
@@ -502,11 +503,25 @@ export default function SpeechAnalysisPage() {
     setNotice(null);
 
     try {
-      await createSpeechDiarizationJob({
+      const job = await createSpeechDiarizationJob({
         youtubeUrl: youtubeUrl.trim(),
         speakerCount: normalizedSpeakerCount,
         requestedBy: user?.uid || null,
       });
+
+      try {
+        await fetch("/api/diarization/execute", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ jobId: job.jobId }),
+        });
+      } catch (executeError) {
+        console.error("Error executing diarization job:", executeError);
+        setNotice({
+          type: "error",
+          message: "Job queued but execution failed to start.",
+        });
+      }
 
       resetDiarizationInputs();
       setNotice({
@@ -521,6 +536,31 @@ export default function SpeechAnalysisPage() {
       });
     } finally {
       setIsCreatingDiarization(false);
+    }
+  };
+
+  const handleExecuteJob = async (jobId) => {
+    if (!jobId) return;
+    setRunningJobId(jobId);
+    setNotice(null);
+    try {
+      await fetch("/api/diarization/execute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId }),
+      });
+      setNotice({
+        type: "success",
+        message: "Diarization job started.",
+      });
+    } catch (error) {
+      console.error("Error executing diarization job:", error);
+      setNotice({
+        type: "error",
+        message: "Unable to start diarization job.",
+      });
+    } finally {
+      setRunningJobId("");
     }
   };
 
@@ -949,6 +989,7 @@ export default function SpeechAnalysisPage() {
                   const jobStatus = job.status || job.progress?.status || "queued";
                   const jobStyle = STATUS_STYLES[jobStatus] || STATUS_STYLES.idle;
                   const isSelected = job.jobId === selectedJobId;
+                  const canRun = jobStatus === "queued" || jobStatus === "failed";
                   return (
                     <button
                       key={job.jobId}
@@ -974,9 +1015,23 @@ export default function SpeechAnalysisPage() {
                           {jobStatus}
                         </span>
                       </div>
-                      <p className="text-white/40 text-xs mt-2">
-                        Speakers: {formatNumber(job.speakerCount || 0)}
-                      </p>
+                      <div className="mt-2 flex items-center justify-between gap-3">
+                        <p className="text-white/40 text-xs">
+                          Speakers: {formatNumber(job.speakerCount || 0)}
+                        </p>
+                        {canRun && (
+                          <button
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleExecuteJob(job.jobId);
+                            }}
+                            disabled={runningJobId === job.jobId}
+                            className="text-xs px-2 py-1 rounded-md bg-white/10 hover:bg-white/20 text-white/80 transition-colors disabled:opacity-50"
+                          >
+                            {runningJobId === job.jobId ? "Starting..." : "Run"}
+                          </button>
+                        )}
+                      </div>
                     </button>
                   );
                 })}
