@@ -15,6 +15,30 @@ const buildCallbackUrl = (request) => {
 
 export async function POST(request) {
   try {
+    const workerUrl = process.env.DIARIZATION_WORKER_URL;
+    if (!workerUrl) {
+      return NextResponse.json(
+        { error: "DIARIZATION_WORKER_URL not configured" },
+        { status: 500 }
+      );
+    }
+
+    const hasAdminEnv =
+      process.env.FIREBASE_ADMIN_PROJECT_ID &&
+      process.env.FIREBASE_ADMIN_CLIENT_EMAIL &&
+      process.env.FIREBASE_ADMIN_PRIVATE_KEY;
+    const hasDefaultCreds = Boolean(
+      process.env.GOOGLE_APPLICATION_CREDENTIALS ||
+        process.env.GCLOUD_PROJECT ||
+        process.env.GOOGLE_CLOUD_PROJECT
+    );
+    if (!hasAdminEnv && !hasDefaultCreds) {
+      return NextResponse.json(
+        { error: "Firebase admin credentials not configured" },
+        { status: 500 }
+      );
+    }
+
     const { jobId } = await request.json();
     if (!jobId) {
       return NextResponse.json(
@@ -41,26 +65,6 @@ export async function POST(request) {
       },
       { merge: true }
     );
-
-    const workerUrl = process.env.DIARIZATION_WORKER_URL;
-    if (!workerUrl) {
-      await jobRef.set(
-        {
-          status: "failed",
-          progress: {
-            status: "failed",
-            percent: 0,
-            error: "DIARIZATION_WORKER_URL not configured",
-          },
-          updatedAt: FieldValue.serverTimestamp(),
-        },
-        { merge: true }
-      );
-      return NextResponse.json(
-        { error: "DIARIZATION_WORKER_URL not configured" },
-        { status: 500 }
-      );
-    }
 
     const callbackUrl = buildCallbackUrl(request);
     const payload = {
@@ -98,7 +102,7 @@ export async function POST(request) {
         { merge: true }
       );
       return NextResponse.json(
-        { error: "Worker request failed" },
+        { error: message || "Worker request failed" },
         { status: 502 }
       );
     }
@@ -107,7 +111,7 @@ export async function POST(request) {
   } catch (error) {
     console.error("Diarization execution error:", error);
     return NextResponse.json(
-      { error: "Unable to execute diarization job" },
+      { error: error?.message || "Unable to execute diarization job" },
       { status: 500 }
     );
   }

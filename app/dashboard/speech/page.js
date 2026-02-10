@@ -510,11 +510,20 @@ export default function SpeechAnalysisPage() {
       });
 
       try {
-        await fetch("/api/diarization/execute", {
+        const response = await fetch("/api/diarization/execute", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ jobId: job.jobId }),
         });
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          setNotice({
+            type: "error",
+            message:
+              payload.error ||
+              "Job queued but execution failed to start.",
+          });
+        }
       } catch (executeError) {
         console.error("Error executing diarization job:", executeError);
         setNotice({
@@ -544,15 +553,23 @@ export default function SpeechAnalysisPage() {
     setRunningJobId(jobId);
     setNotice(null);
     try {
-      await fetch("/api/diarization/execute", {
+      const response = await fetch("/api/diarization/execute", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ jobId }),
       });
-      setNotice({
-        type: "success",
-        message: "Diarization job started.",
-      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        setNotice({
+          type: "error",
+          message: payload.error || "Unable to start diarization job.",
+        });
+      } else {
+        setNotice({
+          type: "success",
+          message: "Diarization job started.",
+        });
+      }
     } catch (error) {
       console.error("Error executing diarization job:", error);
       setNotice({
