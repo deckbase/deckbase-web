@@ -1,5 +1,6 @@
 const express = require("express");
 const { YoutubeTranscript } = require("youtube-transcript");
+const ytdl = require("ytdl-core");
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -28,6 +29,64 @@ const postCallback = async (callbackUrl, payload) => {
     headers,
     body: JSON.stringify(payload),
   });
+};
+
+const fetchTranscriptFromYtdl = async (youtubeUrl) => {
+  const info = await ytdl.getInfo(youtubeUrl, {
+    requestOptions: {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+      },
+    },
+  });
+  const captionTracks =
+    info.player_response?.captions?.playerCaptionsTracklistRenderer
+      ?.captionTracks || [];
+
+  if (!captionTracks.length) {
+    throw new Error("No caption tracks found");
+  }
+
+  const preferredTrack =
+    captionTracks.find((track) => track.languageCode === "en") ||
+    captionTracks.find((track) => track.languageCode?.startsWith("en")) ||
+    captionTracks[0];
+
+  if (!preferredTrack?.baseUrl) {
+    throw new Error("Caption track missing baseUrl");
+  }
+
+  const url = preferredTrack.baseUrl.includes("fmt=")
+    ? preferredTrack.baseUrl
+    : `${preferredTrack.baseUrl}&fmt=json3`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error("Caption fetch failed");
+  }
+  const data = await response.json();
+  const events = Array.isArray(data.events) ? data.events : [];
+  const transcript = events
+    .filter((event) => Array.isArray(event.segs) && event.segs.length > 0)
+    .map((event) => {
+      const text = event.segs
+        .map((seg) => seg.utf8 || "")
+        .join("")
+        .replace(/\n/g, " ")
+        .trim();
+      return {
+        text,
+        offset: event.tStartMs ? event.tStartMs / 1000 : 0,
+        duration: event.dDurationMs ? event.dDurationMs / 1000 : 0,
+      };
+    })
+    .filter((item) => item.text);
+
+  if (!transcript.length) {
+    throw new Error("Transcript is empty");
+  }
+
+  return transcript;
 };
 
 const buildResultFromTranscript = (transcript, speakerCount) => {
@@ -75,7 +134,12 @@ app.post("/run", requireAuth, async (req, res) => {
       progress: { percent: 15 },
     });
 
-    const transcript = await YoutubeTranscript.fetchTranscript(youtubeUrl);
+    let transcript;
+    try {
+      transcript = await YoutubeTranscript.fetchTranscript(youtubeUrl);
+    } catch (error) {
+      transcript = await fetchTranscriptFromYtdl(youtubeUrl);
+    }
     if (!transcript || transcript.length === 0) {
       throw new Error("Transcript is empty");
     }
