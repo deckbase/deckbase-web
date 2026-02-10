@@ -1,0 +1,19 @@
+{
+  "name": "diarization-worker",
+  "version": "1.0.0",
+  "description": "Cloud Run diarization worker for YouTube transcripts",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "youtube-transcript": "^1.2.1"
+  }
+}

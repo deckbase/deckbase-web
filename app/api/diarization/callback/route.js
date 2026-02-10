@@ -4,6 +4,13 @@ import { adminDb } from "@/utils/firebaseAdmin";
 
 export async function POST(request) {
   try {
+    const expectedToken = process.env.DIARIZATION_CALLBACK_TOKEN;
+    if (expectedToken) {
+      const authHeader = request.headers.get("authorization") || "";
+      if (authHeader !== `Bearer ${expectedToken}`) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+    }
     const body = await request.json();
     const jobId = body.jobId;
     if (!jobId) {
