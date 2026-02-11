@@ -116,6 +116,48 @@ const fetchTranscriptFromTimedText = async (videoId) => {
   const auto = await tryFetch(buildUrl(`lang=en&kind=asr&v=${videoId}`));
   if (auto) return auto;
 
+  const listResponse = await fetch(
+    `https://www.youtube.com/api/timedtext?type=list&v=${videoId}`,
+    {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+      },
+    }
+  );
+  if (!listResponse.ok) {
+    throw new Error("Timedtext track list unavailable");
+  }
+  const listXml = await listResponse.text();
+  const trackMatches = listXml.match(/<track[^>]+>/g) || [];
+  const tracks = trackMatches
+    .map((track) => {
+      const attrs = {};
+      const attrMatches = track.match(/(\w+)="([^"]*)"/g) || [];
+      attrMatches.forEach((attr) => {
+        const [key, value] = attr.split("=");
+        attrs[key] = value.replace(/"/g, "");
+      });
+      return attrs;
+    })
+    .filter((track) => track.lang_code);
+
+  if (!tracks.length) {
+    throw new Error("No timedtext tracks found");
+  }
+
+  const preferredTrack =
+    tracks.find((track) => !track.kind) ||
+    tracks.find((track) => track.kind === "asr") ||
+    tracks[0];
+
+  const langCode = preferredTrack.lang_code;
+  const kindParam = preferredTrack.kind ? `&kind=${preferredTrack.kind}` : "";
+  const fallback = await tryFetch(
+    buildUrl(`lang=${langCode}${kindParam}&v=${videoId}`)
+  );
+  if (fallback) return fallback;
+
   throw new Error("Timedtext transcript unavailable");
 };
 
