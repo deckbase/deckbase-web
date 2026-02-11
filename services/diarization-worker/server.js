@@ -1,6 +1,7 @@
 const express = require("express");
 const { YoutubeTranscript } = require("youtube-transcript");
 const ytdl = require("ytdl-core");
+const puppeteer = require("puppeteer");
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -31,6 +32,18 @@ const postCallback = async (callbackUrl, payload) => {
   });
 };
 
+const launchBrowser = async () =>
+  puppeteer.launch({
+    headless: "new",
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
+      "--no-zygote",
+    ],
+  });
+
 const extractVideoId = (youtubeUrl) => {
   try {
     const parsed = new URL(youtubeUrl);
@@ -43,6 +56,90 @@ const extractVideoId = (youtubeUrl) => {
     return null;
   }
   return null;
+};
+
+const fetchTranscriptWithPuppeteer = async (youtubeUrl) => {
+  const browser = await launchBrowser();
+  try {
+    const page = await browser.newPage();
+    await page.setUserAgent(
+      "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+    );
+    await page.goto(`${youtubeUrl}&hl=en`, {
+      waitUntil: "networkidle2",
+      timeout: 60000,
+    });
+
+    await page.waitForFunction(
+      () =>
+        Boolean(
+          window.ytInitialPlayerResponse || window.ytInitialData
+        ),
+      { timeout: 15000 }
+    );
+
+    const transcript = await page.evaluate(async () => {
+      const response =
+        window.ytInitialPlayerResponse ||
+        window.ytInitialData?.playerResponse ||
+        window.ytInitialData?.playerResponse?.captions ||
+        null;
+
+      const captionTracks =
+        response?.captions?.playerCaptionsTracklistRenderer?.captionTracks ||
+        window.ytInitialPlayerResponse?.captions?.playerCaptionsTracklistRenderer
+          ?.captionTracks ||
+        [];
+
+      if (!captionTracks.length) {
+        return null;
+      }
+
+      const preferredTrack =
+        captionTracks.find((track) => track.languageCode === "en") ||
+        captionTracks.find((track) => track.languageCode?.startsWith("en")) ||
+        captionTracks[0];
+
+      if (!preferredTrack?.baseUrl) {
+        return null;
+      }
+
+      const url = preferredTrack.baseUrl.includes("fmt=")
+        ? preferredTrack.baseUrl
+        : `${preferredTrack.baseUrl}&fmt=json3`;
+      const responseData = await fetch(url);
+      if (!responseData.ok) {
+        return null;
+      }
+      const data = await responseData.json();
+      const events = Array.isArray(data.events) ? data.events : [];
+      const transcriptItems = events
+        .filter((event) => Array.isArray(event.segs) && event.segs.length > 0)
+        .map((event) => {
+          const text = event.segs
+            .map((seg) => seg.utf8 || "")
+            .join("")
+            .replace(/\n/g, " ")
+            .trim();
+          return {
+            text,
+            offset: event.tStartMs ? event.tStartMs / 1000 : 0,
+            duration: event.dDurationMs ? event.dDurationMs / 1000 : 0,
+          };
+        })
+        .filter((item) => item.text);
+
+      return transcriptItems.length ? transcriptItems : null;
+    });
+
+    if (!transcript || transcript.length === 0) {
+      throw new Error("Transcript not available via puppeteer");
+    }
+
+    return transcript;
+  } finally {
+    await browser.close();
+  }
 };
 
 const fetchTranscriptFromCaptionTrack = async (baseUrl) => {
@@ -332,21 +429,28 @@ app.post("/run", requireAuth, async (req, res) => {
       transcript = await YoutubeTranscript.fetchTranscript(youtubeUrl);
     } catch (error) {
       try {
-        transcript = await fetchTranscriptFromHtml(youtubeUrl);
-      } catch (htmlError) {
+        transcript = await fetchTranscriptWithPuppeteer(youtubeUrl);
+      } catch (puppetError) {
         try {
-          transcript = await fetchTranscriptFromTimedText(videoId);
-        } catch (timedTextError) {
+          transcript = await fetchTranscriptFromHtml(youtubeUrl);
+        } catch (htmlError) {
           try {
-            transcript = await fetchTranscriptFromYtdl(youtubeUrl);
-          } catch (ytdlError) {
-            const htmlMessage = htmlError?.message || "HTML transcript failed";
-            const timedMessage =
-              timedTextError?.message || "Timedtext transcript failed";
-            const ytdlMessage = ytdlError?.message || "ytdl-core failed";
-            throw new Error(
-              `Transcript fetch failed. ${htmlMessage}. ${timedMessage}. ${ytdlMessage}.`
-            );
+            transcript = await fetchTranscriptFromTimedText(videoId);
+          } catch (timedTextError) {
+            try {
+              transcript = await fetchTranscriptFromYtdl(youtubeUrl);
+            } catch (ytdlError) {
+              const puppetMessage =
+                puppetError?.message || "Puppeteer transcript failed";
+              const htmlMessage =
+                htmlError?.message || "HTML transcript failed";
+              const timedMessage =
+                timedTextError?.message || "Timedtext transcript failed";
+              const ytdlMessage = ytdlError?.message || "ytdl-core failed";
+              throw new Error(
+                `Transcript fetch failed. ${puppetMessage}. ${htmlMessage}. ${timedMessage}. ${ytdlMessage}.`
+              );
+            }
           }
         }
       }

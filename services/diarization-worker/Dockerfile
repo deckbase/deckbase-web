@@ -1,4 +1,4 @@
-FROM node:20-slim
+FROM ghcr.io/puppeteer/puppeteer:24.10.2
 
 WORKDIR /app
 
