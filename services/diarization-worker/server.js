@@ -31,6 +31,20 @@ const postCallback = async (callbackUrl, payload) => {
   });
 };
 
+const extractVideoId = (youtubeUrl) => {
+  try {
+    const parsed = new URL(youtubeUrl);
+    const videoId = parsed.searchParams.get("v");
+    if (videoId) return videoId;
+    if (parsed.hostname === "youtu.be") {
+      return parsed.pathname.replace("/", "");
+    }
+  } catch (error) {
+    return null;
+  }
+  return null;
+};
+
 const fetchTranscriptFromCaptionTrack = async (baseUrl) => {
   const url = baseUrl.includes("fmt=") ? baseUrl : `${baseUrl}&fmt=json3`;
   const response = await fetch(url);
@@ -60,6 +74,49 @@ const fetchTranscriptFromCaptionTrack = async (baseUrl) => {
   }
 
   return transcript;
+};
+
+const fetchTranscriptFromTimedText = async (videoId) => {
+  if (!videoId) throw new Error("Missing video ID for timedtext");
+  const buildUrl = (params) =>
+    `https://www.youtube.com/api/timedtext?${params}&fmt=json3`;
+
+  const tryFetch = async (url) => {
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+      },
+    });
+    if (!response.ok) {
+      return null;
+    }
+    const data = await response.json();
+    const events = Array.isArray(data.events) ? data.events : [];
+    const transcript = events
+      .filter((event) => Array.isArray(event.segs) && event.segs.length > 0)
+      .map((event) => {
+        const text = event.segs
+          .map((seg) => seg.utf8 || "")
+          .join("")
+          .replace(/\n/g, " ")
+          .trim();
+        return {
+          text,
+          offset: event.tStartMs ? event.tStartMs / 1000 : 0,
+          duration: event.dDurationMs ? event.dDurationMs / 1000 : 0,
+        };
+      })
+      .filter((item) => item.text);
+    return transcript.length ? transcript : null;
+  };
+
+  const primary = await tryFetch(buildUrl(`lang=en&v=${videoId}`));
+  if (primary) return primary;
+  const auto = await tryFetch(buildUrl(`lang=en&kind=asr&v=${videoId}`));
+  if (auto) return auto;
+
+  throw new Error("Timedtext transcript unavailable");
 };
 
 const extractJsonObject = (text, startIndex) => {
@@ -93,44 +150,64 @@ const extractJsonObject = (text, startIndex) => {
 };
 
 const fetchTranscriptFromHtml = async (youtubeUrl) => {
-  const response = await fetch(youtubeUrl, {
-    headers: {
-      "User-Agent":
-        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-    },
-  });
-  if (!response.ok) {
-    throw new Error(`YouTube HTML fetch failed (${response.status})`);
+  const urlVariants = [
+    youtubeUrl,
+    `${youtubeUrl}&hl=en`,
+    `${youtubeUrl}&hl=en&bpctr=9999999999&has_verified=1`,
+  ];
+
+  const fetchHtml = async (url) => {
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
+    });
+    if (!response.ok) {
+      throw new Error(`YouTube HTML fetch failed (${response.status})`);
+    }
+    return response.text();
+  };
+
+  let lastError;
+  for (const url of urlVariants) {
+    try {
+      const html = await fetchHtml(url);
+      const marker = "ytInitialPlayerResponse";
+      const markerIndex = html.indexOf(marker);
+      if (markerIndex === -1) {
+        throw new Error("ytInitialPlayerResponse not found");
+      }
+      const braceIndex = html.indexOf("{", markerIndex);
+      if (braceIndex === -1) {
+        throw new Error("Player response JSON not found");
+      }
+      const jsonText = extractJsonObject(html, braceIndex);
+      if (!jsonText) {
+        throw new Error("Unable to parse player response JSON");
+      }
+      const playerResponse = JSON.parse(jsonText);
+      const captionTracks =
+        playerResponse?.captions?.playerCaptionsTracklistRenderer
+          ?.captionTracks || [];
+      if (!captionTracks.length) {
+        throw new Error("No caption tracks found");
+      }
+      const preferredTrack =
+        captionTracks.find((track) => track.languageCode === "en") ||
+        captionTracks.find((track) => track.languageCode?.startsWith("en")) ||
+        captionTracks[0];
+      if (!preferredTrack?.baseUrl) {
+        throw new Error("Caption track missing baseUrl");
+      }
+      return fetchTranscriptFromCaptionTrack(preferredTrack.baseUrl);
+    } catch (error) {
+      lastError = error;
+    }
   }
-  const html = await response.text();
-  const marker = "ytInitialPlayerResponse";
-  const markerIndex = html.indexOf(marker);
-  if (markerIndex === -1) {
-    throw new Error("ytInitialPlayerResponse not found");
-  }
-  const braceIndex = html.indexOf("{", markerIndex);
-  if (braceIndex === -1) {
-    throw new Error("Player response JSON not found");
-  }
-  const jsonText = extractJsonObject(html, braceIndex);
-  if (!jsonText) {
-    throw new Error("Unable to parse player response JSON");
-  }
-  const playerResponse = JSON.parse(jsonText);
-  const captionTracks =
-    playerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks ||
-    [];
-  if (!captionTracks.length) {
-    throw new Error("No caption tracks found");
-  }
-  const preferredTrack =
-    captionTracks.find((track) => track.languageCode === "en") ||
-    captionTracks.find((track) => track.languageCode?.startsWith("en")) ||
-    captionTracks[0];
-  if (!preferredTrack?.baseUrl) {
-    throw new Error("Caption track missing baseUrl");
-  }
-  return fetchTranscriptFromCaptionTrack(preferredTrack.baseUrl);
+
+  throw lastError || new Error("Unable to fetch transcript from HTML");
 };
 
 const fetchTranscriptFromYtdl = async (youtubeUrl) => {
@@ -208,13 +285,28 @@ app.post("/run", requireAuth, async (req, res) => {
     });
 
     let transcript;
+    const videoId = extractVideoId(youtubeUrl);
     try {
       transcript = await YoutubeTranscript.fetchTranscript(youtubeUrl);
     } catch (error) {
       try {
         transcript = await fetchTranscriptFromHtml(youtubeUrl);
       } catch (htmlError) {
-        transcript = await fetchTranscriptFromYtdl(youtubeUrl);
+        try {
+          transcript = await fetchTranscriptFromTimedText(videoId);
+        } catch (timedTextError) {
+          try {
+            transcript = await fetchTranscriptFromYtdl(youtubeUrl);
+          } catch (ytdlError) {
+            const htmlMessage = htmlError?.message || "HTML transcript failed";
+            const timedMessage =
+              timedTextError?.message || "Timedtext transcript failed";
+            const ytdlMessage = ytdlError?.message || "ytdl-core failed";
+            throw new Error(
+              `Transcript fetch failed. ${htmlMessage}. ${timedMessage}. ${ytdlMessage}.`
+            );
+          }
+        }
       }
     }
     if (!transcript || transcript.length === 0) {
