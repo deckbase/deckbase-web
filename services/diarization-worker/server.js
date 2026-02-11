@@ -31,6 +31,108 @@ const postCallback = async (callbackUrl, payload) => {
   });
 };
 
+const fetchTranscriptFromCaptionTrack = async (baseUrl) => {
+  const url = baseUrl.includes("fmt=") ? baseUrl : `${baseUrl}&fmt=json3`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Caption fetch failed (${response.status})`);
+  }
+  const data = await response.json();
+  const events = Array.isArray(data.events) ? data.events : [];
+  const transcript = events
+    .filter((event) => Array.isArray(event.segs) && event.segs.length > 0)
+    .map((event) => {
+      const text = event.segs
+        .map((seg) => seg.utf8 || "")
+        .join("")
+        .replace(/\n/g, " ")
+        .trim();
+      return {
+        text,
+        offset: event.tStartMs ? event.tStartMs / 1000 : 0,
+        duration: event.dDurationMs ? event.dDurationMs / 1000 : 0,
+      };
+    })
+    .filter((item) => item.text);
+
+  if (!transcript.length) {
+    throw new Error("Transcript is empty");
+  }
+
+  return transcript;
+};
+
+const extractJsonObject = (text, startIndex) => {
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = startIndex; i < text.length; i += 1) {
+    const char = text[i];
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (char === "\\") {
+        escaped = true;
+      } else if (char === '"') {
+        inString = false;
+      }
+      continue;
+    }
+    if (char === '"') {
+      inString = true;
+    } else if (char === "{") {
+      depth += 1;
+    } else if (char === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        return text.slice(startIndex, i + 1);
+      }
+    }
+  }
+  return null;
+};
+
+const fetchTranscriptFromHtml = async (youtubeUrl) => {
+  const response = await fetch(youtubeUrl, {
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`YouTube HTML fetch failed (${response.status})`);
+  }
+  const html = await response.text();
+  const marker = "ytInitialPlayerResponse";
+  const markerIndex = html.indexOf(marker);
+  if (markerIndex === -1) {
+    throw new Error("ytInitialPlayerResponse not found");
+  }
+  const braceIndex = html.indexOf("{", markerIndex);
+  if (braceIndex === -1) {
+    throw new Error("Player response JSON not found");
+  }
+  const jsonText = extractJsonObject(html, braceIndex);
+  if (!jsonText) {
+    throw new Error("Unable to parse player response JSON");
+  }
+  const playerResponse = JSON.parse(jsonText);
+  const captionTracks =
+    playerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks ||
+    [];
+  if (!captionTracks.length) {
+    throw new Error("No caption tracks found");
+  }
+  const preferredTrack =
+    captionTracks.find((track) => track.languageCode === "en") ||
+    captionTracks.find((track) => track.languageCode?.startsWith("en")) ||
+    captionTracks[0];
+  if (!preferredTrack?.baseUrl) {
+    throw new Error("Caption track missing baseUrl");
+  }
+  return fetchTranscriptFromCaptionTrack(preferredTrack.baseUrl);
+};
+
 const fetchTranscriptFromYtdl = async (youtubeUrl) => {
   const info = await ytdl.getInfo(youtubeUrl, {
     requestOptions: {
@@ -57,36 +159,7 @@ const fetchTranscriptFromYtdl = async (youtubeUrl) => {
     throw new Error("Caption track missing baseUrl");
   }
 
-  const url = preferredTrack.baseUrl.includes("fmt=")
-    ? preferredTrack.baseUrl
-    : `${preferredTrack.baseUrl}&fmt=json3`;
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error("Caption fetch failed");
-  }
-  const data = await response.json();
-  const events = Array.isArray(data.events) ? data.events : [];
-  const transcript = events
-    .filter((event) => Array.isArray(event.segs) && event.segs.length > 0)
-    .map((event) => {
-      const text = event.segs
-        .map((seg) => seg.utf8 || "")
-        .join("")
-        .replace(/\n/g, " ")
-        .trim();
-      return {
-        text,
-        offset: event.tStartMs ? event.tStartMs / 1000 : 0,
-        duration: event.dDurationMs ? event.dDurationMs / 1000 : 0,
-      };
-    })
-    .filter((item) => item.text);
-
-  if (!transcript.length) {
-    throw new Error("Transcript is empty");
-  }
-
-  return transcript;
+  return fetchTranscriptFromCaptionTrack(preferredTrack.baseUrl);
 };
 
 const buildResultFromTranscript = (transcript, speakerCount) => {
@@ -138,7 +211,11 @@ app.post("/run", requireAuth, async (req, res) => {
     try {
       transcript = await YoutubeTranscript.fetchTranscript(youtubeUrl);
     } catch (error) {
-      transcript = await fetchTranscriptFromYtdl(youtubeUrl);
+      try {
+        transcript = await fetchTranscriptFromHtml(youtubeUrl);
+      } catch (htmlError) {
+        transcript = await fetchTranscriptFromYtdl(youtubeUrl);
+      }
     }
     if (!transcript || transcript.length === 0) {
       throw new Error("Transcript is empty");
