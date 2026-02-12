@@ -32,6 +32,38 @@ const postCallback = async (callbackUrl, payload) => {
   });
 };
 
+const parseTimestamp = (value) => {
+  const match = value.match(/(\d{1,2}:)?\d{1,2}:\d{2}/);
+  if (!match) return null;
+  const parts = match[0].split(":").map(Number);
+  if (parts.length === 2) {
+    return parts[0] * 60 + parts[1];
+  }
+  if (parts.length === 3) {
+    return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  }
+  return null;
+};
+
+const buildTranscriptFromLines = (lines) => {
+  const transcript = [];
+  let fallbackOffset = 0;
+  lines.forEach((line) => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+    const timestamp = parseTimestamp(trimmed);
+    const text = trimmed.replace(/^\s*(\d{1,2}:)?\d{1,2}:\d{2}\s*/, "");
+    const offset = timestamp !== null ? timestamp : fallbackOffset;
+    transcript.push({
+      text: text.trim(),
+      offset,
+      duration: 4,
+    });
+    fallbackOffset += 4;
+  });
+  return transcript.filter((item) => item.text);
+};
+
 const resolveChromePath = () => {
   if (process.env.PUPPETEER_EXECUTABLE_PATH) {
     return process.env.PUPPETEER_EXECUTABLE_PATH;
@@ -74,14 +106,32 @@ const extractVideoId = (youtubeUrl) => {
 const fetchTranscriptWithPuppeteer = async (youtubeUrl) => {
   const browser = await launchBrowser();
   try {
-    const page = await browser.newPage();
-    await page.setUserAgent(
-      "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-    );
-    await page.goto(`${youtubeUrl}&hl=en`, {
-      waitUntil: "networkidle2",
-      timeout: 60000,
-    });
+    const getPage = async () => {
+      const page = await browser.newPage();
+      await page.setUserAgent(
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+      );
+      return page;
+    };
+
+    let page = await getPage();
+    try {
+      await page.goto(`${youtubeUrl}&hl=en`, {
+        waitUntil: "networkidle2",
+        timeout: 60000,
+      });
+    } catch (error) {
+      if (String(error?.message || "").includes("frame was detached")) {
+        await page.close();
+        page = await getPage();
+        await page.goto(`${youtubeUrl}&hl=en`, {
+          waitUntil: "networkidle2",
+          timeout: 60000,
+        });
+      } else {
+        throw error;
+      }
+    }
 
     await page.waitForFunction(
       () =>
@@ -362,6 +412,55 @@ const fetchTranscriptFromHtml = async (youtubeUrl) => {
   throw lastError || new Error("Unable to fetch transcript from HTML");
 };
 
+const fetchTranscriptFromTranscriptSite = async (youtubeUrl) => {
+  const videoId = extractVideoId(youtubeUrl);
+  if (!videoId) throw new Error("Unable to parse YouTube video ID");
+
+  const browser = await launchBrowser();
+  try {
+    const page = await browser.newPage();
+    await page.setUserAgent(
+      "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+    );
+    await page.goto(
+      `https://youtubetotranscript.com/transcript?v=${videoId}`,
+      {
+        waitUntil: "networkidle2",
+        timeout: 60000,
+      }
+    );
+
+    const lines = await page.evaluate(() => {
+      const selectors = [
+        "#transcript",
+        ".transcript",
+        ".transcript-text",
+        ".transcript-container",
+        "main",
+        "article",
+      ];
+      for (const selector of selectors) {
+        const element = document.querySelector(selector);
+        if (element && element.innerText) {
+          const text = element.innerText.trim();
+          if (text.length > 200) {
+            return text.split("\n");
+          }
+        }
+      }
+      return document.body?.innerText?.split("\n") || [];
+    });
+
+    const transcript = buildTranscriptFromLines(lines || []);
+    if (!transcript.length) {
+      throw new Error("Transcript not available on transcript site");
+    }
+    return transcript;
+  } finally {
+    await browser.close();
+  }
+};
+
 const fetchTranscriptFromYtdl = async (youtubeUrl) => {
   const info = await ytdl.getInfo(youtubeUrl, {
     requestOptions: {
@@ -445,24 +544,30 @@ app.post("/run", requireAuth, async (req, res) => {
         transcript = await fetchTranscriptWithPuppeteer(youtubeUrl);
       } catch (puppetError) {
         try {
-          transcript = await fetchTranscriptFromHtml(youtubeUrl);
-        } catch (htmlError) {
+          transcript = await fetchTranscriptFromTranscriptSite(youtubeUrl);
+        } catch (siteError) {
           try {
-            transcript = await fetchTranscriptFromTimedText(videoId);
-          } catch (timedTextError) {
+            transcript = await fetchTranscriptFromHtml(youtubeUrl);
+          } catch (htmlError) {
             try {
-              transcript = await fetchTranscriptFromYtdl(youtubeUrl);
-            } catch (ytdlError) {
-              const puppetMessage =
-                puppetError?.message || "Puppeteer transcript failed";
-              const htmlMessage =
-                htmlError?.message || "HTML transcript failed";
-              const timedMessage =
-                timedTextError?.message || "Timedtext transcript failed";
-              const ytdlMessage = ytdlError?.message || "ytdl-core failed";
-              throw new Error(
-                `Transcript fetch failed. ${puppetMessage}. ${htmlMessage}. ${timedMessage}. ${ytdlMessage}.`
-              );
+              transcript = await fetchTranscriptFromTimedText(videoId);
+            } catch (timedTextError) {
+              try {
+                transcript = await fetchTranscriptFromYtdl(youtubeUrl);
+              } catch (ytdlError) {
+                const puppetMessage =
+                  puppetError?.message || "Puppeteer transcript failed";
+                const siteMessage =
+                  siteError?.message || "Transcript site failed";
+                const htmlMessage =
+                  htmlError?.message || "HTML transcript failed";
+                const timedMessage =
+                  timedTextError?.message || "Timedtext transcript failed";
+                const ytdlMessage = ytdlError?.message || "ytdl-core failed";
+                throw new Error(
+                  `Transcript fetch failed. ${puppetMessage}. ${siteMessage}. ${htmlMessage}. ${timedMessage}. ${ytdlMessage}.`
+                );
+              }
             }
           }
         }
