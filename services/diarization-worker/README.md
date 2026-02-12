@@ -7,6 +7,11 @@ timedtext track list, and `ytdl-core`) and assigns them to speakers in a simple 
 pattern. Replace `buildResultFromTranscript` with a real diarization pipeline
 when ready.
 
+## Build notes
+
+Cloud Run builds can fail pulling the public Puppeteer container image from GHCR.
+This worker uses `puppeteer-core` and installs Chromium via apt instead.
+
 ## Local run
 
 ```bash

@@ -1,7 +1,7 @@
 const express = require("express");
 const { YoutubeTranscript } = require("youtube-transcript");
 const ytdl = require("ytdl-core");
-const puppeteer = require("puppeteer");
+const puppeteer = require("puppeteer-core");
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -32,9 +32,22 @@ const postCallback = async (callbackUrl, payload) => {
   });
 };
 
+const resolveChromePath = () => {
+  if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+    return process.env.PUPPETEER_EXECUTABLE_PATH;
+  }
+  const candidates = [
+    "/usr/bin/chromium",
+    "/usr/bin/chromium-browser",
+    "/usr/bin/google-chrome",
+  ];
+  return candidates.find((path) => path);
+};
+
 const launchBrowser = async () =>
   puppeteer.launch({
     headless: "new",
+    executablePath: resolveChromePath(),
     args: [
       "--no-sandbox",
       "--disable-setuid-sandbox",
