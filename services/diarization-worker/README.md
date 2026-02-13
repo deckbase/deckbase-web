@@ -7,6 +7,9 @@ site scrape, HTML parsing, timedtext track list, and `ytdl-core`) and assigns
 them to speakers in a simple round-robin pattern. Replace
 `buildResultFromTranscript` with a real diarization pipeline when ready.
 
+Note: The transcript site fallback can be blocked by Cloudflare bot protection.
+When that happens, the worker will skip it and report a clear error.
+
 ## Build notes
 
 Cloud Run builds can fail pulling the public Puppeteer container image from GHCR.
