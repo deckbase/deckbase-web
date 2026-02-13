@@ -451,6 +451,16 @@ const fetchTranscriptFromTranscriptSite = async (youtubeUrl) => {
       return document.body?.innerText?.split("\n") || [];
     });
 
+    const joinedText = (lines || []).join("\n").toLowerCase();
+    if (
+      joinedText.includes("cloudflare") ||
+      joinedText.includes("security service") ||
+      joinedText.includes("verify you are not a bot") ||
+      joinedText.includes("malicious bots")
+    ) {
+      throw new Error("Transcript site blocked by bot protection");
+    }
+
     const transcript = buildTranscriptFromLines(lines || []);
     if (!transcript.length) {
       throw new Error("Transcript not available on transcript site");
