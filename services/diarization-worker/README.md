@@ -2,10 +2,10 @@
 
 This service receives diarization jobs from the web app and posts results back
 to the callback endpoint. The current implementation uses YouTube transcript
-segments with multiple fallbacks (`youtube-transcript`, Puppeteer, HTML parsing,
-timedtext track list, and `ytdl-core`) and assigns them to speakers in a simple round-robin
-pattern. Replace `buildResultFromTranscript` with a real diarization pipeline
-when ready.
+segments with multiple fallbacks (`youtube-transcript`, Puppeteer, transcript
+site scrape, HTML parsing, timedtext track list, and `ytdl-core`) and assigns
+them to speakers in a simple round-robin pattern. Replace
+`buildResultFromTranscript` with a real diarization pipeline when ready.
 
 ## Build notes
 
