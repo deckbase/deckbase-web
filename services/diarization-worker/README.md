@@ -10,6 +10,18 @@ them to speakers in a simple round-robin pattern. Replace
 Note: The transcript site fallback can be blocked by Cloudflare bot protection.
 When that happens, the worker will skip it and report a clear error.
 
+## Speech-to-text fallback
+
+If no transcript sources work, the worker can download audio and call the
+OpenAI transcription API (Whisper). Configure:
+
+- `OPENAI_API_KEY`
+- `OPENAI_TRANSCRIBE_MODEL` (default: `whisper-1`)
+- `OPENAI_MAX_AUDIO_BYTES` (default: 25MB)
+
+For age-restricted videos, you may need `YTDL_COOKIE` to pass a YouTube cookie
+header for audio download.
+
 ## Build notes
 
 Cloud Run builds can fail pulling the public Puppeteer container image from GHCR.

@@ -1,4 +1,7 @@
 const express = require("express");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
 const { YoutubeTranscript } = require("youtube-transcript");
 const ytdl = require("ytdl-core");
 const puppeteer = require("puppeteer-core");
@@ -7,6 +10,12 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 const WORKER_TOKEN = process.env.WORKER_TOKEN;
 const CALLBACK_TOKEN = process.env.CALLBACK_TOKEN;
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const OPENAI_TRANSCRIBE_MODEL =
+  process.env.OPENAI_TRANSCRIBE_MODEL || "whisper-1";
+const OPENAI_MAX_AUDIO_BYTES =
+  Number(process.env.OPENAI_MAX_AUDIO_BYTES) || 25 * 1024 * 1024;
+const YTDL_COOKIE = process.env.YTDL_COOKIE;
 
 app.use(express.json({ limit: "2mb" }));
 
@@ -101,6 +110,17 @@ const extractVideoId = (youtubeUrl) => {
     return null;
   }
   return null;
+};
+
+const buildRequestHeaders = () => {
+  const headers = {
+    "User-Agent":
+      "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+  };
+  if (YTDL_COOKIE) {
+    headers.Cookie = YTDL_COOKIE;
+  }
+  return headers;
 };
 
 const fetchTranscriptWithPuppeteer = async (youtubeUrl) => {
@@ -236,6 +256,100 @@ const fetchTranscriptFromCaptionTrack = async (baseUrl) => {
   return transcript;
 };
 
+const downloadAudioToFile = async (youtubeUrl) => {
+  const requestOptions = { headers: buildRequestHeaders() };
+  const info = await ytdl.getInfo(youtubeUrl, { requestOptions });
+  const format = ytdl.chooseFormat(info.formats, {
+    quality: "highestaudio",
+    filter: "audioonly",
+  });
+  if (!format) {
+    throw new Error("No audio format available for download");
+  }
+  const extension = format.container || "webm";
+  const filePath = path.join(os.tmpdir(), `audio-${Date.now()}.${extension}`);
+  const audioStream = ytdl.downloadFromInfo(info, {
+    format,
+    requestOptions,
+  });
+
+  await new Promise((resolve, reject) => {
+    const fileStream = fs.createWriteStream(filePath);
+    audioStream.pipe(fileStream);
+    audioStream.on("error", reject);
+    fileStream.on("error", reject);
+    fileStream.on("finish", resolve);
+  });
+
+  const stats = fs.statSync(filePath);
+  const mimeType = format.mimeType?.split(";")[0] || `audio/${extension}`;
+  return { filePath, mimeType, fileSize: stats.size };
+};
+
+const fetchTranscriptFromAudio = async (youtubeUrl) => {
+  if (!OPENAI_API_KEY) {
+    throw new Error("OPENAI_API_KEY not configured");
+  }
+
+  const { filePath, mimeType, fileSize } = await downloadAudioToFile(youtubeUrl);
+  try {
+    if (fileSize > OPENAI_MAX_AUDIO_BYTES) {
+      throw new Error(
+        `Audio too large (${(fileSize / 1024 / 1024).toFixed(1)}MB).`
+      );
+    }
+
+    const fileBuffer = fs.readFileSync(filePath);
+    const form = new FormData();
+    form.append("model", OPENAI_TRANSCRIBE_MODEL);
+    form.append("response_format", "verbose_json");
+    form.append(
+      "file",
+      new Blob([fileBuffer], { type: mimeType }),
+      path.basename(filePath)
+    );
+
+    const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: form,
+    });
+
+    if (!response.ok) {
+      const message = await response.text();
+      throw new Error(`OpenAI transcription failed: ${message}`);
+    }
+
+    const data = await response.json();
+    const segments = Array.isArray(data.segments) ? data.segments : [];
+    if (segments.length > 0) {
+      return segments
+        .map((segment) => ({
+          text: segment.text?.trim() || "",
+          offset: segment.start || 0,
+          duration: (segment.end || 0) - (segment.start || 0),
+        }))
+        .filter((item) => item.text);
+    }
+
+    if (data.text) {
+      return [
+        {
+          text: data.text.trim(),
+          offset: 0,
+          duration: 0,
+        },
+      ];
+    }
+
+    throw new Error("Transcription returned empty result");
+  } finally {
+    fs.unlink(filePath, () => {});
+  }
+};
+
 const fetchTranscriptFromTimedText = async (videoId) => {
   if (!videoId) throw new Error("Missing video ID for timedtext");
   const buildUrl = (params) =>
@@ -243,10 +357,7 @@ const fetchTranscriptFromTimedText = async (videoId) => {
 
   const tryFetch = async (url) => {
     const response = await fetch(url, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-      },
+      headers: buildRequestHeaders(),
     });
     if (!response.ok) {
       return null;
@@ -279,10 +390,7 @@ const fetchTranscriptFromTimedText = async (videoId) => {
   const listResponse = await fetch(
     `https://www.youtube.com/api/timedtext?type=list&v=${videoId}`,
     {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-      },
+      headers: buildRequestHeaders(),
     }
   );
   if (!listResponse.ok) {
@@ -361,8 +469,7 @@ const fetchTranscriptFromHtml = async (youtubeUrl) => {
   const fetchHtml = async (url) => {
     const response = await fetch(url, {
       headers: {
-        "User-Agent":
-          "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        ...buildRequestHeaders(),
         "Accept-Language": "en-US,en;q=0.9",
       },
     });
@@ -474,10 +581,7 @@ const fetchTranscriptFromTranscriptSite = async (youtubeUrl) => {
 const fetchTranscriptFromYtdl = async (youtubeUrl) => {
   const info = await ytdl.getInfo(youtubeUrl, {
     requestOptions: {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-      },
+      headers: buildRequestHeaders(),
     },
   });
   const captionTracks =
@@ -563,6 +667,9 @@ app.post("/run", requireAuth, async (req, res) => {
               transcript = await fetchTranscriptFromTimedText(videoId);
             } catch (timedTextError) {
               try {
+              transcript = await fetchTranscriptFromAudio(youtubeUrl);
+            } catch (audioError) {
+              try {
                 transcript = await fetchTranscriptFromYtdl(youtubeUrl);
               } catch (ytdlError) {
                 const puppetMessage =
@@ -573,11 +680,14 @@ app.post("/run", requireAuth, async (req, res) => {
                   htmlError?.message || "HTML transcript failed";
                 const timedMessage =
                   timedTextError?.message || "Timedtext transcript failed";
+                const audioMessage =
+                  audioError?.message || "Audio transcription failed";
                 const ytdlMessage = ytdlError?.message || "ytdl-core failed";
                 throw new Error(
-                  `Transcript fetch failed. ${puppetMessage}. ${siteMessage}. ${htmlMessage}. ${timedMessage}. ${ytdlMessage}.`
+                  `Transcript fetch failed. ${puppetMessage}. ${siteMessage}. ${htmlMessage}. ${timedMessage}. ${audioMessage}. ${ytdlMessage}.`
                 );
               }
+            }
             }
           }
         }
