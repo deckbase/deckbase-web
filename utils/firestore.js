@@ -485,6 +485,32 @@ export const uploadImage = async (uid, file) => {
   return transformMediaFromFirestore(media);
 };
 
+export const uploadAudio = async (uid, file) => {
+  const mediaId = uuidv4();
+  const extension = file.name.split(".").pop();
+  const storagePath = `users/${uid}/media/${mediaId}.${extension}`;
+  const storageRef = ref(storage, storagePath);
+
+  await uploadBytes(storageRef, file);
+  const downloadUrl = await getDownloadURL(storageRef);
+
+  const now = Timestamp.now();
+  const media = {
+    media_id: mediaId,
+    storage_path: storagePath,
+    download_url: downloadUrl,
+    type: "audio",
+    file_size: file.size,
+    mime_type: file.type,
+    created_at: now,
+    updated_at: now,
+    is_deleted: false,
+  };
+
+  await setDoc(doc(getMediaCollection(uid), mediaId), media);
+  return transformMediaFromFirestore(media);
+};
+
 export const getMedia = async (uid, mediaId) => {
   const mediaRef = doc(getMediaCollection(uid), mediaId);
   const mediaSnap = await getDoc(mediaRef);
