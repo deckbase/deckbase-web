@@ -95,7 +95,7 @@ const Feature = () => {
             >
               <div className="w-[30%] md:w-[20%] flex items-center justify-center">
                 <Image
-                  src={`/mock/mock${parseInt(paragraph.id) + 2}.png`}
+                  src={`/mock/mock${(index % 5) + 1}.png`}
                   alt={paragraph.title}
                   width={300}
                   height={600}

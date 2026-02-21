@@ -84,7 +84,7 @@ export default function About() {
               className="mt-16 text-center max-w-sm mx-auto"
             >
               <Image
-                src="/mock/mock13.png"
+                src="/mock/mock1.png"
                 alt="Deckbase App Screenshot"
                 width={1500}
                 height={1125}

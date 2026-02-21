@@ -25,7 +25,7 @@ const Start = () => {
           </div>
         </div>
         <img
-          src="/mock/mock8.png"
+          src="/mock/mock5.png"
           alt="Manifest Your Dreams"
           className="w-auto h-auto max-w-[280px] md:max-w-[320px]"
         />

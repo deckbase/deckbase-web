@@ -66,13 +66,11 @@ const HowItWorks = () => {
             <div className="relative mr-8 lg:mr-16">
               {/* Phone video */}
               <div className="relative">
-                <video
-                  src="/mock/demo.mp4"
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  className="w-full max-w-[200px] lg:max-w-xs h-auto drop-shadow-lg rounded-3xl"
+                {/* Phone mockup image (demo.mp4 removed) */}
+                <img
+                  src="/mock/mock1.png"
+                  alt="Deckbase app preview"
+                  className="w-full max-w-[200px] lg:max-w-xs h-auto drop-shadow-lg rounded-3xl object-cover"
                 />
               </div>
             </div>

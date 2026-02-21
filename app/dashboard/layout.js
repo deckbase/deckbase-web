@@ -50,6 +50,7 @@ export default function DashboardLayout({ children }) {
               width={32}
               height={32}
               className="rounded-lg"
+              priority
             />
             <span className="text-white font-bold text-lg hidden sm:block">
               Deckbase

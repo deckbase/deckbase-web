@@ -88,6 +88,7 @@ export default function LoginPage() {
               width={48}
               height={48}
               className="rounded-xl"
+              priority
             />
           </Link>
           <h1 className="text-2xl font-bold text-white mt-4">Welcome back</h1>
