@@ -20,6 +20,11 @@ import {
   Save,
   X,
   Upload,
+  Music,
+  CircleDot,
+  CheckSquare,
+  MessageSquare,
+  MoveVertical,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -30,10 +35,20 @@ import {
   createCard,
   updateCard,
   uploadImage,
+  uploadAudio,
   getMedia,
   getTemplate,
 } from "@/utils/firestore";
 import { v4 as uuidv4 } from "uuid";
+
+const safeJsonParse = (value) => {
+  if (!value || typeof value !== "string") return null;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+};
 
 // Block type configurations
 const BLOCK_TYPES = {
@@ -60,7 +75,24 @@ const BLOCK_TYPES = {
     placeholder: "Hidden until revealed...",
   },
   image: { label: "Image", icon: ImageIcon, placeholder: "Add images..." },
+  audio: { label: "Audio", icon: Music, placeholder: "Add audio files..." },
   divider: { label: "Divider", icon: Minus, placeholder: "" },
+  space: { label: "Space", icon: MoveVertical, placeholder: "" },
+  quizSingleSelect: {
+    label: "Quiz (Single)",
+    icon: CircleDot,
+    placeholder: "",
+  },
+  quizMultiSelect: {
+    label: "Quiz (Multi)",
+    icon: CheckSquare,
+    placeholder: "",
+  },
+  quizTextAnswer: {
+    label: "Quiz (Text)",
+    icon: MessageSquare,
+    placeholder: "",
+  },
 };
 
 // Default template for new cards
@@ -174,14 +206,44 @@ export default function CardEditorPage() {
     }));
   };
 
+  // Update a block's configJson (for quiz/space blocks)
+  const updateBlockConfig = (blockId, config) => {
+    setBlocks((prev) =>
+      prev.map((b) =>
+        b.blockId === blockId
+          ? { ...b, configJson: JSON.stringify(config) }
+          : b
+      )
+    );
+  };
+
   // Add a new block
   const addBlock = (type) => {
     const newBlockId = uuidv4();
+    let configJson;
+    if (type === "quizSingleSelect" || type === "quizMultiSelect") {
+      configJson = JSON.stringify({
+        question: "",
+        options: ["", ""],
+        correctAnswers: [],
+      });
+    } else if (type === "quizTextAnswer") {
+      configJson = JSON.stringify({
+        question: "",
+        correctAnswer: "",
+        hint: "",
+        caseSensitive: false,
+      });
+    } else if (type === "space") {
+      configJson = JSON.stringify({ height: 32 });
+    }
+
     const newBlock = {
       blockId: newBlockId,
       type,
       label: BLOCK_TYPES[type]?.label || "Block",
       required: false,
+      configJson,
     };
 
     setBlocks((prev) => [...prev, newBlock]);
@@ -191,7 +253,7 @@ export default function CardEditorPage() {
         blockId: newBlockId,
         type,
         text: "",
-        mediaIds: type === "image" ? [] : undefined,
+        mediaIds: type === "image" || type === "audio" ? [] : undefined,
       },
     }));
     setShowBlockPicker(false);
@@ -239,6 +301,49 @@ export default function CardEditorPage() {
 
   // Remove image from block
   const removeImage = (blockId, mediaId) => {
+    setValues((prev) => {
+      const currentValue = prev[blockId];
+      if (!currentValue?.mediaIds) return prev;
+
+      return {
+        ...prev,
+        [blockId]: {
+          ...currentValue,
+          mediaIds: currentValue.mediaIds.filter((id) => id !== mediaId),
+        },
+      };
+    });
+  };
+
+  // Handle audio upload
+  const handleAudioUpload = async (blockId, files) => {
+    if (!files || files.length === 0) return;
+
+    for (const file of files) {
+      try {
+        const media = await uploadAudio(user.uid, file);
+
+        setMediaCache((prev) => ({ ...prev, [media.mediaId]: media }));
+
+        setValues((prev) => {
+          const currentValue = prev[blockId] || { blockId, type: "audio" };
+          const currentMediaIds = currentValue.mediaIds || [];
+          return {
+            ...prev,
+            [blockId]: {
+              ...currentValue,
+              mediaIds: [...currentMediaIds, media.mediaId],
+            },
+          };
+        });
+      } catch (error) {
+        console.error("Error uploading audio:", error);
+      }
+    }
+  };
+
+  // Remove audio from block
+  const removeAudio = (blockId, mediaId) => {
     setValues((prev) => {
       const currentValue = prev[blockId];
       if (!currentValue?.mediaIds) return prev;
@@ -349,6 +454,9 @@ export default function CardEditorPage() {
             onRemove={() => removeBlock(block.blockId)}
             onImageUpload={(files) => handleImageUpload(block.blockId, files)}
             onImageRemove={(mediaId) => removeImage(block.blockId, mediaId)}
+            onAudioUpload={(files) => handleAudioUpload(block.blockId, files)}
+            onAudioRemove={(mediaId) => removeAudio(block.blockId, mediaId)}
+            onConfigChange={(config) => updateBlockConfig(block.blockId, config)}
           />
         ))}
       </div>
@@ -411,6 +519,9 @@ function BlockEditor({
   onRemove,
   onImageUpload,
   onImageRemove,
+  onAudioUpload,
+  onAudioRemove,
+  onConfigChange,
 }) {
   const config = BLOCK_TYPES[block.type] || {};
   const Icon = config.icon || Type;
@@ -521,8 +632,337 @@ function BlockEditor({
           </div>
         );
 
+      case "audio": {
+        const audioMediaIds = value?.mediaIds || [];
+        return (
+          <div>
+            {audioMediaIds.length > 0 && (
+              <div className="space-y-2 mb-3">
+                {audioMediaIds.map((mediaId) => {
+                  const media = mediaCache[mediaId];
+                  if (!media?.downloadUrl) return null;
+                  return (
+                    <div key={mediaId} className="flex items-center gap-2">
+                      <audio
+                        controls
+                        className="flex-1 rounded-lg bg-white/5 h-10"
+                        style={{ minWidth: 0 }}
+                      >
+                        <source src={media.downloadUrl} />
+                      </audio>
+                      <button
+                        onClick={() => onAudioRemove(mediaId)}
+                        className="p-1 bg-red-500 rounded-full flex-shrink-0"
+                      >
+                        <X className="w-3 h-3 text-white" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            <label className="flex items-center justify-center gap-2 py-4 border-2 border-dashed border-white/20 hover:border-accent/50 rounded-lg cursor-pointer transition-colors">
+              <Upload className="w-5 h-5 text-white/50" />
+              <span className="text-white/50 text-sm">
+                Click to upload audio
+              </span>
+              <input
+                type="file"
+                accept="audio/*"
+                multiple
+                onChange={(e) => onAudioUpload(e.target.files)}
+                className="hidden"
+              />
+            </label>
+          </div>
+        );
+      }
+
       case "divider":
         return <hr className="border-white/20" />;
+
+      case "space": {
+        const spaceConfig = safeJsonParse(block.configJson) || { height: 32 };
+        return (
+          <div className="flex items-center gap-3">
+            <span className="text-white/40 text-sm">Height:</span>
+            <input
+              type="number"
+              min={8}
+              max={200}
+              value={spaceConfig.height || 32}
+              onChange={(e) =>
+                onConfigChange({ ...spaceConfig, height: Number(e.target.value) })
+              }
+              className="w-20 bg-white/10 text-white text-sm rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-accent/50"
+            />
+            <span className="text-white/40 text-sm">px</span>
+          </div>
+        );
+      }
+
+      case "quizSingleSelect": {
+        const qConfig = safeJsonParse(block.configJson) || {
+          question: "",
+          options: ["", ""],
+          correctAnswers: [],
+        };
+        const options = qConfig.options || ["", ""];
+        const correct = qConfig.correctAnswers || [];
+        return (
+          <div className="space-y-3">
+            <input
+              type="text"
+              value={qConfig.question || ""}
+              onChange={(e) =>
+                onConfigChange({ ...qConfig, question: e.target.value })
+              }
+              placeholder="Question..."
+              className="w-full bg-transparent text-white placeholder-white/30 focus:outline-none border-b border-white/20 pb-1"
+            />
+            <div className="space-y-2">
+              <span className="text-white/40 text-xs uppercase tracking-wide">
+                Options — click circle to mark correct
+              </span>
+              {options.map((option, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onConfigChange({
+                        ...qConfig,
+                        options,
+                        correctAnswers: [option],
+                      })
+                    }
+                    className={`w-4 h-4 rounded-full border-2 flex-shrink-0 transition-colors ${
+                      correct.includes(option) && option
+                        ? "border-accent bg-accent"
+                        : "border-white/30"
+                    }`}
+                  />
+                  <input
+                    type="text"
+                    value={option}
+                    onChange={(e) => {
+                      const newOptions = [...options];
+                      const wasCorrect = correct.includes(option);
+                      newOptions[i] = e.target.value;
+                      onConfigChange({
+                        ...qConfig,
+                        options: newOptions,
+                        correctAnswers: wasCorrect ? [e.target.value] : correct,
+                      });
+                    }}
+                    placeholder={`Option ${i + 1}`}
+                    className="flex-1 bg-transparent text-white placeholder-white/30 focus:outline-none"
+                  />
+                  {options.length > 2 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newOptions = options.filter((_, idx) => idx !== i);
+                        onConfigChange({
+                          ...qConfig,
+                          options: newOptions,
+                          correctAnswers: correct.filter((a) => a !== option),
+                        });
+                      }}
+                      className="text-white/30 hover:text-red-400"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() =>
+                  onConfigChange({ ...qConfig, options: [...options, ""] })
+                }
+                className="flex items-center gap-1 text-xs text-accent"
+              >
+                <Plus className="w-3 h-3" /> Add option
+              </button>
+            </div>
+            <input
+              type="text"
+              value={qConfig.hint || ""}
+              onChange={(e) =>
+                onConfigChange({ ...qConfig, hint: e.target.value })
+              }
+              placeholder="Hint (optional)..."
+              className="w-full bg-transparent text-white/50 text-sm placeholder-white/20 focus:outline-none"
+            />
+          </div>
+        );
+      }
+
+      case "quizMultiSelect": {
+        const qConfig = safeJsonParse(block.configJson) || {
+          question: "",
+          options: ["", ""],
+          correctAnswers: [],
+        };
+        const options = qConfig.options || ["", ""];
+        const correct = new Set(qConfig.correctAnswers || []);
+        return (
+          <div className="space-y-3">
+            <input
+              type="text"
+              value={qConfig.question || ""}
+              onChange={(e) =>
+                onConfigChange({ ...qConfig, question: e.target.value })
+              }
+              placeholder="Question..."
+              className="w-full bg-transparent text-white placeholder-white/30 focus:outline-none border-b border-white/20 pb-1"
+            />
+            <div className="space-y-2">
+              <span className="text-white/40 text-xs uppercase tracking-wide">
+                Options — check boxes to mark correct
+              </span>
+              {options.map((option, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = new Set(correct);
+                      if (next.has(option)) {
+                        next.delete(option);
+                      } else {
+                        next.add(option);
+                      }
+                      onConfigChange({
+                        ...qConfig,
+                        options,
+                        correctAnswers: Array.from(next),
+                      });
+                    }}
+                    className={`w-4 h-4 rounded border-2 flex-shrink-0 transition-colors ${
+                      correct.has(option) && option
+                        ? "border-accent bg-accent"
+                        : "border-white/30"
+                    }`}
+                  />
+                  <input
+                    type="text"
+                    value={option}
+                    onChange={(e) => {
+                      const newOptions = [...options];
+                      const wasCorrect = correct.has(option);
+                      newOptions[i] = e.target.value;
+                      const newCorrect = new Set(correct);
+                      if (wasCorrect) {
+                        newCorrect.delete(option);
+                        newCorrect.add(e.target.value);
+                      }
+                      onConfigChange({
+                        ...qConfig,
+                        options: newOptions,
+                        correctAnswers: Array.from(newCorrect),
+                      });
+                    }}
+                    placeholder={`Option ${i + 1}`}
+                    className="flex-1 bg-transparent text-white placeholder-white/30 focus:outline-none"
+                  />
+                  {options.length > 2 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newOptions = options.filter((_, idx) => idx !== i);
+                        const newCorrect = new Set(correct);
+                        newCorrect.delete(option);
+                        onConfigChange({
+                          ...qConfig,
+                          options: newOptions,
+                          correctAnswers: Array.from(newCorrect),
+                        });
+                      }}
+                      className="text-white/30 hover:text-red-400"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() =>
+                  onConfigChange({ ...qConfig, options: [...options, ""] })
+                }
+                className="flex items-center gap-1 text-xs text-accent"
+              >
+                <Plus className="w-3 h-3" /> Add option
+              </button>
+            </div>
+            <input
+              type="text"
+              value={qConfig.hint || ""}
+              onChange={(e) =>
+                onConfigChange({ ...qConfig, hint: e.target.value })
+              }
+              placeholder="Hint (optional)..."
+              className="w-full bg-transparent text-white/50 text-sm placeholder-white/20 focus:outline-none"
+            />
+          </div>
+        );
+      }
+
+      case "quizTextAnswer": {
+        const qConfig = safeJsonParse(block.configJson) || {
+          question: "",
+          correctAnswer: "",
+          hint: "",
+          caseSensitive: false,
+        };
+        return (
+          <div className="space-y-3">
+            <input
+              type="text"
+              value={qConfig.question || ""}
+              onChange={(e) =>
+                onConfigChange({ ...qConfig, question: e.target.value })
+              }
+              placeholder="Question..."
+              className="w-full bg-transparent text-white placeholder-white/30 focus:outline-none border-b border-white/20 pb-1"
+            />
+            <input
+              type="text"
+              value={qConfig.correctAnswer || ""}
+              onChange={(e) =>
+                onConfigChange({ ...qConfig, correctAnswer: e.target.value })
+              }
+              placeholder="Correct answer..."
+              className="w-full bg-transparent text-white/80 placeholder-white/30 focus:outline-none"
+            />
+            <div className="flex items-center gap-4">
+              <input
+                type="text"
+                value={qConfig.hint || ""}
+                onChange={(e) =>
+                  onConfigChange({ ...qConfig, hint: e.target.value })
+                }
+                placeholder="Hint (optional)..."
+                className="flex-1 bg-transparent text-white/50 text-sm placeholder-white/20 focus:outline-none"
+              />
+              <label className="flex items-center gap-1.5 text-white/40 text-xs cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={qConfig.caseSensitive || false}
+                  onChange={(e) =>
+                    onConfigChange({
+                      ...qConfig,
+                      caseSensitive: e.target.checked,
+                    })
+                  }
+                  className="accent-accent"
+                />
+                Case sensitive
+              </label>
+            </div>
+          </div>
+        );
+      }
 
       default:
         return (
