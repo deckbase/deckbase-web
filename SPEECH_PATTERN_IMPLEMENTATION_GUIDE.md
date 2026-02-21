@@ -78,7 +78,7 @@ interface Document {
 }
 ```
 
-#### Analysis Results: `people/{personId}/analysis/v1`
+#### Analysis Results (source of truth): `people/{personId}/analysis_sessions/{sessionId}`
 ```typescript
 interface Analysis {
   vocabulary: VocabItem[];        // max 1000
@@ -620,8 +620,9 @@ def process_person(person_id: str):
         logging.warning(f"No documents found for {person_id}")
         return
 
-    # Initialize progress
-    analysis_ref = db.collection('people').document(person_id).collection('analysis').document('v1')
+    # Initialize progress (source of truth: analysis_sessions/{session_id})
+    session_id = ...  # from request / createAnalysisSession
+    analysis_ref = db.collection('people').document(person_id).collection('analysis_sessions').document(session_id)
     analysis_ref.set({
         'progress': {
             'processedDocs': 0,
@@ -745,10 +746,10 @@ def validate_results(analysis: dict) -> bool:
 ```python
 from google.cloud import firestore
 
-def write_results_atomic(person_id: str, results: dict):
-    """Write results atomically with transaction."""
+def write_results_atomic(person_id: str, session_id: str, results: dict):
+    """Write results atomically to analysis_sessions (source of truth)."""
     db = firestore.Client()
-    analysis_ref = db.collection('people').document(person_id).collection('analysis').document('v1')
+    analysis_ref = db.collection('people').document(person_id).collection('analysis_sessions').document(session_id)
 
     @firestore.transactional
     def update_in_transaction(transaction):
@@ -818,12 +819,10 @@ def build_background_corpus(exclude_person_id: str) -> Counter:
         if person.id == exclude_person_id:
             continue
 
-        # Load their analysis
-        analysis_ref = person.reference.collection('analysis').document('v1')
-        analysis = analysis_ref.get()
-
-        if analysis.exists:
-            data = analysis.to_dict()
+        # Load their latest analysis (source of truth: analysis_sessions)
+        sessions = person.reference.collection('analysis_sessions').order_by('updatedAt', direction=firestore.Query.DESCENDING).limit(1).stream()
+        for session_snap in sessions:
+            data = session_snap.to_dict() or {}
             for phrase in data.get('learningPhrases', []):
                 background[phrase['t']] += phrase['c']
 
@@ -860,7 +859,8 @@ export default function SpeechAnalysis({ personId }: { personId: string }) {
 
   useEffect(() => {
     const fetchAnalysis = async () => {
-      const docRef = doc(db, 'people', personId, 'analysis', 'v1');
+      // Source of truth: analysis_sessions/{sessionId}
+      const docRef = doc(db, 'people', personId, 'analysis_sessions', sessionId);
       const docSnap = await getDoc(docRef);
 
       if (docSnap.exists()) {
@@ -1192,7 +1192,7 @@ RECOMMENDED_TOKENS = 50_000
 ### 2. Firestore Schema
 - [x] `people/{personId}` collection
 - [x] `people/{personId}/docs/{docId}` subcollection
-- [x] `people/{personId}/analysis/v1` document
+- [x] `people/{personId}/analysis_sessions/{sessionId}` document (source of truth)
 - [x] Composite indexes (if needed)
 
 ### 3. Storage Bucket
@@ -1255,7 +1255,7 @@ curl -X POST "https://speech-analyzer-xxx.run.app/analyze?personId=test-person" 
   -H "Authorization: Bearer $(gcloud auth print-identity-token)"
 
 # 8. Verify results
-# Check Firestore console for people/test-person/analysis/v1
+# Check Firestore console for people/test-person/analysis_sessions/{sessionId}
 ```
 
 ---
