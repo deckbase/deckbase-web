@@ -1,5 +1,7 @@
+import typography from "@tailwindcss/typography";
+
 /** @type {import('tailwindcss').Config} */
-module.exports = {
+export default {
   content: [
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
@@ -65,12 +67,17 @@ module.exports = {
           "0%": { width: "0%" },
           "100%": { width: "100%" },
         },
+        "loading-bar": {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(350%)" },
+        },
       },
       animation: {
         glow: "glow 3s ease-in-out infinite",
         typewriter: "typewriter 2s steps(40) 1s 1 normal both",
+        "loading-bar": "loading-bar 1.5s ease-in-out infinite",
       },
     },
   },
-  plugins: [require("@tailwindcss/typography")],
+  plugins: [typography],
 };

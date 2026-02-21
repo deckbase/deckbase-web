@@ -35,7 +35,7 @@ gs://deckbase-transcripts/{personId}/{docId}.txt
 **Firestore** (Metadata & results):
 ```
 people/{personId}/docs/{docId}          # Transcript metadata
-people/{personId}/analysis/v1           # Analysis results
+people/{personId}/analysis_sessions/{sessionId}   # Source of truth: session + analysis results
 ```
 
 ## 🔍 What Gets Extracted

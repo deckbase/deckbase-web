@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
 import Image from "next/image";
-import { LogOut, User, Home, Layers, LayoutTemplate, Mic } from "lucide-react";
+import { LogOut, User, Home, Layers, LayoutTemplate, Settings } from "lucide-react";
 
 export default function DashboardLayout({ children }) {
   const { user, userProfile, loading, logout } = useAuth();
@@ -74,11 +74,11 @@ export default function DashboardLayout({ children }) {
               <LayoutTemplate className="w-5 h-5" />
             </Link>
             <Link
-              href="/dashboard/speech"
+              href="/dashboard/admin"
               className="text-white/70 hover:text-white transition-colors p-2"
-              title="Speech Analysis"
+              title="Admin"
             >
-              <Mic className="w-5 h-5" />
+              <Settings className="w-5 h-5" />
             </Link>
 
             <div className="flex items-center gap-3 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
