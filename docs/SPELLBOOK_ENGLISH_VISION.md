@@ -188,5 +188,6 @@ Spellbook English can grow from a content brand into a **product and community**
 - **Related:**  
   - [SPELLBOOK_ENGLISH_IMPLEMENTATION_PLAN.md](./SPELLBOOK_ENGLISH_IMPLEMENTATION_PLAN.md) — phased execution plan.  
   - [SPELLBOOK_FUTURE_VISION.md](./SPELLBOOK_FUTURE_VISION.md) — expansion (languages, knowledge domains, battles, merch).  
+  - [SPELLBOOK_EXPANSION_ROADMAP.md](./SPELLBOOK_EXPANSION_ROADMAP.md) — expansion order and how to build today for future scale.  
   - [SPELLBOOK_ENGLISH_PRODUCT_DESIGN.md](./SPELLBOOK_ENGLISH_PRODUCT_DESIGN.md) — gamified AI learning app: core loop, card system, MVP.  
 - **Ownership:** Update this doc when the brand or positioning evolves.

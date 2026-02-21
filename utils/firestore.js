@@ -35,6 +35,75 @@ const getTemplatesCollection = (uid) =>
   collection(db, getUserDataPath(uid), "templates");
 const getMediaCollection = (uid) => collection(db, "users", uid, "media"); // Media stays in users collection
 
+// Wizard/TCG progress: users/{uid}/progress/wizard (single doc per user)
+const getWizardProgressRef = (uid) =>
+  doc(db, "users", uid, "progress", "wizard");
+
+// ============== WIZARD PROGRESS (TCG) ==============
+
+const defaultWizardProgress = () => ({
+  xp: 0,
+  level: 1,
+  current_streak: 0,
+  last_active_date: null, // YYYY-MM-DD
+  rolling_accuracy: 100,
+  recent_answers: [], // last 30: true/false
+  momentum_score: 50,
+  updated_at: Timestamp.now(),
+});
+
+export const getWizardProgress = async (uid) => {
+  const ref = getWizardProgressRef(uid);
+  const snap = await getDoc(ref);
+  if (snap.exists()) {
+    const d = snap.data();
+    return {
+      xp: d.xp ?? 0,
+      level: d.level ?? 1,
+      currentStreak: d.current_streak ?? 0,
+      lastActiveDate: d.last_active_date ?? null,
+      rollingAccuracy: d.rolling_accuracy ?? 100,
+      recentAnswers: Array.isArray(d.recent_answers) ? d.recent_answers : [],
+      momentumScore: d.momentum_score ?? 50,
+      updatedAt: d.updated_at?.toMillis?.() ?? Date.now(),
+    };
+  }
+  return null;
+};
+
+export const setWizardProgress = async (uid, data) => {
+  const ref = getWizardProgressRef(uid);
+  const payload = {
+    xp: data.xp ?? 0,
+    level: data.level ?? 1,
+    current_streak: data.currentStreak ?? 0,
+    last_active_date: data.lastActiveDate ?? null,
+    rolling_accuracy: data.rollingAccuracy ?? 100,
+    recent_answers: Array.isArray(data.recentAnswers) ? data.recentAnswers : [],
+    momentum_score: data.momentumScore ?? 50,
+    updated_at: Timestamp.now(),
+  };
+  await setDoc(ref, payload, { merge: true });
+  return payload;
+};
+
+export const initWizardProgressIfNeeded = async (uid) => {
+  const existing = await getWizardProgress(uid);
+  if (existing) return existing;
+  const def = defaultWizardProgress();
+  await setDoc(getWizardProgressRef(uid), def);
+  return {
+    xp: 0,
+    level: 1,
+    currentStreak: 0,
+    lastActiveDate: null,
+    rollingAccuracy: 100,
+    recentAnswers: [],
+    momentumScore: 50,
+    updatedAt: Date.now(),
+  };
+};
+
 // ============== DECK OPERATIONS ==============
 
 export const createDeck = async (uid, title, description = "") => {

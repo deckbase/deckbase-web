@@ -2,7 +2,7 @@
 
 This plan turns the [Spellbook English Vision](./SPELLBOOK_ENGLISH_VISION.md) into concrete phases, deliverables, and success criteria. Treat it as the execution roadmap.
 
-**Strategic direction:** We are building a **gamified AI learning universe**, not just a page. See [Spellbook Future Vision](./SPELLBOOK_FUTURE_VISION.md) for expansion paths (languages, knowledge domains, battles, merch). See [Spellbook Product Design](./SPELLBOOK_ENGLISH_PRODUCT_DESIGN.md) for core loop, card system, battle mode, and MVP scope.
+**Strategic direction:** We are building a **gamified AI learning universe**, not just a page. See [Spellbook Future Vision](./SPELLBOOK_FUTURE_VISION.md) for expansion paths. See [Spellbook Expansion Roadmap](./SPELLBOOK_EXPANSION_ROADMAP.md) for **expansion order** and how to build today for future scale. See [Spellbook Product Design](./SPELLBOOK_ENGLISH_PRODUCT_DESIGN.md) for core loop, card system, battle mode, and MVP scope.
 
 ---
 

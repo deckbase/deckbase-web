@@ -134,5 +134,7 @@ It feels like a **fandom**, not a course.
 ## Document control
 
 - **Purpose:** Long-term expansion options; use to align ambition (side project vs serious startup).  
-- **Related:** [SPELLBOOK_ENGLISH_PRODUCT_DESIGN.md](./SPELLBOOK_ENGLISH_PRODUCT_DESIGN.md) for core loop, card system, and MVP.  
+- **Related:**  
+  - [SPELLBOOK_ENGLISH_PRODUCT_DESIGN.md](./SPELLBOOK_ENGLISH_PRODUCT_DESIGN.md) for core loop, card system, and MVP.  
+  - [SPELLBOOK_EXPANSION_ROADMAP.md](./SPELLBOOK_EXPANSION_ROADMAP.md) for **expansion order**, dependencies, and how to build today so expansion is easy.  
 - **Use:** Revisit when deciding new languages, domains, or product bets.

@@ -193,5 +193,5 @@ That alone is enough to **test traction.**
 ## Document control
 
 - **Purpose:** Single product spec for the gamified AI learning app.  
-- **Related:** [SPELLBOOK_FUTURE_VISION.md](./SPELLBOOK_FUTURE_VISION.md), [SPELLBOOK_ENGLISH_VISION.md](./SPELLBOOK_ENGLISH_VISION.md), [SPELLBOOK_ENGLISH_IMPLEMENTATION_PLAN.md](./SPELLBOOK_ENGLISH_IMPLEMENTATION_PLAN.md).  
+- **Related:** [DECKBASE_MVP_TECHNICAL_SPEC.md](./DECKBASE_MVP_TECHNICAL_SPEC.md) (authoritative MVP technical spec v2.0 — Concept, CardInstance, dual decks, momentum, ATK/DEF, XP), [SPELLBOOK_FUTURE_VISION.md](./SPELLBOOK_FUTURE_VISION.md), [SPELLBOOK_ENGLISH_VISION.md](./SPELLBOOK_ENGLISH_VISION.md), [SPELLBOOK_ENGLISH_IMPLEMENTATION_PLAN.md](./SPELLBOOK_ENGLISH_IMPLEMENTATION_PLAN.md), [SPELLBOOK_SCHEMA_AND_GAMIFICATION.md](./SPELLBOOK_SCHEMA_AND_GAMIFICATION.md) (schema for gamification).  
 - **Review:** Update when we change core loop, card types, or MVP scope.

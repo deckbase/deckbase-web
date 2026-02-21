@@ -19,6 +19,7 @@ import {
   Play,
   ChevronRight,
   ChevronLeft,
+  Swords,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
@@ -502,6 +503,13 @@ export default function DeckDetailPage() {
             >
               <Play className="w-5 h-5" />
               <span className="hidden sm:inline">Study</span>
+            </Link>
+            <Link
+              href={`/dashboard/deck/${deckId}/wizard`}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 rounded-lg transition-colors border border-purple-400/30"
+            >
+              <Swords className="w-5 h-5" />
+              <span className="hidden sm:inline">Wizard</span>
             </Link>
             <button
               onClick={() => setShowImportModal(true)}
