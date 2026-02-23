@@ -20,6 +20,7 @@ import {
 import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRevenueCat, DEFAULT_ENTITLEMENT_ID } from "@/contexts/RevenueCatContext";
 import {
   getDeck,
   getCard,
@@ -65,16 +66,32 @@ const DEFAULT_BLOCKS = [
   { blockId: "audio", type: "audio", label: "Audio", required: false },
 ];
 
+const isProduction = process.env.NODE_ENV === "production";
+
 export default function CardEditorPage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
+  const { isConfigured: rcConfigured, isEntitledTo } = useRevenueCat();
+  const [audioProEntitled, setAudioProEntitled] = useState(true);
   const deckId = params.deckId;
   const cardId = params.cardId; // "new" for create, or existing cardId
   const templateIdFromUrl = searchParams.get("templateId");
 
   const isNewCard = cardId === "new";
+
+  useEffect(() => {
+    if (!isProduction || !rcConfigured) {
+      setAudioProEntitled(true);
+      return;
+    }
+    let mounted = true;
+    isEntitledTo(DEFAULT_ENTITLEMENT_ID).then((v) => {
+      if (mounted) setAudioProEntitled(!!v);
+    });
+    return () => { mounted = false; };
+  }, [rcConfigured, isEntitledTo]);
 
   const [deck, setDeck] = useState(null);
   const [blocks, setBlocks] = useState(DEFAULT_BLOCKS);
@@ -440,9 +457,14 @@ export default function CardEditorPage() {
     if (!text?.trim()) return;
     setGeneratingAudioBlockId(blockId);
     try {
+      const headers = { "Content-Type": "application/json" };
+      if (isProduction && user) {
+        const token = await user.getIdToken();
+        if (token) headers.Authorization = `Bearer ${token}`;
+      }
       const res = await fetch("/api/elevenlabs/text-to-speech", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           text: text.trim(),
           ...(voiceId && { voice_id: voiceId }),
@@ -592,7 +614,8 @@ export default function CardEditorPage() {
               onImageRemove={(mediaId) => removeImage(block.blockId, mediaId)}
               onAudioUpload={(files) => handleAudioUpload(block.blockId, files)}
               onAudioRemove={(mediaId) => removeAudio(block.blockId, mediaId)}
-              onGenerateAudio={(text, voiceId) => handleGenerateAudio(block.blockId, text, voiceId)}
+              onGenerateAudio={audioProEntitled ? (text, voiceId) => handleGenerateAudio(block.blockId, text, voiceId) : undefined}
+              generateAudioProRequired={isProduction && !audioProEntitled}
               onPlayVoiceSample={handlePlayVoiceSample}
               playingSampleVoiceId={playingSampleVoiceId}
               voiceOptions={ELEVENLABS_VOICES}
@@ -668,6 +691,7 @@ function BlockEditor({
   onAudioUpload,
   onAudioRemove,
   onGenerateAudio,
+  generateAudioProRequired,
   onPlayVoiceSample,
   generatingAudio,
   playingSampleVoiceId,
@@ -846,7 +870,20 @@ function BlockEditor({
                   className="hidden"
                 />
               </label>
-                  {onGenerateAudio && (
+                  {generateAudioProRequired ? (
+                <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
+                  <span className="text-amber-200/90 text-xs font-medium flex items-center gap-1.5 mb-2">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    Generate with AI (Pro)
+                  </span>
+                  <Link
+                    href="/dashboard/subscription"
+                    className="text-amber-400 hover:text-amber-300 text-sm font-medium"
+                  >
+                    Upgrade to Pro to generate audio
+                  </Link>
+                </div>
+              ) : onGenerateAudio ? (
                 <div className="rounded-lg border border-white/10 bg-white/5 p-3 space-y-2">
                   <span className="text-white/60 text-xs font-medium uppercase tracking-wide flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5 text-amber-400" />
@@ -951,7 +988,7 @@ function BlockEditor({
                     )}
                   </button>
                 </div>
-              )}
+              ) : null}
             </div>
           </div>
         );

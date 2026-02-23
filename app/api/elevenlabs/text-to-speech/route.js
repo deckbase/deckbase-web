@@ -1,13 +1,44 @@
 import { NextResponse } from "next/server";
+import { getAdminAuth } from "@/utils/firebase-admin";
+import { isEntitledTo } from "@/lib/revenuecat-server";
 
 /**
  * POST /api/elevenlabs/text-to-speech
  * Body: { text: string, voice_id?: string }
  * Returns: audio/mpeg binary (or JSON error).
- * Uses ELEVENLABS_API_KEY and ELEVENLABS_DEFAULT_VOICE_ID (fallback voice).
+ * In production requires auth and Pro subscription.
  */
 export async function POST(request) {
   try {
+    if (process.env.NODE_ENV === "production") {
+      const auth = getAdminAuth();
+      const authHeader = request.headers.get("authorization") || "";
+      const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+      if (!auth || !idToken) {
+        return NextResponse.json(
+          { error: "Authentication required to generate audio in production" },
+          { status: 401 }
+        );
+      }
+      let uid;
+      try {
+        const decoded = await auth.verifyIdToken(idToken);
+        uid = decoded.uid;
+      } catch {
+        return NextResponse.json(
+          { error: "Invalid or expired token" },
+          { status: 401 }
+        );
+      }
+      const entitled = await isEntitledTo(uid);
+      if (!entitled) {
+        return NextResponse.json(
+          { error: "Active subscription required to generate audio" },
+          { status: 403 }
+        );
+      }
+    }
+
     const apiKey = process.env.ELEVENLABS_API_KEY;
     const defaultVoiceId =
       process.env.ELEVENLABS_DEFAULT_VOICE_ID || "21m00Tcm4TlvDq8ikWAM"; // Rachel if not set

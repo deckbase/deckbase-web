@@ -644,9 +644,14 @@ export default function DeckDetailPage() {
               } catch {}
             }
             try {
+              const ttsHeaders = { "Content-Type": "application/json" };
+              if (isProduction && user) {
+                const token = await user.getIdToken();
+                if (token) ttsHeaders.Authorization = `Bearer ${token}`;
+              }
               const res = await fetch("/api/elevenlabs/text-to-speech", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: ttsHeaders,
                 body: JSON.stringify({
                   text: mainText,
                   ...(defaultVoiceId && { voice_id: defaultVoiceId }),
