@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
 import Image from "next/image";
-import { LogOut, User, Home, LayoutTemplate, Settings } from "lucide-react";
+import { LogOut, User, Home, LayoutTemplate, Settings, Crown } from "lucide-react";
 
 export default function DashboardLayout({ children }) {
   const { user, userProfile, loading, logout } = useAuth();
@@ -72,6 +72,13 @@ export default function DashboardLayout({ children }) {
               title="Templates"
             >
               <LayoutTemplate className="w-5 h-5" />
+            </Link>
+            <Link
+              href="/dashboard/subscription"
+              className="text-white/70 hover:text-white transition-colors p-2"
+              title="Subscription"
+            >
+              <Crown className="w-5 h-5" />
             </Link>
             <Link
               href="/dashboard/admin"

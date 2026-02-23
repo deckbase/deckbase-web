@@ -7,6 +7,7 @@ import dynamic from "next/dynamic";
 import { Suspense } from "react";
 import { usePathname } from "next/navigation";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { RevenueCatProvider } from "@/contexts/RevenueCatContext";
 
 // ✅ Load Meta Pixel only on the client (Prevents SSR issues)
 const MetaPixelNoSSR = dynamic(() => import("@/components/MetaPixelEvents"), {
@@ -41,10 +42,11 @@ export default function LayoutClient({ children }) {
 
   return (
     <AuthProvider>
-      {/* ✅ Ensure Meta Pixel loads only on the client */}
-      <Suspense fallback={null}>
-        <MetaPixelNoSSR />
-      </Suspense>
+      <RevenueCatProvider>
+        {/* ✅ Ensure Meta Pixel loads only on the client */}
+        <Suspense fallback={null}>
+          <MetaPixelNoSSR />
+        </Suspense>
 
       {!hideNavFooter && (
         <header className="w-full relative z-50">
@@ -67,6 +69,7 @@ export default function LayoutClient({ children }) {
           <Footer />
         </div>
       )}
+      </RevenueCatProvider>
     </AuthProvider>
   );
 }

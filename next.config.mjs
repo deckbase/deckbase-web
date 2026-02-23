@@ -4,6 +4,9 @@ dotenv.config();
 
 const nextConfig = {
   reactStrictMode: true,
+  env: {
+    NEXT_PUBLIC_REVENUECAT_WEB_API_KEY: process.env.NEXT_PUBLIC_REVENUECAT_WEB_API_KEY || "",
+  },
   images: {
     qualities: [25, 50, 75, 100],
     remotePatterns: [
