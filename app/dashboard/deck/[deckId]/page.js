@@ -19,7 +19,6 @@ import {
   Play,
   ChevronRight,
   ChevronLeft,
-  Swords,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
@@ -486,7 +485,7 @@ export default function DeckDetailPage() {
           Back to Decks
         </Link>
 
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-white mb-2">{deck.title}</h1>
             {deck.description && (
@@ -496,20 +495,13 @@ export default function DeckDetailPage() {
               {cards.length} {cards.length === 1 ? "card" : "cards"}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Link
               href={`/dashboard/deck/${deckId}/study`}
               className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
             >
               <Play className="w-5 h-5" />
               <span className="hidden sm:inline">Study</span>
-            </Link>
-            <Link
-              href={`/dashboard/deck/${deckId}/wizard`}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 rounded-lg transition-colors border border-purple-400/30"
-            >
-              <Swords className="w-5 h-5" />
-              <span className="hidden sm:inline">Wizard</span>
             </Link>
             <button
               onClick={() => setShowImportModal(true)}
@@ -520,10 +512,10 @@ export default function DeckDetailPage() {
             </button>
             <Link
               href={`/dashboard/deck/${deckId}/card/new`}
-              className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent/90 text-white rounded-lg transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent/90 text-white rounded-lg transition-colors font-medium"
             >
               <Plus className="w-5 h-5" />
-              <span className="hidden sm:inline">Add Card</span>
+              Add Card
             </Link>
           </div>
         </div>

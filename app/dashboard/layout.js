@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
 import Image from "next/image";
-import { LogOut, User, Home, Layers, LayoutTemplate, Settings } from "lucide-react";
+import { LogOut, User, Home, Layers, LayoutTemplate, Settings, Swords } from "lucide-react";
 
 export default function DashboardLayout({ children }) {
   const { user, userProfile, loading, logout } = useAuth();
@@ -72,6 +72,13 @@ export default function DashboardLayout({ children }) {
               title="Templates"
             >
               <LayoutTemplate className="w-5 h-5" />
+            </Link>
+            <Link
+              href="/dashboard/wizard"
+              className="text-purple-300/80 hover:text-purple-300 transition-colors p-2"
+              title="Wizard Mode"
+            >
+              <Swords className="w-5 h-5" />
             </Link>
             <Link
               href="/dashboard/admin"

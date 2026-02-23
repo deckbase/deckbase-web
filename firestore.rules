@@ -1,0 +1,39 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper: only the owning user
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    // User profile and app data
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+      match /inAppNotifications/{notificationId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // Flashcard sync: flashcards/{userId}/data/main/{decks|cards|templates}
+    match /flashcards/{userId} {
+      allow read, write: if isOwner(userId);
+      match /data/{dataDoc} {
+        allow read, write: if isOwner(userId);
+        match /{collection}/{docId} {
+          allow read, write: if isOwner(userId);
+        }
+      }
+    }
+
+    // Wizard (TCG decks, progress): wizard/{userId}/progress, wizard/{userId}/decks/...
+    match /wizard/{userId}/{document=**} {
+      allow read, write: if isOwner(userId);
+    }
+
+    match /free_trials/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+  }
+}

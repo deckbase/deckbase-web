@@ -214,6 +214,21 @@ export function generateBattleCards(cards, progress, count = 5) {
   const momentumScore = progress?.momentumScore ?? 50;
 
   const withMeta = cards.map((card) => {
+    if (card.isConcept) {
+      const mastery = 0;
+      return {
+        card,
+        rarity_tier: card.rarity_tier,
+        rarity_score: card.rarity_score ?? 50,
+        mastery,
+        atk: card.atk ?? 0,
+        def: card.def ?? 0,
+        prompt: card.prompt ?? card.title ?? "",
+        correctAnswers: card.correctAnswers ?? [],
+        options: card.options ?? null,
+        challengeType: card.challengeType ?? "text",
+      };
+    }
     const { rarity_tier, rarity_score } = deriveRarityFromCard(card);
     const mastery = getMasteryPercent(card);
     const atk = computeATK(rarity_score, momentumScore);

@@ -35,9 +35,9 @@ const getTemplatesCollection = (uid) =>
   collection(db, getUserDataPath(uid), "templates");
 const getMediaCollection = (uid) => collection(db, "users", uid, "media"); // Media stays in users collection
 
-// Wizard/TCG progress: users/{uid}/progress/wizard (single doc per user)
+// Wizard data lives under wizard/{uid}/... (separate from flashcards)
 const getWizardProgressRef = (uid) =>
-  doc(db, "users", uid, "progress", "wizard");
+  doc(db, "wizard", uid, "progress", "wizard");
 
 // ============== WIZARD PROGRESS (TCG) ==============
 
@@ -102,6 +102,313 @@ export const initWizardProgressIfNeeded = async (uid) => {
     momentumScore: 50,
     updatedAt: Date.now(),
   };
+};
+
+// ============== WIZARD DECKS (wizard/{uid}/decks — separate from flashcards) ==============
+
+const getWizardDecksCollection = (uid) =>
+  collection(db, "wizard", uid, "decks");
+
+/** Subcollection: wizard/{uid}/decks/{wizardDeckId}/entries — doc id = card_id or concept_{id}. */
+const getWizardDeckEntriesCollection = (uid, wizardDeckId) =>
+  collection(db, "wizard", uid, "decks", wizardDeckId, "entries");
+
+/** wizard/{uid}/concepts — AI-generated concept cards. */
+const getWizardConceptsCollection = (uid) =>
+  collection(db, "wizard", uid, "concepts");
+
+/** Legacy flat wizard_deck under flashcards. Used only for migration (read from old path, write to new). */
+const getLegacyWizardDeckCollection = (uid) =>
+  collection(db, getUserDataPath(uid), "wizard_deck");
+
+/**
+ * Migrate legacy wizard_deck into a new "Default" wizard deck. Call when user has no wizard_decks.
+ * Returns the created default deck id.
+ */
+async function migrateLegacyWizardDeck(uid) {
+  const legacyRef = getLegacyWizardDeckCollection(uid);
+  const q = query(legacyRef, orderBy("added_at", "desc"));
+  const snapshot = await getDocs(q);
+  if (snapshot.empty) return null;
+
+  const defaultDeckId = uuidv4();
+  const now = Timestamp.now();
+  await setDoc(doc(getWizardDecksCollection(uid), defaultDeckId), {
+    wizard_deck_id: defaultDeckId,
+    title: "Default",
+    description: "Migrated from your previous Wizard deck.",
+    created_at: now,
+    source_type: "imported",
+  });
+
+  for (const d of snapshot.docs) {
+    const data = d.data();
+    const entryRef = doc(getWizardDeckEntriesCollection(uid, defaultDeckId), d.id);
+    await setDoc(entryRef, {
+      card_id: d.id,
+      deck_id: data.deck_id ?? null,
+      added_at: data.added_at ?? now,
+      source_type: data.source_type ?? "import",
+    });
+  }
+  return defaultDeckId;
+}
+
+/** List wizard decks. If none exist, migrates legacy wizard_deck and returns at least one. */
+export const getWizardDecks = async (uid) => {
+  const col = getWizardDecksCollection(uid);
+  const snapshot = await getDocs(query(col, orderBy("created_at", "desc")));
+  let decks = snapshot.docs.map((d) => {
+    const data = d.data();
+    return {
+      wizardDeckId: d.id,
+      title: data.title ?? "Untitled",
+      description: data.description ?? "",
+      createdAt: data.created_at?.toMillis?.() ?? Date.now(),
+      sourceType: data.source_type ?? "created",
+    };
+  });
+
+  if (decks.length === 0) {
+    const defaultId = await migrateLegacyWizardDeck(uid);
+    if (defaultId) {
+      decks = [{ wizardDeckId: defaultId, title: "Default", description: "Migrated from your previous Wizard deck.", createdAt: Date.now(), sourceType: "imported" }];
+    }
+  }
+  return decks;
+};
+
+/** Get one wizard deck by id. */
+export const getWizardDeck = async (uid, wizardDeckId) => {
+  const ref = doc(getWizardDecksCollection(uid), wizardDeckId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return null;
+  const data = snap.data();
+  return {
+    wizardDeckId: snap.id,
+    title: data.title ?? "Untitled",
+    description: data.description ?? "",
+    createdAt: data.created_at?.toMillis?.() ?? Date.now(),
+    sourceType: data.source_type ?? "created",
+  };
+};
+
+/** Create a new wizard deck (empty). */
+export const createWizardDeck = async (uid, title, sourceType = "created", description = "") => {
+  const wizardDeckId = uuidv4();
+  const now = Timestamp.now();
+  const finalTitle = (title || "").trim() || "New Wizard Deck";
+  const finalDesc = (description || "").trim();
+  await setDoc(doc(getWizardDecksCollection(uid), wizardDeckId), {
+    wizard_deck_id: wizardDeckId,
+    title: finalTitle,
+    description: finalDesc,
+    created_at: now,
+    source_type: sourceType,
+  });
+  return { wizardDeckId, title: finalTitle, description: finalDesc, createdAt: now.toMillis(), sourceType };
+};
+
+/** Get entries for one wizard deck (card_id or concept_id, deck_id, added_at). */
+export const getWizardDeckEntries = async (uid, wizardDeckId) => {
+  const q = query(
+    getWizardDeckEntriesCollection(uid, wizardDeckId),
+    orderBy("added_at", "desc")
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((d) => {
+    const data = d.data();
+    const isConcept = d.id.startsWith("concept_");
+    return {
+      id: d.id,
+      cardId: isConcept ? null : d.id,
+      conceptId: isConcept ? (data.concept_id ?? d.id.replace(/^concept_/, "")) : null,
+      deckId: data.deck_id ?? null,
+      addedAt: data.added_at?.toMillis?.() ?? Date.now(),
+      sourceType: data.source_type ?? (isConcept ? "concept" : "import"),
+      title: data.title ?? null,
+      description: data.description ?? null,
+    };
+  });
+};
+
+/** Add a flashcard card to a wizard deck. Optional title/description (from import mapping). */
+export const addToWizardDeck = async (uid, wizardDeckId, cardId, deckId, sourceType = "import", extras = {}) => {
+  const ref = doc(getWizardDeckEntriesCollection(uid, wizardDeckId), cardId);
+  const docData = {
+    card_id: cardId,
+    deck_id: deckId,
+    added_at: Timestamp.now(),
+    source_type: sourceType,
+  };
+  if (extras.title != null) docData.title = extras.title;
+  if (extras.description != null) docData.description = extras.description;
+  await setDoc(ref, docData);
+};
+
+/** Add all cards from a flashcard deck into a wizard deck. */
+export const addDeckToWizardDeck = async (uid, wizardDeckId, flashcardDeckId) => {
+  const cards = await getCards(uid, flashcardDeckId);
+  for (const card of cards) {
+    await addToWizardDeck(uid, wizardDeckId, card.cardId, flashcardDeckId, "import");
+  }
+  return cards.length;
+};
+
+/** Create a new card for Wizard only (prompt/answer) and add it to the wizard deck. */
+export const createCardForWizard = async (uid, wizardDeckId, prompt, correctAnswer) => {
+  const cardId = uuidv4();
+  const promptBlockId = uuidv4();
+  const answerBlockId = uuidv4();
+  const now = Timestamp.now();
+  const blocksSnapshot = [
+    { blockId: promptBlockId, type: "header1", label: "Question", required: false },
+    { blockId: answerBlockId, type: "hiddenText", label: "Answer", required: false },
+  ];
+  const values = [
+    { blockId: promptBlockId, type: "text", text: (prompt || "").trim() || "New card" },
+    { blockId: answerBlockId, type: "text", text: (correctAnswer || "").trim() || "" },
+  ];
+  const card = {
+    card_id: cardId,
+    deck_id: null,
+    template_id: null,
+    blocks_snapshot: blocksSnapshot.map(transformBlockToFirestore),
+    values: values.map(transformValueToFirestore),
+    created_at: now,
+    updated_at: now,
+    is_deleted: false,
+    srs_state: 1,
+    srs_step: 0,
+    srs_due: Date.now(),
+    srs_last_review: null,
+    review_count: 0,
+  };
+  await setDoc(doc(getCardsCollection(uid), cardId), card);
+  await addToWizardDeck(uid, wizardDeckId, cardId, null, "created");
+  return transformCardFromFirestore(card);
+};
+
+/** Add a concept to a wizard deck. */
+export const addConceptToWizardDeck = async (uid, wizardDeckId, conceptId) => {
+  const entryId = `concept_${conceptId}`;
+  const ref = doc(getWizardDeckEntriesCollection(uid, wizardDeckId), entryId);
+  await setDoc(ref, {
+    concept_id: conceptId,
+    card_id: null,
+    deck_id: null,
+    added_at: Timestamp.now(),
+    source_type: "concept",
+  });
+};
+
+/** Remove a card from a wizard deck. */
+export const removeFromWizardDeck = async (uid, wizardDeckId, cardIdOrEntryId) => {
+  const ref = doc(getWizardDeckEntriesCollection(uid, wizardDeckId), cardIdOrEntryId);
+  await deleteDoc(ref);
+};
+
+/** Delete a wizard deck and all its entries. */
+export const deleteWizardDeck = async (uid, wizardDeckId) => {
+  const entriesCol = getWizardDeckEntriesCollection(uid, wizardDeckId);
+  const snapshot = await getDocs(entriesCol);
+  for (const d of snapshot.docs) {
+    await deleteDoc(doc(entriesCol, d.id));
+  }
+  await deleteDoc(doc(getWizardDecksCollection(uid), wizardDeckId));
+};
+
+/** Update a wizard deck's title and/or description. */
+export const updateWizardDeck = async (uid, wizardDeckId, updates) => {
+  const ref = doc(getWizardDecksCollection(uid), wizardDeckId);
+  const data = {};
+  if (updates.title != null) data.title = String(updates.title).trim() || "Untitled";
+  if (updates.description != null) data.description = String(updates.description).trim();
+  if (Object.keys(data).length === 0) return;
+  await updateDoc(ref, data);
+};
+
+/** Create an AI-generated concept (wizard/{uid}/concepts/{conceptId}). */
+export const createConcept = async (uid, data) => {
+  const conceptId = data.conceptId ?? uuidv4();
+  const now = Timestamp.now();
+  const docData = {
+    concept_id: conceptId,
+    title: data.title ?? "",
+    description: data.description ?? "",
+    rarity_score: data.rarityScore ?? 50,
+    rarity_tier: data.rarityTier ?? "common",
+    card_type: data.cardType ?? "MONSTER",
+    atk: data.atk ?? 0,
+    def: data.def ?? 0,
+    effect_text: data.effectText ?? "",
+    trigger_type: data.triggerType ?? "TYPED",
+    image_url: data.imageUrl ?? "",
+    ai_complexity_score: data.aiComplexityScore ?? null,
+    created_at: now,
+  };
+  await setDoc(doc(getWizardConceptsCollection(uid), conceptId), docData);
+  return { conceptId, ...docData, createdAt: now.toMillis() };
+};
+
+/** Get one concept by id. */
+export const getConcept = async (uid, conceptId) => {
+  const ref = doc(getWizardConceptsCollection(uid), conceptId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return null;
+  const d = snap.data();
+  return {
+    conceptId: snap.id,
+    title: d.title ?? "",
+    description: d.description ?? "",
+    rarityScore: d.rarity_score ?? 50,
+    rarityTier: d.rarity_tier ?? "common",
+    cardType: d.card_type ?? "MONSTER",
+    atk: d.atk ?? 0,
+    def: d.def ?? 0,
+    effectText: d.effect_text ?? "",
+    triggerType: d.trigger_type ?? "TYPED",
+    imageUrl: d.image_url ?? "",
+    aiComplexityScore: d.ai_complexity_score ?? null,
+    createdAt: d.created_at?.toMillis?.() ?? Date.now(),
+  };
+};
+
+/** Get full card/concept list for one wizard deck. Cards are flashcard objects; concepts are normalized for battle. */
+export const getWizardDeckCards = async (uid, wizardDeckId) => {
+  const entries = await getWizardDeckEntries(uid, wizardDeckId);
+  const result = [];
+  for (const entry of entries) {
+    if (entry.conceptId) {
+      const concept = await getConcept(uid, entry.conceptId);
+      if (!concept) continue;
+      result.push({
+        cardId: entry.id,
+        isConcept: true,
+        concept,
+        title: concept.title,
+        description: concept.description,
+        rarity_tier: concept.rarityTier,
+        rarity_score: concept.rarityScore,
+        atk: concept.atk,
+        def: concept.def,
+        effect_text: concept.effectText,
+        trigger_type: concept.triggerType,
+        prompt: concept.title,
+        correctAnswers: concept.description ? [concept.description] : [],
+        challengeType: concept.triggerType === "MCQ" ? "mcq" : "text",
+      });
+    } else if (entry.cardId) {
+      const card = await getCard(uid, entry.cardId);
+      if (card && !card.isDeleted) {
+        card.entryId = entry.id;
+        if (entry.title != null) card.title = entry.title;
+        if (entry.description != null) card.description = entry.description;
+        result.push(card);
+      }
+    }
+  }
+  return result;
 };
 
 // ============== DECK OPERATIONS ==============
@@ -247,8 +554,7 @@ export const getDueCards = async (uid, deckId, limitCount = 50) => {
     );
     return cards;
   } catch (error) {
-    console.error("Error querying due cards:", error);
-    // Fallback when Firestore requires a composite index.
+    // Fallback when composite index (deck_id, is_deleted, srs_due) is not yet created.
     const allCards = await getCards(uid, deckId);
     return allCards
       .filter((card) => card.srsDue == null || card.srsDue <= now)
