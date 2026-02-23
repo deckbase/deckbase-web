@@ -89,25 +89,35 @@ const TermsAndConditions = () => {
             independently.
           </p>
 
-          <h3 className="text-lg font-bold mt-6">
-            5. Subscription & Purchases (If Applicable)
+          <h3 id="refund-cancellation" className="text-lg font-bold mt-6 scroll-mt-24">
+            5. Subscriptions, Refunds, and Cancellation
           </h3>
-          <p className="text-base">
-            If Deckbase offers premium or paid features in the future, all
-            purchases will be processed securely through Google Play Billing. By
-            subscribing or purchasing, you agree to the terms provided by Google
-            Play, including:
+          <p className="text-base text-white/80">
+            We sell digital subscriptions and software only; no physical goods. Return policies do not apply.
           </p>
-          <ul className="list-disc list-inside text-base ml-4">
-            <li>Automatic renewals unless canceled before the renewal date</li>
-            <li>
-              No refunds after payment, except as required by law or Google Play
-              policy
-            </li>
-          </ul>
           <p className="text-base">
-            Details about pricing, billing, and cancellations will always be
-            available within the app.
+            Deckbase may offer premium or paid features. Purchases may be
+            processed via Google Play Billing (mobile), Stripe (web), or other
+            payment providers. By subscribing or purchasing, you agree to the
+            applicable platform terms and to the following.
+          </p>
+          <p className="text-base font-semibold mt-2">Billing & renewals</p>
+          <ul className="list-disc list-inside text-base ml-4">
+            <li>Subscriptions renew automatically unless you cancel before the renewal date.</li>
+            <li>You will be charged at the start of each billing period (e.g. monthly or annually) until you cancel.</li>
+          </ul>
+          <p className="text-base font-semibold mt-2">Cancellation policy</p>
+          <p className="text-base">
+            You may cancel your subscription at any time. Cancellation stops future charges; you keep access until the end of the current billing period. On web, you can manage and cancel via the link in your account or subscription email, or through the Stripe customer portal when available. On mobile, cancel via your device subscription settings (e.g. Google Play or App Store). We do not refund unused portions of a billing period after cancellation.
+          </p>
+          <p className="text-base font-semibold mt-2">Refund policy</p>
+          <p className="text-base">
+            We do not offer refunds for subscription fees already paid, except where required by law (e.g. consumer rights in your jurisdiction) or as stated by the platform (e.g. Google Play or App Store refund policies). If you believe you are entitled to a refund under applicable law, contact us at{" "}
+            <a href="mailto:support@deckbase.co" className="text-gray-400 underline hover:text-white">support@deckbase.co</a> with your account and transaction details.
+          </p>
+          <p className="text-base font-semibold mt-2">Disputes</p>
+          <p className="text-base">
+            For billing or payment disputes, please contact us first at support@deckbase.co. If we cannot resolve the issue, you may contact your payment provider (e.g. Stripe, Google Play, Apple) in accordance with their dispute process. Chargebacks or payment disputes may result in suspension of your account until resolved.
           </p>
 
           <h3 className="text-lg font-bold mt-6">6. Intellectual Property</h3>

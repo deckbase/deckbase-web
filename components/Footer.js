@@ -34,6 +34,15 @@ const Footer = () => {
               Scan. Build. Remember. Deckbase is an AI-powered platform that
               turns what you read into lasting knowledge with spaced repetition.
             </small>
+            <p className="text-white/80 text-sm mt-1">
+              Customer support:{" "}
+              <a
+                href="mailto:support@deckbase.co"
+                className="text-accent hover:underline"
+              >
+                support@deckbase.co
+              </a>
+            </p>
           </section>
           <section className="">
             <h2 className="text-silver pb-2">HELP</h2>
@@ -84,6 +93,12 @@ const Footer = () => {
                 className="cursor-pointer transition-all hover:text-silver"
               >
                 Privacy Policy
+              </Link>
+              <Link
+                href="/terms-and-conditions#refund-cancellation"
+                className="cursor-pointer transition-all hover:text-silver"
+              >
+                Refunds & Cancellation
               </Link>
             </div>
           </section>
