@@ -27,6 +27,7 @@ import {
   ChevronDown,
   Copy,
   Settings,
+  Volume2,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
@@ -37,6 +38,7 @@ import {
   BlockType,
 } from "@/utils/firestore";
 import { v4 as uuidv4 } from "uuid";
+import { ELEVENLABS_VOICES } from "@/lib/elevenlabs-voices";
 
 // Block type configurations
 const BLOCK_TYPE_CONFIG = {
@@ -82,6 +84,12 @@ const BLOCK_TYPE_CONFIG = {
     description: "Image block",
     category: "media",
   },
+  [BlockType.audio]: {
+    label: "Audio",
+    icon: Volume2,
+    description: "Audio / text-to-speech",
+    category: "media",
+  },
   [BlockType.divider]: {
     label: "Divider",
     icon: Minus,
@@ -114,9 +122,22 @@ const BLOCK_TYPE_CONFIG = {
   },
 };
 
-// Get block type number from string key
+// Get block type number from string key (for add block picker)
 const getBlockTypeValue = (key) => {
   return BlockType[key] ?? key;
+};
+
+// Normalize block.type (may be number from Firestore or string "7" / "audio") for config lookup
+const getBlockTypeForConfig = (type) => {
+  if (type == null) return null;
+  if (typeof type === "number") return type;
+  if (typeof type === "string") {
+    if (type === "example") return BlockType.quote;
+    // Picker uses string keys like "7" for audio; convert to number for BLOCK_TYPE_CONFIG lookup
+    if (/^\d+$/.test(type)) return Number(type);
+    return BlockType[type] ?? null;
+  }
+  return null;
 };
 
 export default function TemplateEditorPage() {
@@ -232,11 +253,12 @@ export default function TemplateEditorPage() {
   // Duplicate a block
   const duplicateBlock = (index) => {
     const originalBlock = blocks[index];
+    const typeNum = getBlockTypeForConfig(originalBlock.type);
     // Don't duplicate quiz blocks
     if (
-      originalBlock.type === BlockType.quizSingleSelect ||
-      originalBlock.type === BlockType.quizMultiSelect ||
-      originalBlock.type === BlockType.quizTextAnswer
+      typeNum === BlockType.quizSingleSelect ||
+      typeNum === BlockType.quizMultiSelect ||
+      typeNum === BlockType.quizTextAnswer
     ) {
       return;
     }
@@ -271,24 +293,27 @@ export default function TemplateEditorPage() {
 
   // Check if template has a quiz block
   const hasQuizBlock = () => {
-    return blocks.some(
-      (b) =>
-        b.type === BlockType.quizSingleSelect ||
-        b.type === BlockType.quizMultiSelect ||
-        b.type === BlockType.quizTextAnswer
-    );
+    return blocks.some((b) => {
+      const n = getBlockTypeForConfig(b.type);
+      return (
+        n === BlockType.quizSingleSelect ||
+        n === BlockType.quizMultiSelect ||
+        n === BlockType.quizTextAnswer
+      );
+    });
   };
 
-  // Check if a block type is text-based
+  // Check if a block type is text-based (accept number or string)
   const isTextBlock = (type) => {
-    return [
+    const n = getBlockTypeForConfig(type);
+    return n != null && [
       BlockType.header1,
       BlockType.header2,
       BlockType.header3,
       BlockType.text,
       BlockType.quote,
       BlockType.hiddenText,
-    ].includes(type);
+    ].includes(n);
   };
 
   // Get effective main/sub block IDs
@@ -438,35 +463,43 @@ export default function TemplateEditorPage() {
             <p className="text-white/50 mb-4">Add blocks to define your template structure</p>
           </div>
         ) : (
-          blocks.map((block, index) => (
-            <BlockCard
-              key={block.blockId}
-              block={block}
-              index={index}
-              totalCount={blocks.length}
-              isMainBlock={effectiveMainBlockId === block.blockId}
-              isSubBlock={effectiveSubBlockId === block.blockId}
-              canSetMainSub={isTextBlock(block.type)}
-              onSetAsMain={() => {
-                if (subBlockId === block.blockId) {
-                  setSubBlockId(mainBlockId);
-                }
-                setMainBlockId(block.blockId);
-              }}
-              onSetAsSub={() => {
-                if (mainBlockId === block.blockId) {
-                  setMainBlockId(subBlockId);
-                }
-                setSubBlockId(block.blockId);
-              }}
-              onMoveUp={() => moveBlockUp(index)}
-              onMoveDown={() => moveBlockDown(index)}
-              onDuplicate={() => duplicateBlock(index)}
-              onRemove={() => removeBlock(block.blockId)}
-              onLabelChange={(label) => updateBlockLabel(block.blockId, label)}
-              onConfigChange={(config) => updateBlockConfig(block.blockId, config)}
-            />
-          ))
+          blocks.map((block, index) => {
+            const otherTextBlocks = blocks.filter(
+              (b) =>
+                b.blockId !== block.blockId &&
+                isTextBlock(getBlockTypeForConfig(b.type))
+            );
+            return (
+              <BlockCard
+                key={block.blockId}
+                block={block}
+                index={index}
+                totalCount={blocks.length}
+                isMainBlock={effectiveMainBlockId === block.blockId}
+                isSubBlock={effectiveSubBlockId === block.blockId}
+                canSetMainSub={isTextBlock(block.type)}
+                otherTextBlocksForAudio={otherTextBlocks}
+                onSetAsMain={() => {
+                  if (subBlockId === block.blockId) {
+                    setSubBlockId(mainBlockId);
+                  }
+                  setMainBlockId(block.blockId);
+                }}
+                onSetAsSub={() => {
+                  if (mainBlockId === block.blockId) {
+                    setMainBlockId(subBlockId);
+                  }
+                  setSubBlockId(block.blockId);
+                }}
+                onMoveUp={() => moveBlockUp(index)}
+                onMoveDown={() => moveBlockDown(index)}
+                onDuplicate={() => duplicateBlock(index)}
+                onRemove={() => removeBlock(block.blockId)}
+                onLabelChange={(label) => updateBlockLabel(block.blockId, label)}
+                onConfigChange={(config) => updateBlockConfig(block.blockId, config)}
+              />
+            );
+          })
         )}
       </div>
 
@@ -608,6 +641,7 @@ function BlockCard({
   isMainBlock,
   isSubBlock,
   canSetMainSub,
+  otherTextBlocksForAudio = [],
   onSetAsMain,
   onSetAsSub,
   onMoveUp,
@@ -618,13 +652,16 @@ function BlockCard({
   onConfigChange,
 }) {
   const [showSettings, setShowSettings] = useState(false);
-  const config = BLOCK_TYPE_CONFIG[block.type] || {};
+  const typeForConfig = getBlockTypeForConfig(block.type);
+  const config = (typeForConfig != null && BLOCK_TYPE_CONFIG[typeForConfig]) || {};
   const Icon = config.icon || Type;
 
   const isQuizBlock =
-    block.type === BlockType.quizSingleSelect ||
-    block.type === BlockType.quizMultiSelect ||
-    block.type === BlockType.quizTextAnswer;
+    typeForConfig === BlockType.quizSingleSelect ||
+    typeForConfig === BlockType.quizMultiSelect ||
+    typeForConfig === BlockType.quizTextAnswer;
+
+  const isAudioBlock = typeForConfig === BlockType.audio;
 
   // Parse block config
   let blockConfig = {};
@@ -653,7 +690,7 @@ function BlockCard({
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <span className="text-white/40 text-xs uppercase tracking-wide">
-                {config.label}
+                {config.label || "Block"}
               </span>
               {isMainBlock && (
                 <span className="px-2 py-0.5 bg-accent/20 text-accent text-xs rounded-full">
@@ -775,15 +812,76 @@ function BlockCard({
               onConfigChange={onConfigChange}
             />
           )}
+
+          {/* Audio Block Settings: default AI voice + default source block */}
+          {isAudioBlock && (
+            <AudioBlockSettings
+              config={blockConfig}
+              onConfigChange={onConfigChange}
+              otherTextBlocks={otherTextBlocksForAudio ?? []}
+            />
+          )}
         </div>
       </div>
     </motion.div>
   );
 }
 
+// Audio Block Settings: default voice + default block to copy text from
+function AudioBlockSettings({ config, onConfigChange, otherTextBlocks = [] }) {
+  const defaultVoiceId = config.defaultVoiceId ?? "";
+  const defaultSourceBlockId = config.defaultSourceBlockId ?? "";
+
+  return (
+    <div className="mt-3 pt-3 border-t border-white/10 space-y-4">
+      <div>
+        <label className="text-white/70 text-sm block mb-2">Default AI voice (Generate with AI)</label>
+        <select
+          value={defaultVoiceId}
+          onChange={(e) =>
+            onConfigChange({ ...config, defaultVoiceId: e.target.value || null })
+          }
+          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50"
+        >
+          <option value="">— None (use first in list) —</option>
+          {ELEVENLABS_VOICES.map((v) => (
+            <option key={v.id} value={v.id}>
+              {v.label} ({v.group})
+            </option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className="text-white/70 text-sm block mb-2">Default block to copy text from</label>
+        <select
+          value={defaultSourceBlockId}
+          onChange={(e) =>
+            onConfigChange({
+              ...config,
+              defaultSourceBlockId: e.target.value || null,
+            })
+          }
+          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50"
+        >
+          <option value="">Main block (default)</option>
+          {otherTextBlocks.map((b) => (
+            <option key={b.blockId} value={b.blockId}>
+              {b.label || b.blockId}
+            </option>
+          ))}
+        </select>
+        <p className="text-white/40 text-xs mt-1">
+          Pre-fills the text area when editing a card
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // Quiz Block Settings Component
 function QuizBlockSettings({ block, config, onConfigChange }) {
   const optionCount = config.options?.length || 4;
+  const typeNum = getBlockTypeForConfig(block.type);
 
   const updateOptionCount = (delta) => {
     const newCount = Math.max(2, Math.min(6, optionCount + delta));
@@ -793,7 +891,7 @@ function QuizBlockSettings({ block, config, onConfigChange }) {
     onConfigChange({ ...config, options: newOptions });
   };
 
-  if (block.type === BlockType.quizTextAnswer) {
+  if (typeNum === BlockType.quizTextAnswer) {
     return (
       <div className="mt-3 pt-3 border-t border-white/10">
         <label className="flex items-center gap-2 text-white/70 text-sm">
@@ -838,7 +936,7 @@ function QuizBlockSettings({ block, config, onConfigChange }) {
             key={i}
             className="px-2 py-1 bg-white/5 border border-white/10 rounded text-white/50 text-xs"
           >
-            {block.type === BlockType.quizSingleSelect ? "○" : "☐"} Option {i + 1}
+            {typeNum === BlockType.quizSingleSelect ? "○" : "☐"} Option {i + 1}
           </span>
         ))}
       </div>

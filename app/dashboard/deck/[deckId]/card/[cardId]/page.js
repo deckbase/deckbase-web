@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   ArrowLeft,
@@ -10,21 +10,12 @@ import {
   GripVertical,
   Image as ImageIcon,
   Type,
-  Heading1,
-  Heading2,
-  Heading3,
-  FileText,
   Eye,
-  EyeOff,
-  Minus,
   Save,
   X,
   Upload,
-  Music,
-  CircleDot,
-  CheckSquare,
-  MessageSquare,
-  MoveVertical,
+  Sparkles,
+  Volume2,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -38,8 +29,11 @@ import {
   uploadAudio,
   getMedia,
   getTemplate,
+  BlockTypeNames,
 } from "@/utils/firestore";
 import { v4 as uuidv4 } from "uuid";
+import { BLOCK_TYPES, TEXT_BLOCK_TYPES } from "@/components/blocks/blockTypes";
+import { ELEVENLABS_VOICES, ELEVENLABS_SAMPLE_PHRASE } from "@/lib/elevenlabs-voices";
 
 const safeJsonParse = (value) => {
   if (!value || typeof value !== "string") return null;
@@ -50,63 +44,35 @@ const safeJsonParse = (value) => {
   }
 };
 
-// Block type configurations
-const BLOCK_TYPES = {
-  header1: {
-    label: "Header 1",
-    icon: Heading1,
-    placeholder: "Main heading...",
-  },
-  header2: { label: "Header 2", icon: Heading2, placeholder: "Subheading..." },
-  header3: {
-    label: "Header 3",
-    icon: Heading3,
-    placeholder: "Small heading...",
-  },
-  text: { label: "Text", icon: Type, placeholder: "Enter text..." },
-  example: {
-    label: "Example",
-    icon: FileText,
-    placeholder: "Example or quote...",
-  },
-  hiddenText: {
-    label: "Hidden Text",
-    icon: EyeOff,
-    placeholder: "Hidden until revealed...",
-  },
-  image: { label: "Image", icon: ImageIcon, placeholder: "Add images..." },
-  audio: { label: "Audio", icon: Music, placeholder: "Add audio files..." },
-  divider: { label: "Divider", icon: Minus, placeholder: "" },
-  space: { label: "Space", icon: MoveVertical, placeholder: "" },
-  quizSingleSelect: {
-    label: "Quiz (Single)",
-    icon: CircleDot,
-    placeholder: "",
-  },
-  quizMultiSelect: {
-    label: "Quiz (Multi)",
-    icon: CheckSquare,
-    placeholder: "",
-  },
-  quizTextAnswer: {
-    label: "Quiz (Text)",
-    icon: MessageSquare,
-    placeholder: "",
-  },
-};
+// Normalize block type so edit (Firestore/template numeric) and create (string) use same UI
+const normalizeBlockType = (type) =>
+  typeof type === "number" && BlockTypeNames[type] != null
+    ? BlockTypeNames[type]
+    : type;
 
-// Default template for new cards
+const normalizeBlocks = (blocks) =>
+  (blocks || []).map((b) => ({ ...b, type: normalizeBlockType(b.type) }));
+
+const normalizeValue = (v) =>
+  v && typeof v.type === "number" && BlockTypeNames[v.type] != null
+    ? { ...v, type: BlockTypeNames[v.type] }
+    : v;
+
+// Default template for new cards (same structure for "add card" and consistency with edit)
 const DEFAULT_BLOCKS = [
   { blockId: "front", type: "header1", label: "Front", required: true },
   { blockId: "back", type: "text", label: "Back", required: true },
+  { blockId: "audio", type: "audio", label: "Audio", required: false },
 ];
 
 export default function CardEditorPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const deckId = params.deckId;
   const cardId = params.cardId; // "new" for create, or existing cardId
+  const templateIdFromUrl = searchParams.get("templateId");
 
   const isNewCard = cardId === "new";
 
@@ -119,6 +85,8 @@ export default function CardEditorPage() {
   const [mediaCache, setMediaCache] = useState({});
   const [mainBlockId, setMainBlockId] = useState(null);
   const [subBlockId, setSubBlockId] = useState(null);
+  const [generatingAudioBlockId, setGeneratingAudioBlockId] = useState(null);
+  const [playingSampleVoiceId, setPlayingSampleVoiceId] = useState(null);
 
   // Fetch deck and card data
   useEffect(() => {
@@ -137,12 +105,13 @@ export default function CardEditorPage() {
       if (!isNewCard) {
         const cardData = await getCard(user.uid, cardId);
         if (cardData && !cardData.isDeleted) {
-          setBlocks(cardData.blocksSnapshot || DEFAULT_BLOCKS);
+          setBlocks(normalizeBlocks(cardData.blocksSnapshot) || DEFAULT_BLOCKS);
 
-          // Convert values array to object keyed by blockId
+          // Convert values array to object keyed by blockId (normalize type for consistency)
           const valuesObj = {};
           (cardData.values || []).forEach((v) => {
-            valuesObj[v.blockId] = v;
+            const norm = normalizeValue(v);
+            if (norm) valuesObj[norm.blockId] = norm;
           });
           setValues(valuesObj);
 
@@ -171,27 +140,61 @@ export default function CardEditorPage() {
           return;
         }
       } else {
-        // For new cards, use default main/sub (first two blocks)
-        setMainBlockId(DEFAULT_BLOCKS[0]?.blockId || null);
-        setSubBlockId(DEFAULT_BLOCKS[1]?.blockId || null);
-
-        // Initialize empty values for default blocks
-        const initialValues = {};
-        DEFAULT_BLOCKS.forEach((block) => {
-          initialValues[block.blockId] = {
-            blockId: block.blockId,
-            type: block.type,
-            text: "",
-          };
-        });
-        setValues(initialValues);
+        // For new cards: use template from URL if provided, else create from blank (DEFAULT_BLOCKS)
+        if (templateIdFromUrl) {
+          const template = await getTemplate(user.uid, templateIdFromUrl);
+          if (template?.blocks?.length) {
+            const templateBlocks = normalizeBlocks(template.blocks);
+            setBlocks(templateBlocks);
+            setMainBlockId(template.mainBlockId || templateBlocks[0]?.blockId || null);
+            setSubBlockId(template.subBlockId || templateBlocks[1]?.blockId || null);
+            const initialValues = {};
+            templateBlocks.forEach((block) => {
+              initialValues[block.blockId] = {
+                blockId: block.blockId,
+                type: block.type,
+                text: "",
+                mediaIds: block.type === "image" || block.type === "audio" ? [] : undefined,
+              };
+            });
+            setValues(initialValues);
+          } else {
+            // Template not found, fall back to blank
+            setMainBlockId(DEFAULT_BLOCKS[0]?.blockId || null);
+            setSubBlockId(DEFAULT_BLOCKS[1]?.blockId || null);
+            const initialValues = {};
+            DEFAULT_BLOCKS.forEach((block) => {
+              initialValues[block.blockId] = {
+                blockId: block.blockId,
+                type: block.type,
+                text: "",
+                mediaIds: block.type === "image" || block.type === "audio" ? [] : undefined,
+              };
+            });
+            setValues(initialValues);
+          }
+        } else {
+          // From blank: use default blocks
+          setMainBlockId(DEFAULT_BLOCKS[0]?.blockId || null);
+          setSubBlockId(DEFAULT_BLOCKS[1]?.blockId || null);
+          const initialValues = {};
+          DEFAULT_BLOCKS.forEach((block) => {
+            initialValues[block.blockId] = {
+              blockId: block.blockId,
+              type: block.type,
+              text: "",
+              mediaIds: block.type === "image" || block.type === "audio" ? [] : undefined,
+            };
+          });
+          setValues(initialValues);
+        }
       }
 
       setLoading(false);
     };
 
     fetchData();
-  }, [user, deckId, cardId, isNewCard, router]);
+  }, [user, deckId, cardId, isNewCard, templateIdFromUrl, router]);
 
   // Update a block's value
   const updateBlockValue = (blockId, text) => {
@@ -358,23 +361,138 @@ export default function CardEditorPage() {
     });
   };
 
+  // Play a short sample of the selected voice. Prefer cached sample from Firebase to reduce API cost.
+  const handlePlayVoiceSample = useCallback(async (voiceId) => {
+    if (!voiceId) return;
+    setPlayingSampleVoiceId(voiceId);
+    let objectUrl = null;
+    try {
+      const sampleRes = await fetch(
+        `/api/elevenlabs/voice-sample?voice_id=${encodeURIComponent(voiceId)}`
+      );
+      if (sampleRes.ok) {
+        const { url } = await sampleRes.json();
+        if (url) {
+          const audio = new Audio(url);
+          await new Promise((resolve, reject) => {
+            audio.onended = () => resolve();
+            audio.onerror = (e) => reject(e);
+            audio.play().catch(reject);
+          });
+          return;
+        }
+      }
+      // Fallback: generate sample via TTS API (e.g. when Firebase Admin not configured)
+      const res = await fetch("/api/elevenlabs/text-to-speech", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: ELEVENLABS_SAMPLE_PHRASE,
+          voice_id: voiceId,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || res.statusText || "Sample failed");
+      }
+      const blob = await res.blob();
+      objectUrl = URL.createObjectURL(blob);
+      const audio = new Audio(objectUrl);
+      await new Promise((resolve, reject) => {
+        audio.onended = () => resolve();
+        audio.onerror = (e) => reject(e);
+        audio.play().catch(reject);
+      });
+    } catch (error) {
+      console.error("Voice sample error:", error);
+      alert(error.message || "Could not play sample");
+    } finally {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      setPlayingSampleVoiceId(null);
+    }
+  }, []);
+
+  // Persist card (optionally redirect after save)
+  const persistCard = async (blocksToSave, valuesObj, options = {}) => {
+    const { redirect = false } = options;
+    const valuesArray = Object.values(valuesObj);
+    if (isNewCard) {
+      const created = await createCard(
+        user.uid,
+        deckId,
+        blocksToSave,
+        valuesArray,
+        templateIdFromUrl || null
+      );
+      if (redirect) {
+        router.push(`/dashboard/deck/${deckId}`);
+      } else {
+        router.replace(`/dashboard/deck/${deckId}/card/${created.cardId}`);
+      }
+    } else {
+      await updateCard(user.uid, cardId, deckId, valuesArray, blocksToSave);
+      if (redirect) router.push(`/dashboard/deck/${deckId}`);
+    }
+  };
+
+  // Generate audio with ElevenLabs AI and add to block
+  const handleGenerateAudio = async (blockId, text, voiceId) => {
+    if (!text?.trim()) return;
+    setGeneratingAudioBlockId(blockId);
+    try {
+      const res = await fetch("/api/elevenlabs/text-to-speech", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: text.trim(),
+          ...(voiceId && { voice_id: voiceId }),
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || res.statusText || "Generation failed");
+      }
+      const blob = await res.blob();
+      const file = new File([blob], "generated.mp3", { type: "audio/mpeg" });
+      const media = await uploadAudio(user.uid, file);
+      setMediaCache((prev) => ({ ...prev, [media.mediaId]: media }));
+      const newValues = (prev) => {
+        const currentValue = prev[blockId] || { blockId, type: "audio" };
+        const currentMediaIds = currentValue.mediaIds || [];
+        return {
+          ...prev,
+          [blockId]: {
+            ...currentValue,
+            mediaIds: [...currentMediaIds, media.mediaId],
+          },
+        };
+      };
+      setValues(newValues);
+      const valuesToSave = newValues(values);
+      setSaving(true);
+      try {
+        await persistCard(blocks, valuesToSave, { redirect: false });
+      } catch (saveErr) {
+        console.error("Auto-save after generate audio:", saveErr);
+      } finally {
+        setSaving(false);
+      }
+    } catch (error) {
+      console.error("Generate audio error:", error);
+      alert(error.message || "Failed to generate audio");
+    } finally {
+      setGeneratingAudioBlockId(null);
+    }
+  };
+
   // Save card
   const handleSave = async () => {
     setSaving(true);
-
     try {
-      // Convert values object to array
-      const valuesArray = Object.values(values);
-
-      if (isNewCard) {
-        await createCard(user.uid, deckId, blocks, valuesArray);
-      } else {
-        await updateCard(user.uid, cardId, deckId, valuesArray, blocks);
-      }
-
-      router.push(`/dashboard/deck/${deckId}`);
+      await persistCard(blocks, values, { redirect: true });
     } catch (error) {
       console.error("Error saving card:", error);
+    } finally {
       setSaving(false);
     }
   };
@@ -442,23 +560,49 @@ export default function CardEditorPage() {
 
       {/* Blocks */}
       <div className="space-y-4">
-        {blocks.map((block, index) => (
-          <BlockEditor
-            key={block.blockId}
-            block={block}
-            value={values[block.blockId]}
-            mediaCache={mediaCache}
-            isMainBlock={mainBlockId === block.blockId}
-            isSubBlock={subBlockId === block.blockId}
-            onValueChange={(text) => updateBlockValue(block.blockId, text)}
-            onRemove={() => removeBlock(block.blockId)}
-            onImageUpload={(files) => handleImageUpload(block.blockId, files)}
-            onImageRemove={(mediaId) => removeImage(block.blockId, mediaId)}
-            onAudioUpload={(files) => handleAudioUpload(block.blockId, files)}
-            onAudioRemove={(mediaId) => removeAudio(block.blockId, mediaId)}
-            onConfigChange={(config) => updateBlockConfig(block.blockId, config)}
-          />
-        ))}
+        {blocks.map((block, index) => {
+          const blockTypeNum =
+            typeof block.type === "number"
+              ? block.type
+              : /^\d+$/.test(block.type)
+                ? Number(block.type)
+                : null;
+          const isAudio =
+            blockTypeNum !== null
+              ? BlockTypeNames[blockTypeNum] === "audio"
+              : block.type === "audio";
+          const audioConfig = isAudio ? safeJsonParse(block.configJson) || {} : {};
+          const defaultVoiceId = audioConfig.defaultVoiceId || undefined;
+          const defaultSourceBlockId =
+            audioConfig.defaultSourceBlockId || (isAudio ? mainBlockId ?? undefined : undefined);
+
+          return (
+            <BlockEditor
+              key={block.blockId}
+              block={block}
+              value={values[block.blockId]}
+              allBlocks={blocks}
+              allValues={values}
+              mediaCache={mediaCache}
+              isMainBlock={mainBlockId === block.blockId}
+              isSubBlock={subBlockId === block.blockId}
+              onValueChange={(text) => updateBlockValue(block.blockId, text)}
+              onRemove={() => removeBlock(block.blockId)}
+              onImageUpload={(files) => handleImageUpload(block.blockId, files)}
+              onImageRemove={(mediaId) => removeImage(block.blockId, mediaId)}
+              onAudioUpload={(files) => handleAudioUpload(block.blockId, files)}
+              onAudioRemove={(mediaId) => removeAudio(block.blockId, mediaId)}
+              onGenerateAudio={(text, voiceId) => handleGenerateAudio(block.blockId, text, voiceId)}
+              onPlayVoiceSample={handlePlayVoiceSample}
+              playingSampleVoiceId={playingSampleVoiceId}
+              voiceOptions={ELEVENLABS_VOICES}
+              defaultVoiceId={defaultVoiceId}
+              defaultSourceBlockId={defaultSourceBlockId}
+              generatingAudio={generatingAudioBlockId === block.blockId}
+              onConfigChange={(config) => updateBlockConfig(block.blockId, config)}
+            />
+          );
+        })}
       </div>
 
       {/* Add Block Button */}
@@ -512,6 +656,8 @@ export default function CardEditorPage() {
 function BlockEditor({
   block,
   value,
+  allBlocks,
+  allValues,
   mediaCache,
   isMainBlock,
   isSubBlock,
@@ -521,13 +667,38 @@ function BlockEditor({
   onImageRemove,
   onAudioUpload,
   onAudioRemove,
+  onGenerateAudio,
+  onPlayVoiceSample,
+  generatingAudio,
+  playingSampleVoiceId,
   onConfigChange,
+  voiceOptions = [],
+  defaultVoiceId,
+  defaultSourceBlockId,
 }) {
-  const config = BLOCK_TYPES[block.type] || {};
+  // Normalize so numeric (e.g. 7) or string "7" from templates matches "audio", etc.
+  const blockType =
+    typeof block.type === "number" && BlockTypeNames[block.type] != null
+      ? BlockTypeNames[block.type]
+      : typeof block.type === "string" && /^\d+$/.test(block.type)
+        ? (BlockTypeNames[Number(block.type)] ?? block.type)
+        : block.type;
+  const config = BLOCK_TYPES[blockType] || {};
   const Icon = config.icon || Type;
+  const [generateAudioText, setGenerateAudioText] = useState(() => {
+    if (!defaultSourceBlockId || !allValues) return "";
+    const t = allValues[defaultSourceBlockId]?.text;
+    return typeof t === "string" && t.trim() ? t.trim() : "";
+  });
+  const [selectedVoiceId, setSelectedVoiceId] = useState(
+    () =>
+      (defaultVoiceId && voiceOptions.some((v) => v.id === defaultVoiceId) ? defaultVoiceId : null) ||
+      voiceOptions[0]?.id ||
+      ""
+  );
 
   const renderInput = () => {
-    switch (block.type) {
+    switch (blockType) {
       case "header1":
         return (
           <input
@@ -661,19 +832,127 @@ function BlockEditor({
                 })}
               </div>
             )}
-            <label className="flex items-center justify-center gap-2 py-4 border-2 border-dashed border-white/20 hover:border-accent/50 rounded-lg cursor-pointer transition-colors">
-              <Upload className="w-5 h-5 text-white/50" />
-              <span className="text-white/50 text-sm">
-                Click to upload audio
-              </span>
-              <input
-                type="file"
-                accept="audio/*"
-                multiple
-                onChange={(e) => onAudioUpload(e.target.files)}
-                className="hidden"
-              />
-            </label>
+            <div className="space-y-3">
+              <label className="flex items-center justify-center gap-2 py-4 border-2 border-dashed border-white/20 hover:border-accent/50 rounded-lg cursor-pointer transition-colors">
+                <Upload className="w-5 h-5 text-white/50" />
+                <span className="text-white/50 text-sm">
+                  Click to upload audio
+                </span>
+                <input
+                  type="file"
+                  accept="audio/*"
+                  multiple
+                  onChange={(e) => onAudioUpload(e.target.files)}
+                  className="hidden"
+                />
+              </label>
+                  {onGenerateAudio && (
+                <div className="rounded-lg border border-white/10 bg-white/5 p-3 space-y-2">
+                  <span className="text-white/60 text-xs font-medium uppercase tracking-wide flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    Generate with AI (ElevenLabs)
+                  </span>
+                  {/* Voice selection + sample playback */}
+                  {voiceOptions.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-white/50 text-xs">Voice:</span>
+                      <select
+                        value={selectedVoiceId}
+                        onChange={(e) => setSelectedVoiceId(e.target.value)}
+                        className="bg-black/30 border border-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-accent/50"
+                      >
+                        {voiceOptions.map((v) => (
+                          <option key={v.id} value={v.id}>
+                            {v.label}
+                          </option>
+                        ))}
+                      </select>
+                      {onPlayVoiceSample && (
+                        <button
+                          type="button"
+                          onClick={() => onPlayVoiceSample(selectedVoiceId)}
+                          disabled={!selectedVoiceId || playingSampleVoiceId !== null}
+                          title="Play voice sample"
+                          className="flex items-center gap-1 px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-white/80 text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {playingSampleVoiceId === selectedVoiceId ? (
+                            <>
+                              <span className="animate-spin rounded-full h-3 w-3 border-2 border-white/50 border-t-transparent" />
+                              Playing...
+                            </>
+                          ) : (
+                            <>
+                              <Volume2 className="w-3.5 h-3.5" />
+                              Play sample
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  {/* Copy text from other blocks */}
+                  {allBlocks && allValues && (() => {
+                    const norm = (t) =>
+                      typeof t === "number" && BlockTypeNames[t] != null
+                        ? BlockTypeNames[t]
+                        : t;
+                    const otherBlocks = (allBlocks || []).filter(
+                      (b) =>
+                        b.blockId !== block.blockId && TEXT_BLOCK_TYPES.has(norm(b.type))
+                    );
+                    if (otherBlocks.length === 0) return null;
+                    return (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-white/50 text-xs">Copy from:</span>
+                        <select
+                          value=""
+                          onChange={(e) => {
+                            const bid = e.target.value;
+                            if (!bid) return;
+                            e.target.value = "";
+                            const t = (allValues[bid]?.text || "").trim();
+                            if (t) setGenerateAudioText((prev) => (prev ? prev + "\n\n" + t : t));
+                          }}
+                          className="bg-black/30 border border-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-accent/50"
+                        >
+                          <option value="">— Choose block —</option>
+                          {otherBlocks.map((b) => (
+                            <option key={b.blockId} value={b.blockId}>
+                              {b.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    );
+                  })()}
+                  <textarea
+                    value={generateAudioText}
+                    onChange={(e) => setGenerateAudioText(e.target.value)}
+                    placeholder="Enter text to convert to speech, or copy from a block above..."
+                    rows={3}
+                    className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-accent/50 resize-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => onGenerateAudio(generateAudioText, selectedVoiceId)}
+                    disabled={generatingAudio || !generateAudioText.trim()}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingAudio ? (
+                      <>
+                        <span className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-white border-t-transparent" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-3.5 h-3.5" />
+                        Generate audio
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         );
       }

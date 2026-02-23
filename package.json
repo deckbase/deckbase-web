@@ -10,6 +10,7 @@
     "scrape:nic-english": "node scripts/scrape-nic-english.js"
   },
   "dependencies": {
+    "firebase-admin": "^12.0.0",
     "@anthropic-ai/sdk": "^0.78.0",
     "@fal-ai/client": "^1.9.3",
     "@floating-ui/utils": "^0.2.9",

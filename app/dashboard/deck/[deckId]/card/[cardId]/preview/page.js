@@ -3,11 +3,11 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeft, Edit2, Trash2, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Edit2, Trash2 } from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
 import { getDeck, getCard, getMedia, deleteCard } from "@/utils/firestore";
+import BlockDisplay from "@/components/blocks/BlockDisplay";
 
 export default function CardPreviewPage() {
   const params = useParams();
@@ -83,170 +83,6 @@ export default function CardPreviewPage() {
     return card?.values?.find((v) => v.blockId === blockId);
   };
 
-  // Render a block based on its type
-  const renderBlock = (block, index) => {
-    const value = getValue(block.blockId);
-    if (!value) return null;
-
-    switch (block.type) {
-      case "header1":
-        return (
-          <motion.h1
-            key={block.blockId}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05 }}
-            className="text-3xl font-bold text-white mb-4"
-          >
-            {value.text}
-          </motion.h1>
-        );
-
-      case "header2":
-        return (
-          <motion.h2
-            key={block.blockId}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05 }}
-            className="text-2xl font-semibold text-white mb-3"
-          >
-            {value.text}
-          </motion.h2>
-        );
-
-      case "header3":
-        return (
-          <motion.h3
-            key={block.blockId}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05 }}
-            className="text-xl font-medium text-white mb-2"
-          >
-            {value.text}
-          </motion.h3>
-        );
-
-      case "text":
-        return (
-          <motion.p
-            key={block.blockId}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05 }}
-            className="text-white/80 mb-4 whitespace-pre-wrap"
-          >
-            {value.text}
-          </motion.p>
-        );
-
-      case "example":
-        return (
-          <motion.blockquote
-            key={block.blockId}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05 }}
-            className="border-l-4 border-accent/50 pl-4 text-white/70 italic mb-4"
-          >
-            {value.text}
-          </motion.blockquote>
-        );
-
-      case "hiddenText":
-        const isRevealed = revealedBlocks[block.blockId];
-        return (
-          <motion.div
-            key={block.blockId}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05 }}
-            className="mb-4"
-          >
-            <button
-              onClick={() => toggleReveal(block.blockId)}
-              className="flex items-center gap-2 text-accent hover:text-accent/80 transition-colors mb-2"
-            >
-              {isRevealed ? (
-                <>
-                  <EyeOff className="w-4 h-4" />
-                  <span className="text-sm">Hide</span>
-                </>
-              ) : (
-                <>
-                  <Eye className="w-4 h-4" />
-                  <span className="text-sm">Reveal</span>
-                </>
-              )}
-            </button>
-            <div
-              className={`transition-all duration-300 ${
-                isRevealed
-                  ? "opacity-100 max-h-[500px]"
-                  : "opacity-0 max-h-0 overflow-hidden"
-              }`}
-            >
-              <p className="text-white/80 bg-accent/10 p-3 rounded-lg whitespace-pre-wrap">
-                {value.text}
-              </p>
-            </div>
-          </motion.div>
-        );
-
-      case "image":
-        if (!value.mediaIds || value.mediaIds.length === 0) return null;
-        return (
-          <motion.div
-            key={block.blockId}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05 }}
-            className="grid grid-cols-2 gap-2 mb-4"
-          >
-            {value.mediaIds.map((mediaId) => {
-              const media = mediaCache[mediaId];
-              if (!media?.downloadUrl) return null;
-              return (
-                <div key={mediaId} className="relative aspect-video">
-                  <Image
-                    src={media.downloadUrl}
-                    alt=""
-                    fill
-                    className="object-cover rounded-lg"
-                  />
-                </div>
-              );
-            })}
-          </motion.div>
-        );
-
-      case "divider":
-        return (
-          <motion.hr
-            key={block.blockId}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: index * 0.05 }}
-            className="border-white/20 my-6"
-          />
-        );
-
-      default:
-        return value.text ? (
-          <motion.p
-            key={block.blockId}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05 }}
-            className="text-white/80 mb-4"
-          >
-            {value.text}
-          </motion.p>
-        ) : null;
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -292,7 +128,22 @@ export default function CardPreviewPage() {
 
       {/* Card Preview */}
       <div className="bg-white/5 border border-white/10 rounded-2xl p-6 sm:p-8">
-        {card?.blocksSnapshot?.map((block, index) => renderBlock(block, index))}
+        {card?.blocksSnapshot?.map((block, index) => (
+          <motion.div
+            key={block.blockId}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.05 }}
+          >
+            <BlockDisplay
+              block={block}
+              value={getValue(block.blockId)}
+              mediaCache={mediaCache}
+              revealedBlocks={revealedBlocks}
+              onToggleReveal={toggleReveal}
+            />
+          </motion.div>
+        ))}
       </div>
 
       {/* Card Metadata */}

@@ -473,6 +473,8 @@ export const updateDeck = async (uid, deckId, updates) => {
   if (updates.title !== undefined) updateData.title = updates.title;
   if (updates.description !== undefined)
     updateData.description = updates.description;
+  if (updates.defaultTemplateId !== undefined)
+    updateData.default_template_id = updates.defaultTemplateId || null;
   if (updates.isDeleted !== undefined)
     updateData.is_deleted = updates.isDeleted;
 
@@ -797,8 +799,22 @@ export const uploadAudio = async (uid, file) => {
   const storagePath = `users/${uid}/media/${mediaId}.${extension}`;
   const storageRef = ref(storage, storagePath);
 
-  await uploadBytes(storageRef, file);
-  const downloadUrl = await getDownloadURL(storageRef);
+  try {
+    await uploadBytes(storageRef, file);
+  } catch (e) {
+    console.error("uploadAudio: Storage upload failed", e);
+    throw new Error(
+      `Storage upload failed (path: ${storagePath}). Deploy storage rules and ensure you're signed in. ${e?.message || e}`
+    );
+  }
+
+  let downloadUrl;
+  try {
+    downloadUrl = await getDownloadURL(storageRef);
+  } catch (e) {
+    console.error("uploadAudio: getDownloadURL failed", e);
+    throw new Error(`Storage getDownloadURL failed. ${e?.message || e}`);
+  }
 
   const now = Timestamp.now();
   const media = {
@@ -813,7 +829,14 @@ export const uploadAudio = async (uid, file) => {
     is_deleted: false,
   };
 
-  await setDoc(doc(getMediaCollection(uid), mediaId), media);
+  try {
+    await setDoc(doc(getMediaCollection(uid), mediaId), media);
+  } catch (e) {
+    console.error("uploadAudio: Firestore setDoc failed", e);
+    throw new Error(
+      `Firestore media doc failed (users/${uid}/media). Deploy firestore rules. ${e?.message || e}`
+    );
+  }
   return transformMediaFromFirestore(media);
 };
 
@@ -1581,6 +1604,7 @@ const transformDeckFromFirestore = (data) => {
     deckId: data.deck_id,
     title: data.title || "Untitled",
     description: data.description || "",
+    defaultTemplateId: data.default_template_id || null,
     createdAt,
     updatedAt,
     isDeleted: data.is_deleted || false,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -19,16 +19,21 @@ import {
   Play,
   ChevronRight,
   ChevronLeft,
+  Sparkles,
+  Copy,
+  Settings,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   getDeck,
+  updateDeck,
   subscribeToCards,
   deleteCard,
   createCard,
   getTemplates,
   createDefaultTemplates,
+  uploadAudio,
 } from "@/utils/firestore";
 import {
   parseFile,
@@ -80,6 +85,61 @@ export default function DeckDetailPage() {
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
   const [importedCount, setImportedCount] = useState(0);
+
+  // Add card with AI
+  const [showAddWithAIModal, setShowAddWithAIModal] = useState(false);
+  const [addWithAITemplateId, setAddWithAITemplateId] = useState("");
+  const [addWithAICount, setAddWithAICount] = useState(1);
+  const [addWithAIGenerating, setAddWithAIGenerating] = useState(false);
+  const [addWithAIProgress, setAddWithAIProgress] = useState(null);
+  const [addWithAIError, setAddWithAIError] = useState(null);
+  const [addWithAIDevPrompt, setAddWithAIDevPrompt] = useState(null);
+  const [showDevPrompt, setShowDevPrompt] = useState(false);
+  const [addWithAISuccess, setAddWithAISuccess] = useState(null);
+  const [addWithAIGeneratedCards, setAddWithAIGeneratedCards] = useState([]);
+  const [addWithAISelectedIndices, setAddWithAISelectedIndices] = useState(new Set());
+
+  // Add card (normal): template vs blank
+  const [showAddCardModal, setShowAddCardModal] = useState(false);
+  const [addCardMode, setAddCardMode] = useState("template"); // "template" | "blank"
+  const [addCardTemplateId, setAddCardTemplateId] = useState("");
+
+  // Most-used template in this deck (when no explicit default is set)
+  const mostUsedTemplateId = useMemo(() => {
+    if (!cards.length) return null;
+    const counts = {};
+    for (const card of cards) {
+      const id = card.templateId ?? null;
+      if (id != null) counts[id] = (counts[id] || 0) + 1;
+    }
+    const entries = Object.entries(counts);
+    if (entries.length === 0) return null;
+    entries.sort((a, b) => b[1] - a[1]);
+    return entries[0][0];
+  }, [cards]);
+
+  // Effective default: explicit deck default, else most used in deck, else first template
+  const effectiveDefaultTemplateId =
+    (deck?.defaultTemplateId && templates.some((t) => t.templateId === deck.defaultTemplateId)
+      ? deck.defaultTemplateId
+      : null) ||
+    (mostUsedTemplateId && templates.some((t) => t.templateId === mostUsedTemplateId)
+      ? mostUsedTemplateId
+      : null) ||
+    templates[0]?.templateId ||
+    null;
+
+  useEffect(() => {
+    if (showAddWithAIModal && templates.length > 0 && !addWithAITemplateId && effectiveDefaultTemplateId) {
+      setAddWithAITemplateId(effectiveDefaultTemplateId);
+    }
+  }, [showAddWithAIModal, templates, addWithAITemplateId, effectiveDefaultTemplateId]);
+
+  useEffect(() => {
+    if (showAddCardModal && templates.length > 0 && !addCardTemplateId && effectiveDefaultTemplateId) {
+      setAddCardTemplateId(effectiveDefaultTemplateId);
+    }
+  }, [showAddCardModal, templates, addCardTemplateId, effectiveDefaultTemplateId]);
 
   useEffect(() => {
     if (!user || !deckId) return;
@@ -424,6 +484,191 @@ export default function DeckDetailPage() {
     setImportedCount(0);
   };
 
+  // Add card with AI: build context, call API 1–5 times, create cards, redirect
+  const handleAddCardWithAI = async () => {
+    if (!user || !deck || !deckId) return;
+    const template = templates.find((t) => t.templateId === addWithAITemplateId) || templates[0];
+    if (!template?.blocks?.length) {
+      setAddWithAIError("Select a template with at least one block.");
+      return;
+    }
+    const count = Math.min(5, Math.max(1, Number(addWithAICount) || 1));
+    setAddWithAIError(null);
+      setAddWithAIDevPrompt(null);
+      setAddWithAISuccess(null);
+      setAddWithAIGenerating(true);
+    const exampleCards = cards.slice(0, 5).map((card) => {
+      const o = {};
+      (card.values || []).forEach((v) => {
+        if (v.text != null && String(v.text).trim()) o[v.blockId] = String(v.text).trim();
+      });
+      return o;
+    });
+    const templateBlocks = template.blocks.map((b) => ({
+      blockId: b.blockId,
+      type: b.type,
+      label: b.label || "",
+    }));
+    const blocksSnapshot = template.blocks.map((b) => ({
+      blockId: b.blockId,
+      type: b.type,
+      label: b.label || "",
+      required: b.required || false,
+      configJson: b.configJson,
+    }));
+    try {
+      setAddWithAIProgress(count > 1 ? `Generating ${count} different cards...` : "Generating...");
+      const res = await fetch("/api/cards/generate-with-ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          deckTitle: deck.title || "",
+          deckDescription: deck.description || "",
+          templateBlocks,
+          exampleCards,
+          count,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || data.message || "Generation failed");
+      }
+      if (data._devPrompt) {
+        setAddWithAIDevPrompt(data._devPrompt);
+        setShowDevPrompt(true);
+      }
+      const rawCards = data.cards ?? (data.values ? [data.values] : []);
+      const generatedCards = rawCards.map((values) => ({
+        blocksSnapshot,
+        values: (values || []).map((v) => ({
+          ...v,
+          ...(v.type === "audio" ? { mediaIds: [] } : {}),
+        })),
+        templateId: template.templateId,
+      }));
+      setAddWithAIProgress(null);
+      setAddWithAIGeneratedCards(generatedCards);
+      setAddWithAISelectedIndices(new Set(generatedCards.map((_, i) => i)));
+    } catch (err) {
+      console.error("Add card with AI:", err);
+      setAddWithAIError(err.message || "Failed to generate card");
+    } finally {
+      setAddWithAIGenerating(false);
+      setAddWithAIProgress(null);
+    }
+  };
+
+  const closeAddWithAIModal = () => {
+    setShowAddWithAIModal(false);
+    setAddWithAITemplateId("");
+    setAddWithAIProgress(null);
+    setAddWithAIDevPrompt(null);
+    setAddWithAISuccess(null);
+    setAddWithAIGeneratedCards([]);
+    setAddWithAISelectedIndices(new Set());
+  };
+
+  const handleCopyPrompt = () => {
+    if (!addWithAIDevPrompt) return;
+    const text = `System:\n\n${addWithAIDevPrompt.system}\n\nUser:\n\n${addWithAIDevPrompt.user}`;
+    navigator.clipboard.writeText(text).catch(() => {});
+  };
+
+  const getGeneratedCardPreview = (values) => {
+    const first = (values || []).find((v) => v.text != null && String(v.text).trim());
+    return first ? String(first.text).trim().substring(0, 80) : "Empty card";
+  };
+
+  const handleAddSelectedCardsToDeck = async () => {
+    if (!user || !deckId || addWithAIGeneratedCards.length === 0) return;
+    const indices = Array.from(addWithAISelectedIndices).sort((a, b) => a - b);
+    let lastCardId = null;
+    const total = indices.length;
+
+    const isAudioBlock = (b) => b.type === "audio" || b.type === 7 || b.type === "7";
+
+    for (let idx = 0; idx < indices.length; idx++) {
+      const i = indices[idx];
+      const item = addWithAIGeneratedCards[i];
+      if (!item) continue;
+
+      const cardNum = total > 1 ? `Card ${idx + 1} of ${total}: ` : "";
+      setAddWithAIProgress(`${cardNum}Generating card…`);
+
+      const values = await (async () => {
+        const list = [...(item.values || [])];
+        const audioBlock = item.blocksSnapshot?.find(isAudioBlock);
+
+        // If template has audio block: get main block text and generate audio.
+        if (audioBlock) {
+          const templateForCard = templates.find((t) => t.templateId === item.templateId);
+          const mainBlockId = templateForCard?.mainBlockId || null;
+          let mainText = "";
+          if (mainBlockId) {
+            const mainVal = list.find((x) => x.blockId === mainBlockId);
+            mainText = (mainVal?.text != null ? String(mainVal.text) : "").trim();
+          }
+          if (!mainText) {
+            const firstWithText = list.find((x) => String(x?.text || "").trim());
+            mainText = firstWithText ? String(firstWithText.text).trim() : "";
+          }
+          if (mainText) {
+            setAddWithAIProgress(`${cardNum}Generating audio…`);
+            let defaultVoiceId = null;
+            if (audioBlock.configJson) {
+              try {
+                const config = JSON.parse(audioBlock.configJson);
+                defaultVoiceId = config.defaultVoiceId || null;
+              } catch {}
+            }
+            try {
+              const res = await fetch("/api/elevenlabs/text-to-speech", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  text: mainText,
+                  ...(defaultVoiceId && { voice_id: defaultVoiceId }),
+                }),
+              });
+              if (res.ok) {
+                const blob = await res.blob();
+                const file = new File([blob], "ai-generated.mp3", { type: "audio/mpeg" });
+                const media = await uploadAudio(user.uid, file);
+                const audioIdx = list.findIndex((v) => v.blockId === audioBlock.blockId);
+                if (audioIdx >= 0) {
+                  list[audioIdx] = { ...list[audioIdx], mediaIds: [media.mediaId] };
+                } else {
+                  list.push({
+                    blockId: audioBlock.blockId,
+                    type: "audio",
+                    text: "",
+                    mediaIds: [media.mediaId],
+                  });
+                }
+              }
+            } catch (_) {}
+          }
+        }
+        return list;
+      })();
+
+      setAddWithAIProgress(total > 1 ? `Card ${idx + 1} of ${total}: Saving…` : "Saving card…");
+      const created = await createCard(
+        user.uid,
+        deckId,
+        item.blocksSnapshot,
+        values,
+        item.templateId
+      );
+      lastCardId = created?.cardId ?? lastCardId;
+    }
+
+    setAddWithAIProgress(null);
+    setAddWithAIGeneratedCards([]);
+    setAddWithAISelectedIndices(new Set());
+    setAddWithAISuccess({ count: indices.length, lastCardId });
+  };
+
   // Get preview text from card values using template's main/sub blocks
   const getCardPreview = (card) => {
     if (!card.values || card.values.length === 0) return { main: "Empty card", sub: null };
@@ -494,6 +739,41 @@ export default function DeckDetailPage() {
             <p className="text-white/40 text-sm mt-2">
               {cards.length} {cards.length === 1 ? "card" : "cards"}
             </p>
+            {/* Default template setting */}
+            {templates.length > 0 && (
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <Settings className="w-4 h-4 text-white/40" />
+                <label className="text-white/60 text-sm">Default template:</label>
+                <select
+                  value={
+                    deck.defaultTemplateId &&
+                    templates.some((t) => t.templateId === deck.defaultTemplateId)
+                      ? deck.defaultTemplateId
+                      : ""
+                  }
+                  onChange={async (e) => {
+                    const templateId = e.target.value || null;
+                    try {
+                      await updateDeck(user.uid, deckId, { defaultTemplateId: templateId });
+                      setDeck((prev) => (prev ? { ...prev, defaultTemplateId: templateId } : prev));
+                    } catch (err) {
+                      console.error("Failed to update default template:", err);
+                    }
+                  }}
+                  className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-accent/50"
+                >
+                  <option value="">Most used in deck</option>
+                  {templates.map((t) => (
+                    <option key={t.templateId} value={t.templateId}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-white/40 text-xs">
+                  Used when adding cards or generating with AI
+                </span>
+              </div>
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Link
@@ -510,13 +790,35 @@ export default function DeckDetailPage() {
               <Upload className="w-5 h-5" />
               <span className="hidden sm:inline">Import</span>
             </button>
-            <Link
-              href={`/dashboard/deck/${deckId}/card/new`}
+            <button
+              type="button"
+              disabled={cards.length === 0}
+              title={cards.length === 0 ? "Add at least one card manually so AI can use them as examples" : undefined}
+              onClick={() => {
+                setAddWithAIError(null);
+                setAddWithAIDevPrompt(null);
+                setAddWithAISuccess(null);
+                setAddWithAIGeneratedCards([]);
+                setAddWithAISelectedIndices(new Set());
+                setAddWithAITemplateId(effectiveDefaultTemplateId || templates[0]?.templateId || "");
+                setShowAddWithAIModal(true);
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition-colors font-medium disabled:opacity-50 disabled:pointer-events-none"
+            >
+              <Sparkles className="w-5 h-5" />
+              Add Card with AI
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAddCardTemplateId(effectiveDefaultTemplateId || templates[0]?.templateId || "");
+                setShowAddCardModal(true);
+              }}
               className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent/90 text-white rounded-lg transition-colors font-medium"
             >
               <Plus className="w-5 h-5" />
               Add Card
-            </Link>
+            </button>
           </div>
         </div>
       </div>
@@ -556,13 +858,17 @@ export default function DeckDetailPage() {
                 <Upload className="w-5 h-5" />
                 Import Cards
               </button>
-              <Link
-                href={`/dashboard/deck/${deckId}/card/new`}
+              <button
+                type="button"
+                onClick={() => {
+                  setAddCardTemplateId(effectiveDefaultTemplateId || templates[0]?.templateId || "");
+                  setShowAddCardModal(true);
+                }}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent/90 text-white rounded-lg transition-colors"
               >
                 <Plus className="w-5 h-5" />
                 Add Card
-              </Link>
+              </button>
             </div>
           )}
         </div>
@@ -670,6 +976,397 @@ export default function DeckDetailPage() {
               >
                 Delete
               </button>
+            </div>
+          </Modal>
+        )}
+      </AnimatePresence>
+
+      {/* Add card – template or blank */}
+      <AnimatePresence>
+        {showAddCardModal && deck && (
+          <Modal onClose={() => setShowAddCardModal(false)}>
+            <div className="flex flex-col">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <Plus className="w-5 h-5 text-white/70" />
+                  Add Card
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setShowAddCardModal(false)}
+                  className="p-1 hover:bg-white/10 rounded transition-colors"
+                >
+                  <X className="w-5 h-5 text-white/50" />
+                </button>
+              </div>
+              <p className="text-white/60 text-sm mb-3">Create from a template or start from a blank card.</p>
+              <div className="mb-4 space-y-3">
+                <label className="flex items-center gap-3 p-3 rounded-lg border border-white/10 cursor-pointer hover:bg-white/5">
+                  <input
+                    type="radio"
+                    name="addCardMode"
+                    checked={addCardMode === "template"}
+                    onChange={() => setAddCardMode("template")}
+                    className="text-accent"
+                  />
+                  <span className="text-white">From template</span>
+                </label>
+                <label className="flex items-center gap-3 p-3 rounded-lg border border-white/10 cursor-pointer hover:bg-white/5">
+                  <input
+                    type="radio"
+                    name="addCardMode"
+                    checked={addCardMode === "blank"}
+                    onChange={() => setAddCardMode("blank")}
+                    className="text-accent"
+                  />
+                  <span className="text-white">From blank</span>
+                </label>
+                {addCardMode === "template" && (
+                  <div className="ml-6 mt-2">
+                    {templates.length === 0 ? (
+                      <p className="text-white/50 text-sm">Loading templates...</p>
+                    ) : (
+                      <>
+                        <label className="text-white/70 text-sm block mb-1">Template</label>
+                        <select
+                          value={addCardTemplateId}
+                          onChange={(e) => setAddCardTemplateId(e.target.value)}
+                          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-accent/50"
+                        >
+                          {templates.map((t) => (
+                            <option key={t.templateId} value={t.templateId}>
+                              {t.name} ({t.blocks?.length ?? 0} blocks)
+                            </option>
+                          ))}
+                        </select>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-2 justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowAddCardModal(false)}
+                  className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddCardModal(false);
+                    if (addCardMode === "blank") {
+                      router.push(`/dashboard/deck/${deckId}/card/new`);
+                    } else {
+                      const tid = addCardTemplateId || templates[0]?.templateId;
+                      if (tid) router.push(`/dashboard/deck/${deckId}/card/new?templateId=${tid}`);
+                    }
+                  }}
+                  disabled={addCardMode === "template" && templates.length === 0}
+                  className="px-4 py-2 bg-accent hover:bg-accent/90 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                >
+                  Add Card
+                </button>
+              </div>
+            </div>
+          </Modal>
+        )}
+      </AnimatePresence>
+
+      {/* Add card with AI Modal */}
+      <AnimatePresence>
+        {showAddWithAIModal && deck && (
+          <Modal onClose={() => !addWithAIGenerating && closeAddWithAIModal()}>
+            <div className="flex flex-col max-h-[85vh]">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-amber-400" />
+                  {addWithAIGeneratedCards.length > 0
+                    ? "Select cards to add"
+                    : addWithAISuccess
+                      ? "Cards added"
+                      : "Add Card with AI"}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => !addWithAIGenerating && closeAddWithAIModal()}
+                  className="p-1 hover:bg-white/10 rounded transition-colors"
+                >
+                  <X className="w-5 h-5 text-white/50" />
+                </button>
+              </div>
+
+              {addWithAIGeneratedCards.length > 0 ? (
+                <>
+                  {addWithAIProgress && (
+                    <div className="mb-4 flex items-center gap-2 text-amber-400/90 text-sm">
+                      <span className="animate-spin rounded-full h-4 w-4 border-2 border-amber-400/50 border-t-amber-400" />
+                      <span>{addWithAIProgress}</span>
+                    </div>
+                  )}
+                  <p className="text-white/70 text-sm mb-3">
+                    Select which cards to add to the deck, or cancel to discard all.
+                  </p>
+                  <div className="mb-4 max-h-48 overflow-y-auto space-y-2 rounded-lg border border-white/10 p-2">
+                    {addWithAIGeneratedCards.map((card, i) => (
+                      <label
+                        key={i}
+                        className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={addWithAISelectedIndices.has(i)}
+                          onChange={() => {
+                            setAddWithAISelectedIndices((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(i)) next.delete(i);
+                              else next.add(i);
+                              return next;
+                            });
+                          }}
+                          className="rounded border-white/30 bg-white/5 text-amber-500 focus:ring-amber-500"
+                        />
+                        <span className="text-white/90 text-sm truncate flex-1">
+                          {getGeneratedCardPreview(card.values)}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                  {addWithAIDevPrompt && (
+                    <div className="mb-4 border border-white/10 rounded-lg overflow-hidden">
+                      <div className="flex items-center justify-between px-3 py-2 bg-white/5">
+                        <button
+                          type="button"
+                          onClick={() => setShowDevPrompt((p) => !p)}
+                          className="text-left text-white/60 text-xs font-medium hover:bg-white/5 flex items-center gap-2"
+                        >
+                          Request prompt (dev only)
+                          <span className="text-white/40">{showDevPrompt ? "▼" : "▶"}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCopyPrompt}
+                          className="flex items-center gap-1 px-2 py-1 text-xs text-white/70 hover:bg-white/10 rounded"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                          Copy prompt
+                        </button>
+                      </div>
+                      {showDevPrompt && (
+                        <div className="p-3 bg-black/30 text-white/80 text-xs font-mono whitespace-pre-wrap max-h-60 overflow-y-auto border-t border-white/10">
+                          <div className="mb-2 text-amber-400/80">System:</div>
+                          <div className="mb-3">{addWithAIDevPrompt.system}</div>
+                          <div className="mb-2 text-amber-400/80">User:</div>
+                          <div>{addWithAIDevPrompt.user}</div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <div className="flex flex-wrap gap-2 justify-end">
+                    <button
+                      type="button"
+                      onClick={closeAddWithAIModal}
+                      disabled={!!addWithAIProgress}
+                      className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                    >
+                      Cancel all
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAddSelectedCardsToDeck}
+                      disabled={addWithAISelectedIndices.size === 0 || !!addWithAIProgress}
+                      className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                    >
+                      {addWithAIGeneratedCards[0]?.blocksSnapshot?.some(
+                        (b) => b.type === "audio" || b.type === 7 || b.type === "7"
+                      )
+                        ? "Add selected (" + addWithAISelectedIndices.size + ") to deck + generate audio"
+                        : "Add selected (" + addWithAISelectedIndices.size + ") to deck"}
+                    </button>
+                  </div>
+                </>
+              ) : addWithAISuccess ? (
+                <>
+                  <p className="text-white/80 mb-4">
+                    {addWithAISuccess.count} {addWithAISuccess.count === 1 ? "card has" : "cards have"} been added to this deck.
+                  </p>
+                  {addWithAIDevPrompt && (
+                    <div className="mb-4 border border-white/10 rounded-lg overflow-hidden">
+                      <div className="flex items-center justify-between px-3 py-2 bg-white/5">
+                        <button
+                          type="button"
+                          onClick={() => setShowDevPrompt((p) => !p)}
+                          className="text-left text-white/60 text-xs font-medium hover:bg-white/5 flex items-center gap-2"
+                        >
+                          Request prompt (dev only)
+                          <span className="text-white/40">{showDevPrompt ? "▼" : "▶"}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCopyPrompt}
+                          className="flex items-center gap-1 px-2 py-1 text-xs text-white/70 hover:bg-white/10 rounded"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                          Copy prompt
+                        </button>
+                      </div>
+                      {showDevPrompt && (
+                        <div className="p-3 bg-black/30 text-white/80 text-xs font-mono whitespace-pre-wrap max-h-60 overflow-y-auto border-t border-white/10">
+                          <div className="mb-2 text-amber-400/80">System:</div>
+                          <div className="mb-3">{addWithAIDevPrompt.system}</div>
+                          <div className="mb-2 text-amber-400/80">User:</div>
+                          <div>{addWithAIDevPrompt.user}</div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <div className="flex flex-wrap gap-2 justify-end">
+                    <button
+                      type="button"
+                      onClick={closeAddWithAIModal}
+                      className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
+                    >
+                      Close
+                    </button>
+                    {addWithAISuccess.count === 1 && addWithAISuccess.lastCardId && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          router.push(`/dashboard/deck/${deckId}/card/${addWithAISuccess.lastCardId}`);
+                          closeAddWithAIModal();
+                        }}
+                        className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-medium transition-colors"
+                      >
+                        Go to card
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        router.push(`/dashboard/deck/${deckId}`);
+                        closeAddWithAIModal();
+                      }}
+                      className="px-4 py-2 bg-accent hover:bg-accent/90 text-white rounded-lg font-medium transition-colors"
+                    >
+                      Go to deck
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-white/60 text-sm mb-4">
+                    Uses this deck and existing cards as context. No &quot;back&quot; — only front (and other blocks in the template).
+                  </p>
+                  <div className="space-y-3 mb-4">
+                    <div>
+                      <span className="text-white/50 text-xs">Deck</span>
+                      <p className="text-white font-medium">{deck.title}</p>
+                      {deck.description && (
+                        <p className="text-white/60 text-sm mt-0.5">{deck.description}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-white/70 text-sm block mb-1">Template</label>
+                      <select
+                        value={addWithAITemplateId}
+                        onChange={(e) => setAddWithAITemplateId(e.target.value)}
+                        disabled={addWithAIGenerating}
+                        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-amber-500/50"
+                      >
+                        {templates.map((t) => (
+                          <option key={t.templateId} value={t.templateId}>
+                            {t.name} ({t.blocks?.length ?? 0} blocks)
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-white/70 text-sm block mb-1">Number of cards</label>
+                      <select
+                        value={addWithAICount}
+                        onChange={(e) => setAddWithAICount(Number(e.target.value))}
+                        disabled={addWithAIGenerating}
+                        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-amber-500/50"
+                      >
+                        {[1, 2, 3, 4, 5].map((n) => (
+                          <option key={n} value={n}>
+                            {n} {n === 1 ? "card" : "cards"}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  {addWithAIProgress && (
+                    <p className="text-amber-400/90 text-sm mb-4">{addWithAIProgress}</p>
+                  )}
+                  {addWithAIError && (
+                    <p className="text-red-400 text-sm mb-4">{addWithAIError}</p>
+                  )}
+                  {addWithAIDevPrompt && !addWithAISuccess && (
+                    <div className="mb-4 border border-white/10 rounded-lg overflow-hidden">
+                      <div className="flex items-center justify-between px-3 py-2 bg-white/5">
+                        <button
+                          type="button"
+                          onClick={() => setShowDevPrompt((p) => !p)}
+                          className="text-left text-white/60 text-xs font-medium hover:bg-white/5 flex items-center gap-2"
+                        >
+                          Request prompt (dev only)
+                          <span className="text-white/40">{showDevPrompt ? "▼" : "▶"}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCopyPrompt}
+                          className="flex items-center gap-1 px-2 py-1 text-xs text-white/70 hover:bg-white/10 rounded"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                          Copy prompt
+                        </button>
+                      </div>
+                      {showDevPrompt && (
+                        <div className="p-3 bg-black/30 text-white/80 text-xs font-mono whitespace-pre-wrap max-h-60 overflow-y-auto border-t border-white/10">
+                          <div className="mb-2 text-amber-400/80">System:</div>
+                          <div className="mb-3">{addWithAIDevPrompt.system}</div>
+                          <div className="mb-2 text-amber-400/80">User:</div>
+                          <div>{addWithAIDevPrompt.user}</div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <div className="flex gap-2 justify-end">
+                    <button
+                      type="button"
+                      onClick={closeAddWithAIModal}
+                      disabled={addWithAIGenerating}
+                      className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const count = Math.min(5, Math.max(1, Number(addWithAICount) || 1));
+                        const msg = `Generate ${count} ${count === 1 ? "card" : "cards"} and add ${count === 1 ? "it" : "them"} to this deck?`;
+                        if (window.confirm(msg)) handleAddCardWithAI();
+                      }}
+                      disabled={addWithAIGenerating || !addWithAITemplateId}
+                      className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+                    >
+                      {addWithAIGenerating ? (
+                        <>
+                          <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                          {addWithAIProgress || "Generating..."}
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4" />
+                          Generate card
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </Modal>
         )}
