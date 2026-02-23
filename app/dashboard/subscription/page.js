@@ -17,6 +17,7 @@ export default function SubscriptionPage() {
   } = useRevenueCat();
   const [entitled, setEntitled] = useState(false);
   const [showPaywallLoading, setShowPaywallLoading] = useState(false);
+  const [paywallError, setPaywallError] = useState(null);
 
   useEffect(() => {
     if (!isConfigured) return;
@@ -28,11 +29,16 @@ export default function SubscriptionPage() {
   }, [isConfigured, isEntitledTo, customerInfo]);
 
   const handleOpenPaywall = async () => {
+    setPaywallError(null);
     setShowPaywallLoading(true);
     try {
       await presentPaywall();
     } catch (e) {
-      console.error("Paywall error:", e);
+      if (e?.message === "PAYWALL_NOT_CONFIGURED") {
+        setPaywallError("paywall_not_configured");
+      } else {
+        setPaywallError(e?.message || "Could not open paywall.");
+      }
     } finally {
       setShowPaywallLoading(false);
     }
@@ -82,6 +88,29 @@ export default function SubscriptionPage() {
       {error && (
         <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-200 text-sm mb-6">
           {error}
+        </div>
+      )}
+
+      {paywallError === "paywall_not_configured" && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-amber-200 text-sm mb-6">
+          <p className="font-medium mb-1">Paywall not set up yet</p>
+          <p className="text-white/80">
+            Attach a paywall to your offering in the{" "}
+            <a
+              href="https://app.revenuecat.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-amber-400 hover:underline"
+            >
+              RevenueCat dashboard
+            </a>
+            . If you already have a subscription, use the link below to manage it.
+          </p>
+        </div>
+      )}
+      {paywallError && paywallError !== "paywall_not_configured" && (
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-200 text-sm mb-6">
+          {paywallError}
         </div>
       )}
 

@@ -134,12 +134,22 @@ export function RevenueCatProvider({ children, entitlementId = REVENUECAT_ENTITL
       if (!instanceRef.current) {
         throw new Error("RevenueCat is not configured. Add NEXT_PUBLIC_REVENUECAT_WEB_API_KEY.");
       }
-      const result = await instanceRef.current.presentPaywall({
-        htmlTarget: options.htmlTarget ?? null,
-        offering: options.offering ?? undefined,
-      });
-      await refreshCustomerInfo();
-      return result;
+      try {
+        const result = await instanceRef.current.presentPaywall({
+          htmlTarget: options.htmlTarget ?? null,
+          offering: options.offering ?? undefined,
+        });
+        await refreshCustomerInfo();
+        return result;
+      } catch (e) {
+        const msg = e?.message || "";
+        if (/doesn't have a paywall attached|no paywall attached/i.test(msg)) {
+          const err = new Error("PAYWALL_NOT_CONFIGURED");
+          err.originalMessage = msg;
+          throw err;
+        }
+        throw e;
+      }
     },
     [refreshCustomerInfo]
   );

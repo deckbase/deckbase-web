@@ -43,10 +43,10 @@ const AppStoreDownloadButton = () => {
       <Image
         src="/buttons/app-store-badge.svg"
         alt="Download on the App Store"
-        className="h-[45px] w-auto"
         width={150}
         height={45}
         style={{ width: "auto", height: "45px" }}
+        className="inline-block"
       />
     </button>
   );
