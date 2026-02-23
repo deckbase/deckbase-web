@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useMemo } from "react";
+import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -22,6 +22,8 @@ import {
   Sparkles,
   Copy,
   Settings,
+  Download,
+  ChevronDown,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
@@ -41,6 +43,7 @@ import {
   SpreadsheetFileType,
   getFileTypeFromPath,
 } from "@/utils/spreadsheetParser";
+import * as XLSX from "xlsx";
 
 // Import steps matching mobile
 const ImportStep = {
@@ -120,6 +123,10 @@ export default function DeckDetailPage() {
   const [showAddCardModal, setShowAddCardModal] = useState(false);
   const [addCardMode, setAddCardMode] = useState("template"); // "template" | "blank"
   const [addCardTemplateId, setAddCardTemplateId] = useState("");
+
+  // Export as dropdown
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const exportMenuRef = useRef(null);
 
   // Most-used template in this deck (when no explicit default is set)
   const mostUsedTemplateId = useMemo(() => {
@@ -301,6 +308,96 @@ export default function DeckDetailPage() {
     if (!importData) return [];
     if (selectAllRows) return importData.rows;
     return importData.rows.filter((_, idx) => selectedRows.has(idx));
+  };
+
+  // Close export menu on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target)) {
+        setShowExportMenu(false);
+      }
+    };
+    if (showExportMenu) {
+      document.addEventListener("click", handleClickOutside);
+      return () => document.removeEventListener("click", handleClickOutside);
+    }
+  }, [showExportMenu]);
+
+  // Export deck as CSV or XLSX
+  const getExportColumns = useMemo(() => {
+    if (!cards.length) return [];
+    const blocks = cards[0].blocksSnapshot || [];
+    return blocks.map((b) => ({ blockId: b.blockId, label: b.label || b.blockId || "Block" }));
+  }, [cards]);
+
+  const buildExportRows = useCallback(() => {
+    const cols = getExportColumns;
+    if (!cols.length) return { headers: [], rows: [] };
+    const headers = cols.map((c) => c.label);
+    const rows = cards.map((card) => {
+      const valueByBlockId = {};
+      for (const v of card.values || []) {
+        const isAudio = v.type === "audio" || v.type === 7 || v.type === "7";
+        valueByBlockId[v.blockId] = isAudio && (v.mediaIds?.length > 0) ? "[Audio]" : (v.text || "");
+      }
+      const row = {};
+      cols.forEach((c) => {
+        row[c.label] = valueByBlockId[c.blockId] ?? "";
+      });
+      return row;
+    });
+    return { headers, rows };
+  }, [cards, getExportColumns]);
+
+  const downloadBlob = (blob, filename) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportCSV = () => {
+    setShowExportMenu(false);
+    if (!cards.length) {
+      alert("No cards to export.");
+      return;
+    }
+    const { headers, rows } = buildExportRows();
+    if (!headers.length) {
+      alert("No columns to export.");
+      return;
+    }
+    const escape = (s) => {
+      const t = String(s ?? "").replace(/"/g, '""');
+      return t.includes(",") || t.includes("\n") || t.includes('"') ? `"${t}"` : t;
+    };
+    const line = (row) => headers.map((h) => escape(row[h])).join(",");
+    const csv = "\uFEFF" + [headers.join(","), ...rows.map(line)].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const safeTitle = (deck?.title || "deck").replace(/[^\w\s-]/g, "").slice(0, 50);
+    downloadBlob(blob, `${safeTitle}.csv`);
+  };
+
+  const handleExportXLSX = () => {
+    setShowExportMenu(false);
+    if (!cards.length) {
+      alert("No cards to export.");
+      return;
+    }
+    const { rows } = buildExportRows();
+    if (!rows.length) {
+      alert("No data to export.");
+      return;
+    }
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Cards");
+    const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const safeTitle = (deck?.title || "deck").replace(/[^\w\s-]/g, "").slice(0, 50);
+    downloadBlob(blob, `${safeTitle}.xlsx`);
   };
 
   // Template & Column mapping
@@ -817,6 +914,39 @@ export default function DeckDetailPage() {
               <Upload className="w-5 h-5" />
               <span className="hidden sm:inline">Import</span>
             </button>
+            <div className="relative" ref={exportMenuRef}>
+              <button
+                type="button"
+                onClick={() => setShowExportMenu((v) => !v)}
+                disabled={cards.length === 0}
+                title={cards.length === 0 ? "Add cards to export" : "Export deck"}
+                className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors disabled:opacity-50 disabled:pointer-events-none"
+              >
+                <Download className="w-5 h-5" />
+                <span className="hidden sm:inline">Export as</span>
+                <ChevronDown className="w-4 h-4 opacity-70" />
+              </button>
+              {showExportMenu && (
+                <div className="absolute left-0 top-full mt-1 py-1 min-w-[120px] bg-black/95 border border-white/20 rounded-lg shadow-xl z-50">
+                  <button
+                    type="button"
+                    onClick={handleExportCSV}
+                    className="flex items-center gap-2 w-full px-4 py-2 text-left text-white hover:bg-white/10 text-sm"
+                  >
+                    <FileSpreadsheet className="w-4 h-4" />
+                    CSV
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleExportXLSX}
+                    className="flex items-center gap-2 w-full px-4 py-2 text-left text-white hover:bg-white/10 text-sm"
+                  >
+                    <FileSpreadsheet className="w-4 h-4" />
+                    XLSX
+                  </button>
+                </div>
+              )}
+            </div>
             {isProduction && !aiEntitled ? (
               <Link
                 href="/dashboard/subscription"
