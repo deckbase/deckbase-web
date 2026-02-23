@@ -2,8 +2,17 @@
 
 import { useState, useEffect } from "react";
 import { useRevenueCat, DEFAULT_ENTITLEMENT_ID } from "@/contexts/RevenueCatContext";
-import { Crown, Loader2, ExternalLink } from "lucide-react";
+import { Crown, Loader2, ExternalLink, Check } from "lucide-react";
 import Link from "next/link";
+
+/** Human-readable label for package identifier (e.g. $rc_monthly -> Monthly) */
+function packageLabel(identifier) {
+  const id = (identifier || "").toLowerCase();
+  if (id.includes("annual") || id.includes("yearly") || id === "$rc_annual") return "Annual";
+  if (id.includes("monthly") || id === "$rc_monthly") return "Monthly";
+  if (id.includes("weekly") || id === "$rc_weekly") return "Weekly";
+  return identifier || "Plan";
+}
 
 export default function SubscriptionPage() {
   const {
@@ -11,13 +20,16 @@ export default function SubscriptionPage() {
     customerInfo,
     loading,
     isEntitledTo,
-    presentPaywall,
+    getOfferings,
+    purchase,
     refreshCustomerInfo,
     error,
   } = useRevenueCat();
   const [entitled, setEntitled] = useState(false);
-  const [showPaywallLoading, setShowPaywallLoading] = useState(false);
-  const [paywallError, setPaywallError] = useState(null);
+  const [offerings, setOfferings] = useState(null);
+  const [offeringsLoading, setOfferingsLoading] = useState(false);
+  const [purchasingPackageId, setPurchasingPackageId] = useState(null);
+  const [purchaseError, setPurchaseError] = useState(null);
 
   useEffect(() => {
     if (!isConfigured) return;
@@ -28,19 +40,40 @@ export default function SubscriptionPage() {
     return () => { mounted = false; };
   }, [isConfigured, isEntitledTo, customerInfo]);
 
-  const handleOpenPaywall = async () => {
-    setPaywallError(null);
-    setShowPaywallLoading(true);
+  useEffect(() => {
+    if (!isConfigured) return;
+    let mounted = true;
+    setOfferingsLoading(true);
+    getOfferings()
+      .then((off) => {
+        if (mounted) setOfferings(off);
+      })
+      .catch(() => {
+        if (mounted) setOfferings(null);
+      })
+      .finally(() => {
+        if (mounted) setOfferingsLoading(false);
+      });
+    return () => { mounted = false; };
+  }, [isConfigured, getOfferings]);
+
+  const handlePurchase = async (rcPackage) => {
+    setPurchaseError(null);
+    setPurchasingPackageId(rcPackage?.identifier ?? null);
     try {
-      await presentPaywall();
+      await purchase({
+        rcPackage,
+        skipSuccessPage: true,
+      });
     } catch (e) {
-      if (e?.message === "PAYWALL_NOT_CONFIGURED") {
-        setPaywallError("paywall_not_configured");
+      const msg = e?.message || "";
+      if (/cancelled|canceled|user cancelled/i.test(msg)) {
+        setPurchaseError(null);
       } else {
-        setPaywallError(e?.message || "Could not open paywall.");
+        setPurchaseError(msg || "Purchase failed.");
       }
     } finally {
-      setShowPaywallLoading(false);
+      setPurchasingPackageId(null);
     }
   };
 
@@ -91,26 +124,9 @@ export default function SubscriptionPage() {
         </div>
       )}
 
-      {paywallError === "paywall_not_configured" && (
-        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-amber-200 text-sm mb-6">
-          <p className="font-medium mb-1">Paywall not set up yet</p>
-          <p className="text-white/80">
-            Attach a paywall to your offering in the{" "}
-            <a
-              href="https://app.revenuecat.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-amber-400 hover:underline"
-            >
-              RevenueCat dashboard
-            </a>
-            . If you already have a subscription, use the link below to manage it.
-          </p>
-        </div>
-      )}
-      {paywallError && paywallError !== "paywall_not_configured" && (
+      {purchaseError && (
         <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-200 text-sm mb-6">
-          {paywallError}
+          {purchaseError}
         </div>
       )}
 
@@ -136,20 +152,59 @@ export default function SubscriptionPage() {
 
       {!entitled && (
         <div className="mt-8">
-          <button
-            onClick={handleOpenPaywall}
-            disabled={showPaywallLoading}
-            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-medium disabled:opacity-50"
-          >
-            {showPaywallLoading ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <>
-                <Crown className="w-5 h-5" />
-                View plans
-              </>
-            )}
-          </button>
+          <h2 className="text-lg font-semibold text-white mb-4">Choose a plan</h2>
+          {offeringsLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-8 h-8 text-white/50 animate-spin" />
+            </div>
+          ) : offerings?.current?.availablePackages?.length > 0 ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {offerings.current.availablePackages.map((pkg) => {
+                const product = pkg.webBillingProduct || pkg.rcBillingProduct;
+                const priceStr = product?.price?.formattedPrice ?? product?.currentPrice?.formattedPrice ?? "—";
+                const title = product?.title || packageLabel(pkg.identifier);
+                const isPurchasing = purchasingPackageId === pkg.identifier;
+                return (
+                  <button
+                    key={pkg.identifier}
+                    type="button"
+                    onClick={() => handlePurchase(pkg)}
+                    disabled={isPurchasing}
+                    className="flex flex-col items-start gap-2 rounded-xl border border-white/20 bg-white/5 p-5 text-left hover:border-amber-500/50 hover:bg-white/10 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    <div className="flex w-full items-center justify-between">
+                      <span className="font-semibold text-white">{title}</span>
+                      <span className="text-amber-400 font-medium">{priceStr}</span>
+                    </div>
+                    {product?.description && (
+                      <p className="text-sm text-white/60">{product.description}</p>
+                    )}
+                    <span className="mt-2 flex items-center gap-2 text-amber-400 text-sm font-medium">
+                      {isPurchasing ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Check className="w-4 h-4" />
+                      )}
+                      {isPurchasing ? "Opening checkout…" : "Subscribe"}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-white/60 text-sm py-4">
+              No plans available right now. Make sure you have an offering with packages in the{" "}
+              <a
+                href="https://app.revenuecat.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-amber-400 hover:underline"
+              >
+                RevenueCat dashboard
+              </a>
+              .
+            </p>
+          )}
         </div>
       )}
 

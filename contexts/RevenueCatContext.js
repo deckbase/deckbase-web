@@ -10,6 +10,8 @@ const RevenueCatContext = createContext({
   customerInfo: null,
   loading: true,
   isEntitledTo: async () => false,
+  getOfferings: async () => ({ current: null, all: {} }),
+  purchase: async () => ({}),
   presentPaywall: async () => {},
   refreshCustomerInfo: async () => null,
   error: null,
@@ -129,6 +131,25 @@ export function RevenueCatProvider({ children, entitlementId = REVENUECAT_ENTITL
     [entitlementId]
   );
 
+  const getOfferings = useCallback(async (params) => {
+    if (!instanceRef.current) {
+      throw new Error("RevenueCat is not configured. Add NEXT_PUBLIC_REVENUECAT_WEB_API_KEY.");
+    }
+    return instanceRef.current.getOfferings(params);
+  }, []);
+
+  const purchase = useCallback(
+    async (params) => {
+      if (!instanceRef.current) {
+        throw new Error("RevenueCat is not configured. Add NEXT_PUBLIC_REVENUECAT_WEB_API_KEY.");
+      }
+      const result = await instanceRef.current.purchase(params);
+      await refreshCustomerInfo();
+      return result;
+    },
+    [refreshCustomerInfo]
+  );
+
   const presentPaywall = useCallback(
     async (options = {}) => {
       if (!instanceRef.current) {
@@ -159,6 +180,8 @@ export function RevenueCatProvider({ children, entitlementId = REVENUECAT_ENTITL
     customerInfo,
     loading,
     isEntitledTo,
+    getOfferings,
+    purchase,
     presentPaywall,
     refreshCustomerInfo,
     error,
