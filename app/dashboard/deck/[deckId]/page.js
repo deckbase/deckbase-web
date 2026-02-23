@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRevenueCat, DEFAULT_ENTITLEMENT_ID } from "@/contexts/RevenueCatContext";
 import {
   getDeck,
   updateDeck,
@@ -49,11 +50,27 @@ const ImportStep = {
   importing: 4,
 };
 
+const isProduction = process.env.NODE_ENV === "production";
+
 export default function DeckDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { user } = useAuth();
+  const { isConfigured: rcConfigured, isEntitledTo } = useRevenueCat();
+  const [aiEntitled, setAiEntitled] = useState(true);
   const deckId = params.deckId;
+
+  useEffect(() => {
+    if (!isProduction || !rcConfigured) {
+      setAiEntitled(true);
+      return;
+    }
+    let mounted = true;
+    isEntitledTo(DEFAULT_ENTITLEMENT_ID).then((v) => {
+      if (mounted) setAiEntitled(!!v);
+    });
+    return () => { mounted = false; };
+  }, [rcConfigured, isEntitledTo]);
 
   const [deck, setDeck] = useState(null);
   const [cards, setCards] = useState([]);
@@ -518,9 +535,14 @@ export default function DeckDetailPage() {
     }));
     try {
       setAddWithAIProgress(count > 1 ? `Generating ${count} different cards...` : "Generating...");
+      const headers = { "Content-Type": "application/json" };
+      if (isProduction && user) {
+        const token = await user.getIdToken();
+        if (token) headers.Authorization = `Bearer ${token}`;
+      }
       const res = await fetch("/api/cards/generate-with-ai", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           deckTitle: deck.title || "",
           deckDescription: deck.description || "",
@@ -790,24 +812,35 @@ export default function DeckDetailPage() {
               <Upload className="w-5 h-5" />
               <span className="hidden sm:inline">Import</span>
             </button>
-            <button
-              type="button"
-              disabled={cards.length === 0}
-              title={cards.length === 0 ? "Add at least one card manually so AI can use them as examples" : undefined}
-              onClick={() => {
-                setAddWithAIError(null);
-                setAddWithAIDevPrompt(null);
-                setAddWithAISuccess(null);
-                setAddWithAIGeneratedCards([]);
-                setAddWithAISelectedIndices(new Set());
-                setAddWithAITemplateId(effectiveDefaultTemplateId || templates[0]?.templateId || "");
-                setShowAddWithAIModal(true);
-              }}
-              className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition-colors font-medium disabled:opacity-50 disabled:pointer-events-none"
-            >
-              <Sparkles className="w-5 h-5" />
-              Add Card with AI
-            </button>
+            {isProduction && !aiEntitled ? (
+              <Link
+                href="/dashboard/subscription"
+                className="flex items-center gap-2 px-4 py-2 bg-amber-600/70 hover:bg-amber-600 text-white rounded-lg transition-colors font-medium"
+                title="Upgrade to Pro to use AI"
+              >
+                <Sparkles className="w-5 h-5" />
+                Add Card with AI (Pro)
+              </Link>
+            ) : (
+              <button
+                type="button"
+                disabled={cards.length === 0}
+                title={cards.length === 0 ? "Add at least one card manually so AI can use them as examples" : undefined}
+                onClick={() => {
+                  setAddWithAIError(null);
+                  setAddWithAIDevPrompt(null);
+                  setAddWithAISuccess(null);
+                  setAddWithAIGeneratedCards([]);
+                  setAddWithAISelectedIndices(new Set());
+                  setAddWithAITemplateId(effectiveDefaultTemplateId || templates[0]?.templateId || "");
+                  setShowAddWithAIModal(true);
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition-colors font-medium disabled:opacity-50 disabled:pointer-events-none"
+              >
+                <Sparkles className="w-5 h-5" />
+                Add Card with AI
+              </button>
+            )}
             <button
               type="button"
               onClick={() => {

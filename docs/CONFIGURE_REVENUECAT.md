@@ -24,6 +24,20 @@ Then restart the dev server and open **Dashboard → Subscription** (crown icon)
 
 ---
 
+## Production: AI features require subscription
+
+In **production** only, AI features (e.g. **Add Card with AI**, mobile add-cards-with-AI API) require an active **Pro** subscription. In development, AI is available to everyone.
+
+To enforce this server-side, set the **RevenueCat Secret API Key** in your production environment:
+
+```bash
+REVENUECAT_SECRET_KEY=<your_secret_key>
+```
+
+Get it from RevenueCat dashboard → **Project Settings** → **API Keys** (secret keys are prefixed `sk_`). The app uses it to verify entitlement when calling `/api/cards/generate-with-ai` and `/api/mobile/cards/add-with-ai` in production. Without this key in production, those APIs will reject unauthenticated requests; with it, they will return 403 if the user is not entitled to `pro`.
+
+---
+
 ## Why product status is "Not found"
 
 For the **Deckbase (Stripe)** app, the two products **Pro Monthly** and **Pro Annual** exist in RevenueCat but show **status "Not found"** until they are linked to real products and prices in **Stripe**. RevenueCat does not create those in Stripe for you.

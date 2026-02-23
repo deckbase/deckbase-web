@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { buildCardPrompt } from "@/lib/card-ai-prompt";
 import { BlockTypeNames } from "@/utils/firestore";
+import { getAdminAuth } from "@/utils/firebase-admin";
+import { isEntitledTo } from "@/lib/revenuecat-server";
 
 function normalizeBlockType(type) {
   if (type == null) return "text";
@@ -28,6 +30,37 @@ function parseCardFromParsed(parsed, templateBlocks, normalizeBlockType) {
 
 export async function POST(request) {
   try {
+    const isProduction = process.env.NODE_ENV === "production";
+
+    if (isProduction) {
+      const auth = getAdminAuth();
+      const authHeader = request.headers.get("authorization") || "";
+      const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+      if (!auth || !idToken) {
+        return NextResponse.json(
+          { error: "Authentication required to use AI in production" },
+          { status: 401 }
+        );
+      }
+      let uid;
+      try {
+        const decoded = await auth.verifyIdToken(idToken);
+        uid = decoded.uid;
+      } catch {
+        return NextResponse.json(
+          { error: "Invalid or expired token" },
+          { status: 401 }
+        );
+      }
+      const entitled = await isEntitledTo(uid);
+      if (!entitled) {
+        return NextResponse.json(
+          { error: "Active subscription required to use AI features" },
+          { status: 403 }
+        );
+      }
+    }
+
     const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
     if (!apiKey) {
       return NextResponse.json(
