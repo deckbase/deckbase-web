@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { getAdminBucket, isAdminConfigured } from "@/utils/firebase-admin";
+import { getAdminAuth, getAdminBucket, isAdminConfigured } from "@/utils/firebase-admin";
+import { isEntitledTo } from "@/lib/revenuecat-server";
 
 const SAMPLE_PHRASE = "Hello, this is a sample of this voice.";
 const STORAGE_PATH_PREFIX = "tts-samples";
@@ -18,9 +19,39 @@ const ALLOWED_VOICE_IDS = new Set([
 /**
  * GET /api/elevenlabs/voice-sample?voice_id=xxx
  * Returns { url: string } for cached (or newly generated) sample in Firebase Storage.
+ * In production requires Authorization: Bearer <Firebase ID token> and Pro subscription (same as TTS).
  * If Admin is not configured, returns 503 and client can fall back to live TTS.
  */
 export async function GET(request) {
+  if (process.env.NODE_ENV === "production") {
+    const auth = getAdminAuth();
+    const authHeader = request.headers.get("authorization") || "";
+    const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+    if (!auth || !idToken) {
+      return NextResponse.json(
+        { error: "Authentication required to play voice samples in production" },
+        { status: 401 }
+      );
+    }
+    let uid;
+    try {
+      const decoded = await auth.verifyIdToken(idToken);
+      uid = decoded.uid;
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid or expired token" },
+        { status: 401 }
+      );
+    }
+    const entitled = await isEntitledTo(uid);
+    if (!entitled) {
+      return NextResponse.json(
+        { error: "Active subscription required for voice samples" },
+        { status: 403 }
+      );
+    }
+  }
+
   const { searchParams } = new URL(request.url);
   const voiceId = searchParams.get("voice_id")?.trim();
 

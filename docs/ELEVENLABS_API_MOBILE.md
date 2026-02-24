@@ -6,11 +6,29 @@ Use these endpoints from the mobile app to list voices and generate speech.
 
 ---
 
+## Auth: why one endpoint works and others return 401
+
+| Endpoint | Auth (production) |
+|----------|--------------------|
+| **GET /api/elevenlabs/voices** | None. No `Authorization` header required. |
+| **POST /api/elevenlabs/text-to-speech** | Required: `Authorization: Bearer <Firebase ID token>` + Pro subscription. |
+| **GET /api/elevenlabs/voice-sample** | Required: same as TTS (Bearer token + Pro). |
+
+So **list-voices works without a token**; **TTS and voice-sample require the same Bearer token** in production. There is no App Check or different auth type – the backend simply does not check auth on voices, and **does** check auth (Firebase token + RevenueCat Pro) on TTS and voice-sample.
+
+If you get **401 "Invalid or expired token"** on TTS or voice-sample:
+
+1. **Send the header on every request:** `Authorization: Bearer <Firebase ID token>` for both TTS and voice-sample.
+2. **Use a fresh token:** Firebase ID tokens expire in about 1 hour. If you called voices earlier and then TTS later, the token may have expired. Call `getIdToken(true)` (or your platform’s equivalent) to refresh before TTS/voice-sample.
+3. **Same token for both:** Use the same Firebase ID token for POST text-to-speech and GET voice-sample; the backend validates it the same way for both.
+
+---
+
 ## 1. List voices
 
 **GET** `/api/elevenlabs/voices`
 
-Returns the list of available voices for the voice picker.
+Returns the list of available voices for the voice picker. **No auth required.**
 
 **Response (200):**
 ```json
@@ -33,6 +51,7 @@ Returns the list of available voices for the voice picker.
 ## 2. Generate speech
 
 **POST** `/api/elevenlabs/text-to-speech`  
+**Headers:** In **production**, send `Authorization: Bearer <Firebase ID token>` (Pro subscription required).  
 **Content-Type:** `application/json`
 
 **Body:**
@@ -48,6 +67,8 @@ Returns the list of available voices for the voice picker.
 
 **Response (200):** Binary `audio/mpeg` (MP3).  
 **Errors:** JSON with `error` (and optional `details`).  
+- 401: missing header, or "Invalid or expired token" → send/refresh Firebase ID token  
+- 403: "Active subscription required to generate audio" → user needs Pro  
 - 400: missing/invalid body or empty text  
 - 503: `ELEVENLABS_API_KEY` not set
 
@@ -61,6 +82,9 @@ Returns the list of available voices for the voice picker.
 
 ## Optional: Cached voice sample (play sample before generating)
 
-**GET** `/api/elevenlabs/voice-sample?voice_id=dtSEyYGNJqjrtBArPCVZ`
+**GET** `/api/elevenlabs/voice-sample?voice_id=dtSEyYGNJqjrtBArPCVZ`  
+**Headers:** In **production**, send the same `Authorization: Bearer <Firebase ID token>` as for TTS (Pro required).
 
 Returns `{ "url": "<signed-url>" }` for a short cached sample of that voice. Use the URL to play the sample (e.g. in a “Play sample” button). If the server is not configured for caching, it returns 503; then use the main TTS endpoint with a short phrase to play a sample.
+
+**Errors:** 401/403 same as TTS (token or subscription).
