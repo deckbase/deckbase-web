@@ -5,6 +5,10 @@ import { requireElevenLabsAuth } from "@/lib/elevenlabs-auth";
 const SAMPLE_PHRASE = "Hello, this is a sample of this voice.";
 const STORAGE_PATH_PREFIX = "tts-samples";
 const SIGNED_URL_EXPIRY_MS = 365 * 24 * 60 * 60 * 1000; // 1 year
+const URL_CACHE_TTL_MS = 23 * 60 * 60 * 1000; // 23h – refresh before signed URL expires
+
+// In-memory cache: voiceId -> { url, expiresAt } to avoid Storage round trips on every request
+const signedUrlCache = new Map();
 
 // Allowed voice IDs (whitelist so we only cache known voices)
 const ALLOWED_VOICE_IDS = new Set([
@@ -43,12 +47,37 @@ export async function GET(request) {
     );
   }
 
-  const path = `${STORAGE_PATH_PREFIX}/${voiceId}.mp3`;
-  const file = bucket.file(path);
-
   try {
-    const [exists] = await file.exists();
-    if (!exists) {
+    const cached = signedUrlCache.get(voiceId);
+    if (cached && cached.expiresAt > Date.now()) {
+      console.log("voice-sample: in-memory cache hit", { voiceId });
+      return NextResponse.json(
+        { url: cached.url },
+        {
+          headers: {
+            "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=86400",
+            "X-Voice-Sample-Source": "cache",
+          },
+        }
+      );
+    }
+
+    const path = `${STORAGE_PATH_PREFIX}/${voiceId}.mp3`;
+    const file = bucket.file(path);
+
+    // Use getMetadata() for existence; more reliable than exists() in some environments
+    let fileExists = false;
+    try {
+      await file.getMetadata();
+      fileExists = true;
+    } catch (e) {
+      if (e?.code !== 404) throw e;
+    }
+
+    let source = "storage";
+    if (!fileExists) {
+      source = "elevenlabs";
+      console.log("voice-sample: Storage miss, calling ElevenLabs", { voiceId, path });
       const apiKey = process.env.ELEVENLABS_API_KEY;
       if (!apiKey) {
         return NextResponse.json(
@@ -83,6 +112,8 @@ export async function GET(request) {
       await file.save(buffer, {
         metadata: { contentType: "audio/mpeg" },
       });
+    } else {
+      console.log("voice-sample: Storage hit (file exists), not calling ElevenLabs", { voiceId });
     }
 
     const [url] = await file.getSignedUrl({
@@ -90,7 +121,21 @@ export async function GET(request) {
       action: "read",
       expires: new Date(Date.now() + SIGNED_URL_EXPIRY_MS),
     });
-    return NextResponse.json({ url });
+
+    signedUrlCache.set(voiceId, {
+      url,
+      expiresAt: Date.now() + URL_CACHE_TTL_MS,
+    });
+
+    return NextResponse.json(
+      { url },
+      {
+        headers: {
+          "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=86400",
+          "X-Voice-Sample-Source": source,
+        },
+      }
+    );
   } catch (error) {
     console.error("Voice sample route error:", error);
     const message = error?.message || String(error);
