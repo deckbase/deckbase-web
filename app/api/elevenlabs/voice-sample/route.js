@@ -39,8 +39,20 @@ export async function GET(request) {
     );
   }
 
-  const bucket = getAdminBucket();
-  if (!bucket || !isAdminConfigured()) {
+  const storageBucketName =
+    process.env.FIREBASE_STORAGE_BUCKET ||
+    process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+  if (!storageBucketName || !isAdminConfigured()) {
+    return NextResponse.json(
+      {
+        error: "Voice sample cache not configured",
+        hint: "Set FIREBASE_STORAGE_BUCKET (and Firebase Admin env) so read/write use the same bucket.",
+      },
+      { status: 503 }
+    );
+  }
+  const bucket = getAdminBucket(storageBucketName);
+  if (!bucket) {
     return NextResponse.json(
       { error: "Voice sample cache not configured (Firebase Admin required)" },
       { status: 503 }
@@ -65,13 +77,17 @@ export async function GET(request) {
     const path = `${STORAGE_PATH_PREFIX}/${voiceId}.mp3`;
     const file = bucket.file(path);
 
-    // Use getMetadata() for existence; more reliable than exists() in some environments
+    // Use getMetadata() for existence (GCS can use code 404 or NOT_FOUND)
     let fileExists = false;
     try {
       await file.getMetadata();
       fileExists = true;
     } catch (e) {
-      if (e?.code !== 404) throw e;
+      const isNotFound =
+        e?.code === 404 ||
+        e?.code === "NOT_FOUND" ||
+        /not found|404/i.test(String(e?.message ?? ""));
+      if (!isNotFound) throw e;
     }
 
     let source = "storage";
@@ -112,6 +128,21 @@ export async function GET(request) {
       await file.save(buffer, {
         metadata: { contentType: "audio/mpeg" },
       });
+      try {
+        await file.getMetadata();
+        console.log("voice-sample: saved and verified", {
+          voiceId,
+          path,
+          bucket: bucket.name,
+        });
+      } catch (verifyErr) {
+        console.error("voice-sample: save succeeded but verify failed (next request may re-call ElevenLabs)", {
+          voiceId,
+          path,
+          bucket: bucket.name,
+          err: verifyErr?.message,
+        });
+      }
     } else {
       console.log("voice-sample: Storage hit (file exists), not calling ElevenLabs", { voiceId });
     }

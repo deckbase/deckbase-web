@@ -40,10 +40,13 @@ function getAdminApp() {
   return adminApp;
 }
 
-export function getAdminBucket() {
+/**
+ * @param {string} [bucketName] - If provided, return this bucket (ensures same bucket for read/write). Required for voice-sample cache.
+ */
+export function getAdminBucket(bucketName) {
   const app = getAdminApp();
   if (!app) return null;
-  return getStorage(app).bucket();
+  return getStorage(app).bucket(bucketName || undefined);
 }
 
 export function getAdminAuth() {

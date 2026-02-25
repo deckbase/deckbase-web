@@ -167,4 +167,6 @@ Returns the list of available voices for the voice picker. **No auth required.**
 
 Returns `{ "url": "<signed-url>" }` for a short cached sample of that voice. Use the URL to play the sample (e.g. in a “Play sample” button). If the server is not configured for caching, it returns 503; then use the main TTS endpoint with a short phrase to play a sample.
 
+**Server requirements for caching:** Set **`FIREBASE_STORAGE_BUCKET`** (e.g. `your-project.appspot.com`) in the server env so the same bucket is used for read and write. Without it the API returns 503; if the bucket were wrong, the server could call ElevenLabs every time and the sample would sound different each request. The response header **`X-Voice-Sample-Source`** is `cache`, `storage`, or `elevenlabs`—after the first request for a voice, later requests for the same `voice_id` should show `cache` or `storage`. If you always see `elevenlabs`, set `FIREBASE_STORAGE_BUCKET` and ensure the Firebase Admin service account has Storage Object Admin on that bucket. Server logs show "voice-sample: Storage hit" vs "Storage miss, calling ElevenLabs". Use the same `voice_id` from the voices list for a given voice so you get the same cached sample.
+
 **Errors:** 401/403 same as TTS (token or subscription).
