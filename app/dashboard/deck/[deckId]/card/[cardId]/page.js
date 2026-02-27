@@ -20,7 +20,7 @@ import {
 import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
-import { useRevenueCat, DEFAULT_ENTITLEMENT_ID } from "@/contexts/RevenueCatContext";
+import { useRevenueCat } from "@/contexts/RevenueCatContext";
 import {
   getDeck,
   getCard,
@@ -73,25 +73,13 @@ export default function CardEditorPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
-  const { isConfigured: rcConfigured, isEntitledTo } = useRevenueCat();
-  const [audioProEntitled, setAudioProEntitled] = useState(true);
+  const { isConfigured: rcConfigured, isPro } = useRevenueCat();
+  const audioProEntitled = !isProduction || !rcConfigured || isPro;
   const deckId = params.deckId;
   const cardId = params.cardId; // "new" for create, or existing cardId
   const templateIdFromUrl = searchParams.get("templateId");
 
   const isNewCard = cardId === "new";
-
-  useEffect(() => {
-    if (!isProduction || !rcConfigured) {
-      setAudioProEntitled(true);
-      return;
-    }
-    let mounted = true;
-    isEntitledTo(DEFAULT_ENTITLEMENT_ID).then((v) => {
-      if (mounted) setAudioProEntitled(!!v);
-    });
-    return () => { mounted = false; };
-  }, [rcConfigured, isEntitledTo]);
 
   const [deck, setDeck] = useState(null);
   const [blocks, setBlocks] = useState(DEFAULT_BLOCKS);

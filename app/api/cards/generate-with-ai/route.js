@@ -3,7 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { buildCardPrompt } from "@/lib/card-ai-prompt";
 import { BlockTypeNames } from "@/utils/firestore";
 import { getAdminAuth } from "@/utils/firebase-admin";
-import { isEntitledTo } from "@/lib/revenuecat-server";
+import { isProOrVip } from "@/lib/revenuecat-server";
 
 function normalizeBlockType(type) {
   if (type == null) return "text";
@@ -52,7 +52,7 @@ export async function POST(request) {
           { status: 401 }
         );
       }
-      const entitled = await isEntitledTo(uid);
+      const entitled = await isProOrVip(uid);
       if (!entitled) {
         return NextResponse.json(
           { error: "Active subscription required to use AI features" },

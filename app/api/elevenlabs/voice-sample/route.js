@@ -46,7 +46,7 @@ export async function GET(request) {
     return NextResponse.json(
       {
         error: "Voice sample cache not configured",
-        hint: "Set FIREBASE_STORAGE_BUCKET (and Firebase Admin env) so read/write use the same bucket.",
+        hint: "Set FIREBASE_STORAGE_BUCKET in your hosting env (e.g. Vercel → Settings → Environment Variables), not only in .env.prod. Same bucket as NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET (e.g. deckbase-prod.firebasestorage.app).",
       },
       { status: 503 }
     );
@@ -125,9 +125,32 @@ export async function GET(request) {
         );
       }
       const buffer = Buffer.from(await response.arrayBuffer());
-      await file.save(buffer, {
-        metadata: { contentType: "audio/mpeg" },
+      console.log("voice-sample: saving to Storage", {
+        bucket: bucket.name,
+        path,
+        voiceId,
       });
+      try {
+        await file.save(buffer, {
+          metadata: { contentType: "audio/mpeg" },
+        });
+      } catch (saveErr) {
+        console.error("voice-sample: save failed (file not in Storage, voice will change every request)", {
+          bucket: bucket.name,
+          path,
+          voiceId,
+          err: saveErr?.message,
+          code: saveErr?.code,
+        });
+        return NextResponse.json(
+          {
+            error: "Failed to cache voice sample in Storage",
+            message: saveErr?.message,
+            hint: "Ensure the Firebase Admin service account has Storage Object Admin (or Storage Admin) on the bucket in Google Cloud IAM. Bucket: " + bucket.name,
+          },
+          { status: 500 }
+        );
+      }
       try {
         await file.getMetadata();
         console.log("voice-sample: saved and verified", {

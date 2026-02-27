@@ -10,6 +10,8 @@ const RevenueCatContext = createContext({
   customerInfo: null,
   loading: true,
   isEntitledTo: async () => false,
+  isVip: false,
+  isPro: false,
   getOfferings: async () => ({ current: null, all: {} }),
   purchase: async () => ({}),
   presentPaywall: async () => {},
@@ -28,7 +30,33 @@ export function RevenueCatProvider({ children, entitlementId = REVENUECAT_ENTITL
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sdkReady, setSdkReady] = useState(false);
+  const [isVip, setIsVip] = useState(false);
+  const [entitled, setEntitled] = useState(false);
   const instanceRef = useRef(null);
+
+  // VIP: fetch from server so we can treat VIP as Pro and hide subscription UI
+  useEffect(() => {
+    if (!user?.uid) {
+      setIsVip(false);
+      return;
+    }
+    let mounted = true;
+    user
+      .getIdToken()
+      .then((token) =>
+        fetch("/api/user/vip", { headers: { Authorization: `Bearer ${token}` } })
+      )
+      .then((res) => (mounted && res?.ok ? res.json() : { isVip: false }))
+      .then((data) => {
+        if (mounted) setIsVip(!!data?.isVip);
+      })
+      .catch(() => {
+        if (mounted) setIsVip(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [user?.uid]);
 
   // Next.js inlines NEXT_PUBLIC_* at build time - use only this identifier so it gets replaced
   const apiKey = String(process.env.NEXT_PUBLIC_REVENUECAT_WEB_API_KEY || "").trim();
@@ -119,6 +147,21 @@ export function RevenueCatProvider({ children, entitlementId = REVENUECAT_ENTITL
     };
   }, [apiKey, user?.uid]);
 
+  // Subscription entitlement (RevenueCat) – used together with isVip for isPro
+  useEffect(() => {
+    if (!instanceRef.current || !user?.uid) {
+      setEntitled(false);
+      return;
+    }
+    let mounted = true;
+    instanceRef.current.isEntitledTo(entitlementId).then((v) => {
+      if (mounted) setEntitled(!!v);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [entitlementId, user?.uid, customerInfo, sdkReady]);
+
   const isEntitledTo = useCallback(
     async (identifier = entitlementId) => {
       if (!instanceRef.current) return false;
@@ -180,6 +223,8 @@ export function RevenueCatProvider({ children, entitlementId = REVENUECAT_ENTITL
     customerInfo,
     loading,
     isEntitledTo,
+    isVip,
+    isPro: isVip || entitled,
     getOfferings,
     purchase,
     presentPaywall,

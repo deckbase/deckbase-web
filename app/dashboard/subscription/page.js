@@ -19,26 +19,16 @@ export default function SubscriptionPage() {
     isConfigured,
     customerInfo,
     loading,
-    isEntitledTo,
+    isPro,
+    isVip,
     getOfferings,
     purchase,
-    refreshCustomerInfo,
     error,
   } = useRevenueCat();
-  const [entitled, setEntitled] = useState(false);
   const [offerings, setOfferings] = useState(null);
   const [offeringsLoading, setOfferingsLoading] = useState(false);
   const [purchasingPackageId, setPurchasingPackageId] = useState(null);
   const [purchaseError, setPurchaseError] = useState(null);
-
-  useEffect(() => {
-    if (!isConfigured) return;
-    let mounted = true;
-    isEntitledTo(DEFAULT_ENTITLEMENT_ID).then((v) => {
-      if (mounted) setEntitled(!!v);
-    });
-    return () => { mounted = false; };
-  }, [isConfigured, isEntitledTo, customerInfo]);
 
   useEffect(() => {
     if (!isConfigured) return;
@@ -133,11 +123,11 @@ export default function SubscriptionPage() {
       <div className="rounded-xl border border-white/10 bg-white/5 p-6 space-y-4">
         <div className="flex items-center justify-between">
           <span className="text-white/70">Status</span>
-          <span className={entitled ? "text-emerald-400 font-medium" : "text-white/50"}>
-            {entitled ? "Active" : "Free plan"}
+          <span className={isPro ? "text-emerald-400 font-medium" : "text-white/50"}>
+            {isPro ? (isVip ? "Pro (VIP)" : "Active") : "Free plan"}
           </span>
         </div>
-        {customerInfo?.managementURL && (
+        {!isVip && customerInfo?.managementURL && (
           <a
             href={customerInfo.managementURL}
             target="_blank"
@@ -150,7 +140,7 @@ export default function SubscriptionPage() {
         )}
       </div>
 
-      {!entitled && (
+      {!isPro && (
         <div className="mt-8">
           <h2 className="text-lg font-semibold text-white mb-4">Choose a plan</h2>
           {offeringsLoading ? (

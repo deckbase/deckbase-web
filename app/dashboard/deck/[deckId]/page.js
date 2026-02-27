@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
-import { useRevenueCat, DEFAULT_ENTITLEMENT_ID } from "@/contexts/RevenueCatContext";
+import { useRevenueCat } from "@/contexts/RevenueCatContext";
 import {
   getDeck,
   updateDeck,
@@ -59,21 +59,9 @@ export default function DeckDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { user } = useAuth();
-  const { isConfigured: rcConfigured, isEntitledTo } = useRevenueCat();
-  const [aiEntitled, setAiEntitled] = useState(true);
+  const { isConfigured: rcConfigured, isPro } = useRevenueCat();
+  const aiEntitled = !isProduction || !rcConfigured || isPro;
   const deckId = params.deckId;
-
-  useEffect(() => {
-    if (!isProduction || !rcConfigured) {
-      setAiEntitled(true);
-      return;
-    }
-    let mounted = true;
-    isEntitledTo(DEFAULT_ENTITLEMENT_ID).then((v) => {
-      if (mounted) setAiEntitled(!!v);
-    });
-    return () => { mounted = false; };
-  }, [rcConfigured, isEntitledTo]);
 
   const [deck, setDeck] = useState(null);
   const [cards, setCards] = useState([]);

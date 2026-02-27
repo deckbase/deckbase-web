@@ -12,7 +12,7 @@ import {
   uploadAudioBufferAdmin,
 } from "@/lib/firestore-admin";
 import { generateTTS } from "@/lib/elevenlabs-server";
-import { isEntitledTo } from "@/lib/revenuecat-server";
+import { isProOrVip } from "@/lib/revenuecat-server";
 
 function normalizeBlockType(type) {
   if (type == null) return "text";
@@ -70,7 +70,7 @@ export async function POST(request) {
     const uid = decoded.uid;
 
     if (process.env.NODE_ENV === "production") {
-      const entitled = await isEntitledTo(uid);
+      const entitled = await isProOrVip(uid);
       if (!entitled) {
         return NextResponse.json(
           { error: "Active subscription required to use AI features" },

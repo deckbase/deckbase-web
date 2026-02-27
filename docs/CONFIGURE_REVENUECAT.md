@@ -38,6 +38,20 @@ Get it from RevenueCat dashboard → **Project Settings** → **API Keys** (secr
 
 ---
 
+## VIP users (Pro without subscription)
+
+Users in the Firestore **`vip`** collection get Pro features without a subscription and do not see the Subscription UI (crown link is hidden).
+
+**To add a VIP:** Create a document in the `vip` collection with document ID = the user’s Firebase UID. The document can be empty or have `active: true`. To revoke, set `active: false` or delete the document.
+
+- **Collection:** `vip`
+- **Document ID:** `{userId}` (Firebase Auth UID)
+- **Optional field:** `active: true` (if present and `false`, user is not VIP)
+
+Server-side Pro gating (APIs) uses **Pro OR VIP**: RevenueCat entitlement or presence in `vip/{uid}`. The web app fetches VIP status from `GET /api/user/vip` (with Firebase ID token) and exposes `isPro` and `isVip` from `RevenueCatContext`.
+
+---
+
 ## Why product status is "Not found"
 
 For the **Deckbase (Stripe)** app, the two products **Pro Monthly** and **Pro Annual** exist in RevenueCat but show **status "Not found"** until they are linked to real products and prices in **Stripe**. RevenueCat does not create those in Stripe for you.
