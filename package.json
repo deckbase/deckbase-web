@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "scrape:nic-english": "node scripts/scrape-nic-english.js"
+    "scrape:nic-english": "node scripts/scrape-nic-english.js",
+    "seed:voice-samples": "node scripts/seed-voice-samples.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",

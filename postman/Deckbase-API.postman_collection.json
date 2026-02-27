@@ -1,0 +1,137 @@
+{
+  "info": {
+    "name": "Deckbase API",
+    "description": "Deckbase Next.js API routes. Set `baseUrl` (e.g. http://localhost:3000 or your production URL), and for auth either `idToken` (Firebase ID token for Bearer) or `apiKey` (X-API-Key for mobile/Postman).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "idToken", "value": "" },
+    { "key": "apiKey", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "ElevenLabs",
+      "item": [
+        {
+          "name": "List voices",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/elevenlabs/voices",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "elevenlabs", "voices"]
+            },
+            "description": "No auth. Returns list of voices for picker."
+          }
+        },
+        {
+          "name": "Voice sample",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-API-Key", "value": "{{apiKey}}", "disabled": false },
+              { "key": "Authorization", "value": "Bearer {{idToken}}", "disabled": true }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/elevenlabs/voice-sample?voice_id=dtSEyYGNJqjrtBArPCVZ",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "elevenlabs", "voice-sample"],
+              "query": [
+                { "key": "voice_id", "value": "dtSEyYGNJqjrtBArPCVZ" }
+              ]
+            },
+            "description": "Returns { url } (public URL, no expiry). Sample is made public in Storage. In prod use X-API-Key or Bearer."
+          }
+        },
+        {
+          "name": "Text-to-speech",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-API-Key", "value": "{{apiKey}}", "disabled": false },
+              { "key": "Authorization", "value": "Bearer {{idToken}}", "disabled": true }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Hello, this is a test.\",\n  \"voice_id\": \"dtSEyYGNJqjrtBArPCVZ\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/elevenlabs/text-to-speech",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "elevenlabs", "text-to-speech"]
+            },
+            "description": "Returns binary MP3. In prod needs Bearer token or X-API-Key + Pro (or VIP)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "User",
+      "item": [
+        {
+          "name": "VIP status",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{idToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/user/vip",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "user", "vip"]
+            },
+            "description": "Returns { isVip: boolean }. Requires Firebase ID token."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cards (AI)",
+      "item": [
+        {
+          "name": "Generate with AI (web)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{idToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deckTitle\": \"Sample Deck\",\n  \"templateBlocks\": [\n    { \"blockId\": \"front\", \"type\": \"text\", \"label\": \"Front\" },\n    { \"blockId\": \"back\", \"type\": \"text\", \"label\": \"Back\" }\n  ],\n  \"exampleCards\": [],\n  \"count\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/generate-with-ai",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "cards", "generate-with-ai"]
+            },
+            "description": "Pro/VIP required in production. Body: deckTitle, templateBlocks, exampleCards, count?"
+          }
+        },
+        {
+          "name": "Add with AI (mobile)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{idToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deckId\": \"YOUR_DECK_ID\",\n  \"templateId\": \"YOUR_TEMPLATE_ID\",\n  \"count\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/cards/add-with-ai",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "mobile", "cards", "add-with-ai"]
+            },
+            "description": "Creates cards with AI (+ optional audio). Pro/VIP required in production."
+          }
+        }
+      ]
+    }
+  ]
+}

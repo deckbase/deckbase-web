@@ -4,11 +4,12 @@ import { requireElevenLabsAuth } from "@/lib/elevenlabs-auth";
 
 const SAMPLE_PHRASE = "Hello, this is a sample of this voice.";
 const STORAGE_PATH_PREFIX = "tts-samples";
-const SIGNED_URL_EXPIRY_MS = 365 * 24 * 60 * 60 * 1000; // 1 year
-const URL_CACHE_TTL_MS = 23 * 60 * 60 * 1000; // 23h – refresh before signed URL expires
 
-// In-memory cache: voiceId -> { url, expiresAt } to avoid Storage round trips on every request
-const signedUrlCache = new Map();
+/** Public URL for an object (no expiry). We make the object public, no getSignedUrl. */
+function publicUrl(bucketName, objectPath) {
+  const encoded = objectPath.split("/").map((s) => encodeURIComponent(s)).join("/");
+  return `https://storage.googleapis.com/${bucketName}/${encoded}`;
+}
 
 // Allowed voice IDs (whitelist so we only cache known voices)
 const ALLOWED_VOICE_IDS = new Set([
@@ -22,8 +23,9 @@ const ALLOWED_VOICE_IDS = new Set([
 
 /**
  * GET /api/elevenlabs/voice-sample?voice_id=xxx
- * Returns { url: string } for cached (or newly generated) sample in Firebase Storage.
- * In production: X-API-Key or Authorization: Bearer <Firebase ID token> + Pro.
+ *
+ * If no data in Storage → get from ElevenLabs, save to Storage. Make object public, return { url } (public URL, no expiry, no getSignedUrl).
+ * In production: X-API-Key or Bearer + Pro.
  */
 export async function GET(request) {
   const authResult = await requireElevenLabsAuth(request);
@@ -60,20 +62,6 @@ export async function GET(request) {
   }
 
   try {
-    const cached = signedUrlCache.get(voiceId);
-    if (cached && cached.expiresAt > Date.now()) {
-      console.log("voice-sample: in-memory cache hit", { voiceId });
-      return NextResponse.json(
-        { url: cached.url },
-        {
-          headers: {
-            "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=86400",
-            "X-Voice-Sample-Source": "cache",
-          },
-        }
-      );
-    }
-
     const path = `${STORAGE_PATH_PREFIX}/${voiceId}.mp3`;
     const file = bucket.file(path);
 
@@ -90,9 +78,7 @@ export async function GET(request) {
       if (!isNotFound) throw e;
     }
 
-    let source = "storage";
     if (!fileExists) {
-      source = "elevenlabs";
       console.log("voice-sample: Storage miss, calling ElevenLabs", { voiceId, path });
       const apiKey = process.env.ELEVENLABS_API_KEY;
       if (!apiKey) {
@@ -125,68 +111,52 @@ export async function GET(request) {
         );
       }
       const buffer = Buffer.from(await response.arrayBuffer());
-      console.log("voice-sample: saving to Storage", {
-        bucket: bucket.name,
-        path,
-        voiceId,
-      });
+      console.log("voice-sample: saving to Storage", { bucket: bucket.name, path, voiceId });
       try {
         await file.save(buffer, {
           metadata: { contentType: "audio/mpeg" },
         });
       } catch (saveErr) {
-        console.error("voice-sample: save failed (file not in Storage, voice will change every request)", {
-          bucket: bucket.name,
-          path,
-          voiceId,
-          err: saveErr?.message,
-          code: saveErr?.code,
-        });
+        const statusCode = saveErr?.code ?? saveErr?.response?.statusCode;
+        console.error("voice-sample: save failed", { bucket: bucket.name, path, voiceId, err: saveErr?.message });
         return NextResponse.json(
           {
             error: "Failed to cache voice sample in Storage",
             message: saveErr?.message,
-            hint: "Ensure the Firebase Admin service account has Storage Object Admin (or Storage Admin) on the bucket in Google Cloud IAM. Bucket: " + bucket.name,
+            statusCode: statusCode ?? undefined,
+            hint:
+              statusCode === 403 || /permission|403|insufficient/i.test(String(saveErr?.message ?? ""))
+                ? `Grant the Firebase Admin service account Storage Object Admin on bucket "${bucket.name}" in Google Cloud Console → Storage → bucket → Permissions.`
+                : "Ensure the Firebase Admin service account has Storage Object Admin (or Storage Admin) on the bucket. Bucket: " + bucket.name,
           },
           { status: 500 }
         );
       }
-      try {
-        await file.getMetadata();
-        console.log("voice-sample: saved and verified", {
-          voiceId,
-          path,
-          bucket: bucket.name,
-        });
-      } catch (verifyErr) {
-        console.error("voice-sample: save succeeded but verify failed (next request may re-call ElevenLabs)", {
-          voiceId,
-          path,
-          bucket: bucket.name,
-          err: verifyErr?.message,
-        });
-      }
+      console.log("voice-sample: saved", { voiceId, path, bucket: bucket.name });
     } else {
-      console.log("voice-sample: Storage hit (file exists), not calling ElevenLabs", { voiceId });
+      console.log("voice-sample: Storage hit", { voiceId });
     }
 
-    const [url] = await file.getSignedUrl({
-      version: "v4",
-      action: "read",
-      expires: new Date(Date.now() + SIGNED_URL_EXPIRY_MS),
-    });
-
-    signedUrlCache.set(voiceId, {
-      url,
-      expiresAt: Date.now() + URL_CACHE_TTL_MS,
-    });
+    try {
+      await file.makePublic();
+    } catch (makePublicErr) {
+      console.error("voice-sample: makePublic failed", { voiceId, err: makePublicErr?.message });
+      return NextResponse.json(
+        {
+          error: "Failed to make sample public",
+          message: makePublicErr?.message,
+          hint: `Allow public read on the bucket so samples can be served by URL. Google Cloud Console → Storage → bucket "${bucket.name}" → Permissions → Grant access → principal allUsers → Role Storage Object Viewer. See docs/VOICE_SAMPLE_STORAGE_SETUP.md.`,
+        },
+        { status: 500 }
+      );
+    }
+    const url = publicUrl(bucket.name, path);
 
     return NextResponse.json(
       { url },
       {
         headers: {
           "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=86400",
-          "X-Voice-Sample-Source": source,
         },
       }
     );
