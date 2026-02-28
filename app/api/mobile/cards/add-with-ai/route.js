@@ -177,10 +177,24 @@ export async function POST(request) {
     }));
     const audioBlock = blocksSnapshot.find(isAudioBlock);
     const mainBlockId = template.mainBlockId || null;
+    const subBlockId = template.subBlockId || null;
 
+    const getContentKey = (vals) => {
+      const mainVal = mainBlockId ? vals.find((v) => v.blockId === mainBlockId) : null;
+      const subVal = subBlockId ? vals.find((v) => v.blockId === subBlockId) : null;
+      const mainText = (mainVal?.text != null ? String(mainVal.text).trim() : "") || "";
+      const subText = (subVal?.text != null ? String(subVal.text).trim() : "") || "";
+      return `${mainText}\n${subText}`;
+    };
+
+    const contentKeys = new Set();
     const cardIds = [];
     for (let i = 0; i < generatedCards.length; i++) {
       let values = [...generatedCards[i]];
+
+      const contentKey = getContentKey(values);
+      if (contentKeys.has(contentKey)) continue;
+      contentKeys.add(contentKey);
 
       if (audioBlock) {
         let mainText = "";
@@ -223,11 +237,23 @@ export async function POST(request) {
       }
 
 
-      const { cardId } = await createCardAdmin(uid, deckId, templateId, blocksSnapshot, values);
+      const { cardId } = await createCardAdmin(
+        uid,
+        deckId,
+        templateId,
+        blocksSnapshot,
+        values,
+        template.mainBlockId ?? null,
+        template.subBlockId ?? null
+      );
       cardIds.push(cardId);
     }
 
-    return NextResponse.json({ created: cardIds.length, cardIds });
+    return NextResponse.json({
+      created: cardIds.length,
+      cardIds,
+      skippedDuplicates: generatedCards.length - cardIds.length,
+    });
   } catch (err) {
     console.error("[mobile add-with-ai]", err);
     return NextResponse.json(

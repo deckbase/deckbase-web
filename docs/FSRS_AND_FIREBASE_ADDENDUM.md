@@ -250,57 +250,6 @@ The web app uses **Firebase Firestore** as its database, organized to match the 
 ```
 firestore
 │
-├── flashcards
-│   └── {userId}
-│       └── data
-│           └── main
-│               ├── decks (collection)
-│               │   └── {deckId} (document)
-│               │       ├── deck_id: string
-│               │       ├── title: string
-│               │       ├── description: string
-│               │       ├── created_at: timestamp
-│               │       ├── updated_at: timestamp
-│               │       └── is_deleted: boolean
-│               │
-│               ├── cards (collection)
-│               │   └── {cardId} (document)
-│               │       ├── card_id: string
-│               │       ├── deck_id: string
-│               │       ├── template_id: string
-│               │       ├── template_version: number
-│               │       ├── blocks_snapshot: array
-│               │       ├── values: array
-│               │       ├── main_block_id: string?
-│               │       ├── sub_block_id: string?
-│               │       ├── source: object?
-│               │       ├── created_at: timestamp
-│               │       ├── updated_at: timestamp
-│               │       ├── is_deleted: boolean
-│               │       │
-│               │       └── SRS Fields:
-│               │           ├── srs_state: number (1-3)
-│               │           ├── srs_step: number
-│               │           ├── srs_stability: number?
-│               │           ├── srs_difficulty: number?
-│               │           ├── srs_due: number (timestamp ms)
-│               │           ├── srs_last_review: number? (timestamp ms)
-│               │           └── review_count: number
-│               │
-│               └── templates (collection)
-│                   └── {templateId} (document)
-│                       ├── template_id: string
-│                       ├── name: string
-│                       ├── description: string
-│                       ├── version: number
-│                       ├── blocks: array
-│                       ├── rendering: object?
-│                       ├── main_block_id: string?
-│                       ├── sub_block_id: string?
-│                       ├── created_at: timestamp
-│                       ├── updated_at: timestamp
-│                       └── is_deleted: boolean
-│
 └── users
     └── {userId}
         ├── profile (document)
@@ -308,6 +257,53 @@ firestore
         │   ├── display_name: string
         │   ├── created_at: timestamp
         │   └── ...
+        │
+        ├── decks (collection)
+        │   └── {deckId} (document)
+        │       ├── deck_id: string
+        │       ├── title: string
+        │       ├── description: string
+        │       ├── created_at: timestamp
+        │       ├── updated_at: timestamp
+        │       └── is_deleted: boolean
+        │
+        ├── cards (collection)
+        │   └── {cardId} (document)
+        │       ├── card_id: string
+        │       ├── deck_id: string
+        │       ├── template_id: string
+        │       ├── template_version: number
+        │       ├── blocks_snapshot: array
+        │       ├── values: array
+        │       ├── main_block_id: string?
+        │       ├── sub_block_id: string?
+        │       ├── source: object?
+        │       ├── created_at: timestamp
+        │       ├── updated_at: timestamp
+        │       ├── is_deleted: boolean
+        │       │
+        │       └── SRS Fields:
+        │           ├── srs_state: number (1-3)
+        │           ├── srs_step: number
+        │           ├── srs_stability: number?
+        │           ├── srs_difficulty: number?
+        │           ├── srs_due: number (timestamp ms)
+        │           ├── srs_last_review: number? (timestamp ms)
+        │           └── review_count: number
+        │
+        ├── templates (collection)
+        │   └── {templateId} (document)
+        │       ├── template_id: string
+        │       ├── name: string
+        │       ├── description: string
+        │       ├── version: number
+        │       ├── blocks: array
+        │       ├── rendering: object?
+        │       ├── main_block_id: string?
+        │       ├── sub_block_id: string?
+        │       ├── created_at: timestamp
+        │       ├── updated_at: timestamp
+        │       └── is_deleted: boolean
         │
         └── media (collection)
             └── {mediaId} (document)
@@ -325,18 +321,15 @@ firestore
 ### Path Helpers
 
 ```typescript
-// Firestore path construction
-const getUserDataPath = (uid: string) =>
-  `flashcards/${uid}/data/main`;
-
+// Firestore path construction (decks, cards, templates under users — see FIRESTORE_FLASHCARDS_MIGRATION.md)
 const getDecksCollection = (uid: string) =>
-  collection(db, getUserDataPath(uid), "decks");
+  collection(db, "users", uid, "decks");
 
 const getCardsCollection = (uid: string) =>
-  collection(db, getUserDataPath(uid), "cards");
+  collection(db, "users", uid, "cards");
 
 const getTemplatesCollection = (uid: string) =>
-  collection(db, getUserDataPath(uid), "templates");
+  collection(db, "users", uid, "templates");
 
 const getMediaCollection = (uid: string) =>
   collection(db, "users", uid, "media");

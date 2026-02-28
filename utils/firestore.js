@@ -24,18 +24,17 @@ import { db, storage } from "@/utils/firebase";
 import { v4 as uuidv4 } from "uuid";
 
 // ============== FIRESTORE PATH HELPERS ==============
-// Matches mobile structure: flashcards/{userId}/data/main/{collection}/{docId}
+// Decks, cards, templates live under users/{userId}/decks|cards|templates (flashcards collection abolished)
 
-const getUserDataPath = (uid) => `flashcards/${uid}/data/main`;
 const getDecksCollection = (uid) =>
-  collection(db, getUserDataPath(uid), "decks");
+  collection(db, "users", uid, "decks");
 const getCardsCollection = (uid) =>
-  collection(db, getUserDataPath(uid), "cards");
+  collection(db, "users", uid, "cards");
 const getTemplatesCollection = (uid) =>
-  collection(db, getUserDataPath(uid), "templates");
-const getMediaCollection = (uid) => collection(db, "users", uid, "media"); // Media stays in users collection
+  collection(db, "users", uid, "templates");
+const getMediaCollection = (uid) => collection(db, "users", uid, "media");
 
-// Wizard data lives under wizard/{uid}/... (separate from flashcards)
+// Wizard data lives under wizard/{uid}/...
 const getWizardProgressRef = (uid) =>
   doc(db, "wizard", uid, "progress", "wizard");
 
@@ -117,9 +116,9 @@ const getWizardDeckEntriesCollection = (uid, wizardDeckId) =>
 const getWizardConceptsCollection = (uid) =>
   collection(db, "wizard", uid, "concepts");
 
-/** Legacy flat wizard_deck under flashcards. Used only for migration (read from old path, write to new). */
+/** Legacy flat wizard_deck (migrated to users/{uid}/wizard_deck). Used only for migration (read, write to wizard decks). */
 const getLegacyWizardDeckCollection = (uid) =>
-  collection(db, getUserDataPath(uid), "wizard_deck");
+  collection(db, "users", uid, "wizard_deck");
 
 /**
  * Migrate legacy wizard_deck into a new "Default" wizard deck. Call when user has no wizard_decks.
@@ -275,6 +274,8 @@ export const createCardForWizard = async (uid, wizardDeckId, prompt, correctAnsw
     template_id: null,
     blocks_snapshot: blocksSnapshot.map(transformBlockToFirestore),
     values: values.map(transformValueToFirestore),
+    main_block_id: promptBlockId,
+    sub_block_id: answerBlockId,
     created_at: now,
     updated_at: now,
     is_deleted: false,
@@ -493,6 +494,8 @@ export const createCard = async (
   blocksSnapshot,
   values,
   templateId = null,
+  mainBlockId = null,
+  subBlockId = null,
 ) => {
   const cardId = uuidv4();
   const now = Timestamp.now();
@@ -503,6 +506,8 @@ export const createCard = async (
     template_id: templateId,
     blocks_snapshot: blocksSnapshot.map(transformBlockToFirestore),
     values: values.map(transformValueToFirestore),
+    main_block_id: mainBlockId ?? null,
+    sub_block_id: subBlockId ?? null,
     created_at: now,
     updated_at: now,
     is_deleted: false,
@@ -597,17 +602,18 @@ export const updateCard = async (
   deckId,
   values,
   blocksSnapshot,
+  mainBlockId = undefined,
+  subBlockId = undefined,
 ) => {
   const cardRef = doc(getCardsCollection(uid), cardId);
-  await setDoc(
-    cardRef,
-    {
-      values: values.map(transformValueToFirestore),
-      blocks_snapshot: blocksSnapshot.map(transformBlockToFirestore),
-      updated_at: Timestamp.now(),
-    },
-    { merge: true },
-  );
+  const updateData = {
+    values: values.map(transformValueToFirestore),
+    blocks_snapshot: blocksSnapshot.map(transformBlockToFirestore),
+    updated_at: Timestamp.now(),
+  };
+  if (mainBlockId !== undefined) updateData.main_block_id = mainBlockId ?? null;
+  if (subBlockId !== undefined) updateData.sub_block_id = subBlockId ?? null;
+  await setDoc(cardRef, updateData, { merge: true });
 
   // Update deck's updatedAt
   await updateDeck(uid, deckId, {});
@@ -1626,6 +1632,8 @@ const transformCardFromFirestore = (data) => {
       transformBlockFromFirestore,
     ),
     values: (data.values || []).map(transformValueFromFirestore),
+    mainBlockId: data.main_block_id ?? null,
+    subBlockId: data.sub_block_id ?? null,
     source: data.source
       ? {
           imageLocalPath: data.source.image_local_path,

@@ -106,6 +106,7 @@ export default function DeckDetailPage() {
   const [addWithAISuccess, setAddWithAISuccess] = useState(null);
   const [addWithAIGeneratedCards, setAddWithAIGeneratedCards] = useState([]);
   const [addWithAISelectedIndices, setAddWithAISelectedIndices] = useState(new Set());
+  const addWithAIAddingToDeckRef = useRef(false);
 
   // Add card (normal): template vs blank
   const [showAddCardModal, setShowAddCardModal] = useState(false);
@@ -555,7 +556,9 @@ export default function DeckDetailPage() {
           deckId,
           blocksSnapshot,
           values,
-          selectedTemplate.templateId
+          selectedTemplate.templateId,
+          selectedTemplate.mainBlockId ?? null,
+          selectedTemplate.subBlockId ?? null
         );
 
         imported++;
@@ -606,11 +609,25 @@ export default function DeckDetailPage() {
       });
       return o;
     });
+    const mainId = template.mainBlockId ?? null;
+    const avoidMainPhrases = mainId
+      ? [...new Set(
+          cards
+            .map((card) => {
+              const v = (card.values || []).find((x) => x.blockId === mainId);
+              const t = v?.text != null ? String(v.text).trim() : "";
+              return t || null;
+            })
+            .filter(Boolean)
+        )]
+      : [];
     const templateBlocks = template.blocks.map((b) => ({
       blockId: b.blockId,
       type: b.type,
       label: b.label || "",
     }));
+    const mainBlock = template.mainBlockId ? template.blocks.find((b) => b.blockId === template.mainBlockId) : null;
+    const subBlock = template.subBlockId ? template.blocks.find((b) => b.blockId === template.subBlockId) : null;
     const blocksSnapshot = template.blocks.map((b) => ({
       blockId: b.blockId,
       type: b.type,
@@ -634,6 +651,11 @@ export default function DeckDetailPage() {
           templateBlocks,
           exampleCards,
           count,
+          mainBlockId: template.mainBlockId ?? null,
+          subBlockId: template.subBlockId ?? null,
+          mainBlockLabel: mainBlock?.label ?? null,
+          subBlockLabel: subBlock?.label ?? null,
+          avoidMainPhrases,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -688,16 +710,42 @@ export default function DeckDetailPage() {
 
   const handleAddSelectedCardsToDeck = async () => {
     if (!user || !deckId || addWithAIGeneratedCards.length === 0) return;
+    if (addWithAIAddingToDeckRef.current) return;
+    addWithAIAddingToDeckRef.current = true;
+
     const indices = Array.from(addWithAISelectedIndices).sort((a, b) => a - b);
     let lastCardId = null;
+    let addedCount = 0;
+    let skippedDuplicates = 0;
     const total = indices.length;
+    const contentKeys = new Set();
 
     const isAudioBlock = (b) => b.type === "audio" || b.type === 7 || b.type === "7";
 
+    const getContentKey = (item) => {
+      const templateForCard = templates.find((t) => t.templateId === item.templateId);
+      const mainId = templateForCard?.mainBlockId ?? null;
+      const subId = templateForCard?.subBlockId ?? null;
+      const values = item.values || [];
+      const mainVal = mainId ? values.find((v) => v.blockId === mainId) : null;
+      const subVal = subId ? values.find((v) => v.blockId === subId) : null;
+      const mainText = (mainVal?.text != null ? String(mainVal.text).trim() : "") || "";
+      const subText = (subVal?.text != null ? String(subVal.text).trim() : "") || "";
+      return `${mainText}\n${subText}`;
+    };
+
+    try {
     for (let idx = 0; idx < indices.length; idx++) {
       const i = indices[idx];
       const item = addWithAIGeneratedCards[i];
       if (!item) continue;
+
+      const contentKey = getContentKey(item);
+      if (contentKeys.has(contentKey)) {
+        skippedDuplicates++;
+        continue;
+      }
+      contentKeys.add(contentKey);
 
       const cardNum = total > 1 ? `Card ${idx + 1} of ${total}: ` : "";
       setAddWithAIProgress(`${cardNum}Generating card…`);
@@ -765,37 +813,44 @@ export default function DeckDetailPage() {
       })();
 
       setAddWithAIProgress(total > 1 ? `Card ${idx + 1} of ${total}: Saving…` : "Saving card…");
+      const templateForCard = templates.find((t) => t.templateId === item.templateId);
       const created = await createCard(
         user.uid,
         deckId,
         item.blocksSnapshot,
         values,
-        item.templateId
+        item.templateId,
+        templateForCard?.mainBlockId ?? null,
+        templateForCard?.subBlockId ?? null
       );
       lastCardId = created?.cardId ?? lastCardId;
+      addedCount++;
     }
 
     setAddWithAIProgress(null);
     setAddWithAIGeneratedCards([]);
     setAddWithAISelectedIndices(new Set());
-    setAddWithAISuccess({ count: indices.length, lastCardId });
+    setAddWithAISuccess({
+      count: addedCount,
+      skippedDuplicates,
+      lastCardId,
+    });
+    } finally {
+      addWithAIAddingToDeckRef.current = false;
+    }
   };
 
-  // Get preview text from card values using template's main/sub blocks
+  // Get preview text from card values using card's or template's main/sub blocks
   const getCardPreview = (card) => {
     if (!card.values || card.values.length === 0) return { main: "Empty card", sub: null };
 
-    // Find the template for this card
     const template = templates.find((t) => t.templateId === card.templateId);
+    const mainId = card.mainBlockId ?? template?.mainBlockId;
+    const subId = card.subBlockId ?? template?.subBlockId;
 
-    if (template && (template.mainBlockId || template.subBlockId)) {
-      // Use template's main/sub block IDs
-      const mainValue = template.mainBlockId
-        ? card.values.find((v) => v.blockId === template.mainBlockId)
-        : null;
-      const subValue = template.subBlockId
-        ? card.values.find((v) => v.blockId === template.subBlockId)
-        : null;
+    if (mainId || subId) {
+      const mainValue = mainId ? card.values.find((v) => v.blockId === mainId) : null;
+      const subValue = subId ? card.values.find((v) => v.blockId === subId) : null;
 
       return {
         main: mainValue?.text?.substring(0, 100) || card.values.find((v) => v.text)?.text?.substring(0, 100) || "Empty card",
@@ -1346,6 +1401,9 @@ export default function DeckDetailPage() {
                 <>
                   <p className="text-white/80 mb-4">
                     {addWithAISuccess.count} {addWithAISuccess.count === 1 ? "card has" : "cards have"} been added to this deck.
+                    {addWithAISuccess.skippedDuplicates > 0 && (
+                      <> ({addWithAISuccess.skippedDuplicates} duplicate{addWithAISuccess.skippedDuplicates === 1 ? "" : "s"} skipped)</>
+                    )}
                   </p>
                   {addWithAIDevPrompt && (
                     <div className="mb-4 border border-white/10 rounded-lg overflow-hidden">

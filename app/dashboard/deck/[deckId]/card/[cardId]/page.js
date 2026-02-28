@@ -120,13 +120,14 @@ export default function CardEditorPage() {
           });
           setValues(valuesObj);
 
-          // Fetch template to get main/sub block IDs
+          // Prefer card's saved main/sub, then template's
           if (cardData.templateId) {
             const template = await getTemplate(user.uid, cardData.templateId);
-            if (template) {
-              setMainBlockId(template.mainBlockId);
-              setSubBlockId(template.subBlockId);
-            }
+            setMainBlockId(cardData.mainBlockId ?? template?.mainBlockId ?? null);
+            setSubBlockId(cardData.subBlockId ?? template?.subBlockId ?? null);
+          } else {
+            setMainBlockId(cardData.mainBlockId ?? null);
+            setSubBlockId(cardData.subBlockId ?? null);
           }
 
           // Fetch media for image blocks
@@ -427,7 +428,9 @@ export default function CardEditorPage() {
         deckId,
         blocksToSave,
         valuesArray,
-        templateIdFromUrl || null
+        templateIdFromUrl || null,
+        mainBlockId ?? null,
+        subBlockId ?? null
       );
       if (redirect) {
         router.push(`/dashboard/deck/${deckId}`);
@@ -435,7 +438,7 @@ export default function CardEditorPage() {
         router.replace(`/dashboard/deck/${deckId}/card/${created.cardId}`);
       }
     } else {
-      await updateCard(user.uid, cardId, deckId, valuesArray, blocksToSave);
+      await updateCard(user.uid, cardId, deckId, valuesArray, blocksToSave, mainBlockId ?? null, subBlockId ?? null);
       if (redirect) router.push(`/dashboard/deck/${deckId}`);
     }
   };

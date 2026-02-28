@@ -201,7 +201,7 @@ export default function SpeechPersonPage() {
         { blockId: frontBlockId, type: "header1", text: frontText },
         { blockId: backBlockId, type: "text", text: backText },
       ];
-      await createCard(user.uid, deckId, blocksSnapshot, values);
+      await createCard(user.uid, deckId, blocksSnapshot, values, null, frontBlockId, backBlockId);
       setNotice({
         type: "success",
         message: `Added to ${deck?.title || "deck"}.`,

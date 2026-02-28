@@ -88,6 +88,13 @@ export async function POST(request) {
     const templateBlocks = Array.isArray(body.templateBlocks) ? body.templateBlocks : [];
     const exampleCards = Array.isArray(body.exampleCards) ? body.exampleCards : [];
     const count = Math.min(5, Math.max(1, Number(body.count) || 1));
+    const mainBlockId = body.mainBlockId ?? null;
+    const subBlockId = body.subBlockId ?? null;
+    const mainBlockLabel = typeof body.mainBlockLabel === "string" ? body.mainBlockLabel.trim() : null;
+    const subBlockLabel = typeof body.subBlockLabel === "string" ? body.subBlockLabel.trim() : null;
+    const avoidMainPhrases = Array.isArray(body.avoidMainPhrases)
+      ? body.avoidMainPhrases.map((s) => (s != null ? String(s).trim() : "")).filter(Boolean)
+      : [];
 
     if (templateBlocks.length === 0) {
       return NextResponse.json(
@@ -102,6 +109,11 @@ export async function POST(request) {
       templateBlocks,
       exampleCards,
       count,
+      mainBlockId,
+      subBlockId,
+      mainBlockLabel,
+      subBlockLabel,
+      avoidMainPhrases,
     });
 
     const anthropic = new Anthropic({ apiKey });

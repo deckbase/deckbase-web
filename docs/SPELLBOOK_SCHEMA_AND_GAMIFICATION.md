@@ -31,13 +31,12 @@ Below we map these to **current** Deckbase schema and then **additions** for Spe
 ### 2.1 Current Firestore layout (simplified)
 
 ```
-flashcards/{uid}/data/main/
+users/{uid}/
+  profile            → email, display_name, ...
   decks/{deckId}     → deck_id, title, description, timestamps, is_deleted
   cards/{cardId}     → card_id, deck_id, template_id, blocks_snapshot, values,
                        SRS: srs_state, srs_step, srs_stability, srs_due, review_count, ...
   templates/{templateId}
-users/{uid}/
-  profile            → email, display_name, ...
   media/{mediaId}
 ```
 
@@ -95,7 +94,7 @@ Then UI can “filter by domain” by deck or by card.
 
 ### 3.3 User-level: Progression (XP, level, streak)
 
-Add a **user progression** doc (e.g. `users/{uid}/progress` or `flashcards/{uid}/data/main/progress`).
+Add a **user progression** doc (e.g. `users/{uid}/progress`).
 
 | Field | Type | Purpose in gamification |
 |-------|------|--------------------------|
@@ -120,7 +119,7 @@ If you want explicit “battle” records (for history, analytics, or “daily b
 | `card_ids` or `deck_id` | array / string | What was reviewed. |
 | `completed_at` | timestamp | When the battle ended. |
 
-Store in e.g. `flashcards/{uid}/data/main/battles/{battleId}` or `users/{uid}/battles/{battleId}`. This supports “battles won” and replay/analytics.
+Store in e.g. `users/{uid}/battles/{battleId}`. This supports “battles won” and replay/analytics.
 
 ---
 

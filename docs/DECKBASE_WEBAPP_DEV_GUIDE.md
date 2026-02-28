@@ -101,23 +101,24 @@ export const storage = getStorage(app);
 ```
 /users/{uid}                                         # User profile document
 /users/{uid}/inAppNotifications/{notificationId}     # In-app notifications
+/users/{uid}/decks/{deckId}                          # User's decks
+/users/{uid}/cards/{cardId}                          # User's cards
+/users/{uid}/templates/{templateId}                  # User's templates
+/users/{uid}/media/{mediaId}                         # User's media (images, audio)
 /notifications/{uid}                                 # FCM tokens for push notifications
-/flashcards/{uid}/data/main/decks/{deckId}           # User's decks
-/flashcards/{uid}/data/main/cards/{cardId}           # User's cards
-/flashcards/{uid}/data/main/templates/{templateId}   # User's templates
 /free_trials/{email}                                 # Free trial records
 ```
 
 > **Important**:
 >
-> - Note the nested path structure under `/flashcards/{uid}/data/main/`
+> - Decks, cards, and templates live under `users/{uid}/` (see [FIRESTORE_FLASHCARDS_MIGRATION.md](./FIRESTORE_FLASHCARDS_MIGRATION.md) for the migration from the legacy `flashcards` collection).
 > - Media files are stored in **Firebase Storage** (not Firestore). Only the storage path is referenced in card values.
 
 ---
 
 ### Deck Document
 
-**Collection**: `/flashcards/{uid}/data/main/decks/{deckId}`
+**Collection**: `users/{uid}/decks/{deckId}`
 
 ```typescript
 interface Deck {
@@ -147,7 +148,7 @@ interface Deck {
 
 ### Card Document
 
-**Collection**: `/flashcards/{uid}/data/main/cards/{cardId}`
+**Collection**: `users/{uid}/cards/{cardId}`
 
 ```typescript
 interface Card {
@@ -253,7 +254,7 @@ interface BlockValue {
 
 ### Template Document
 
-**Collection**: `/flashcards/{uid}/data/main/templates/{templateId}`
+**Collection**: `users/{uid}/templates/{templateId}`
 
 ```typescript
 interface Template {
@@ -595,9 +596,9 @@ onAuthStateChanged(auth, (user) => {
 ### Collection Helper
 
 ```typescript
-// Helper to get collection paths
+// Helper to get collection paths (decks, cards, templates under users)
 const getCollectionPath = (uid: string, collection: string) => {
-  return `flashcards/${uid}/data/main/${collection}`;
+  return `users/${uid}/${collection}`;
 };
 ```
 
@@ -983,9 +984,8 @@ const APP_NAME = "Deckbase";
 const TERMS_URL = "https://www.deckbase.co/terms-and-conditions";
 const PRIVACY_URL = "https://www.deckbase.co/privacy-policy";
 
-// Firestore collections
+// Firestore collections (decks, cards, templates are subcollections of users)
 const COLLECTION_USERS = "users";
-const COLLECTION_FLASHCARDS = "flashcards";
 const COLLECTION_DECKS = "decks";
 const COLLECTION_CARDS = "cards";
 const COLLECTION_TEMPLATES = "templates";
