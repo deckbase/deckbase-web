@@ -609,18 +609,22 @@ export default function DeckDetailPage() {
       });
       return o;
     });
-    const mainId = template.mainBlockId ?? null;
-    const avoidMainPhrases = mainId
-      ? [...new Set(
-          cards
-            .map((card) => {
-              const v = (card.values || []).find((x) => x.blockId === mainId);
-              const t = v?.text != null ? String(v.text).trim() : "";
-              return t || null;
-            })
-            .filter(Boolean)
-        )]
-      : [];
+    // Use template's main block when set; otherwise first block (so we still avoid duplicating existing cards)
+    const mainIdForAvoid = template.mainBlockId ?? template.blocks?.[0]?.blockId ?? null;
+    const avoidMainPhrases =
+      mainIdForAvoid && cards.length > 0
+        ? [
+            ...new Set(
+              cards
+                .map((card) => {
+                  const v = (card.values || []).find((x) => x.blockId === mainIdForAvoid);
+                  const t = v?.text != null ? String(v.text).trim() : "";
+                  return t || null;
+                })
+                .filter(Boolean)
+            ),
+          ]
+        : [];
     const templateBlocks = template.blocks.map((b) => ({
       blockId: b.blockId,
       type: b.type,

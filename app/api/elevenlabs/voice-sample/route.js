@@ -24,7 +24,10 @@ const ALLOWED_VOICE_IDS = new Set([
 /**
  * GET /api/elevenlabs/voice-sample?voice_id=xxx
  *
- * If no data in Storage → get from ElevenLabs, save to Storage. Make object public, return { url } (public URL, no expiry, no getSignedUrl).
+ * 1. Check Storage first (tts-samples/{voiceId}.mp3).
+ * 2. If file exists → return its public URL (do NOT call ElevenLabs).
+ * 3. If file missing → call ElevenLabs once, save buffer to Storage, make public, return URL.
+ * Subsequent requests for same voice_id will hit step 2 and never call ElevenLabs again.
  * In production: X-API-Key or Bearer + Pro.
  */
 export async function GET(request) {
@@ -65,7 +68,7 @@ export async function GET(request) {
     const path = `${STORAGE_PATH_PREFIX}/${voiceId}.mp3`;
     const file = bucket.file(path);
 
-    // Use getMetadata() for existence (GCS can use code 404 or NOT_FOUND)
+    // 1) Always check Storage first — if file exists we never call ElevenLabs
     let fileExists = false;
     try {
       await file.getMetadata();
@@ -78,8 +81,9 @@ export async function GET(request) {
       if (!isNotFound) throw e;
     }
 
+    // 2) Only when file is missing: fetch from ElevenLabs and save to Storage (one-time per voice)
     if (!fileExists) {
-      console.log("voice-sample: Storage miss, calling ElevenLabs", { voiceId, path });
+      console.log("voice-sample: Storage miss, calling ElevenLabs once then saving", { voiceId, path });
       const apiKey = process.env.ELEVENLABS_API_KEY;
       if (!apiKey) {
         return NextResponse.json(
@@ -132,11 +136,12 @@ export async function GET(request) {
           { status: 500 }
         );
       }
-      console.log("voice-sample: saved", { voiceId, path, bucket: bucket.name });
+      console.log("voice-sample: saved to Storage; future requests will use this file", { voiceId, path, bucket: bucket.name });
     } else {
-      console.log("voice-sample: Storage hit", { voiceId });
+      console.log("voice-sample: Storage hit — serving from Storage, not calling ElevenLabs", { voiceId });
     }
 
+    // Ensure object is public so the returned URL works
     try {
       await file.makePublic();
     } catch (makePublicErr) {
@@ -156,6 +161,7 @@ export async function GET(request) {
       { url },
       {
         headers: {
+          // Storage is source of truth; URL is stable so safe to cache response
           "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=86400",
         },
       }
