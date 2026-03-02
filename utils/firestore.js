@@ -34,6 +34,34 @@ const getTemplatesCollection = (uid) =>
   collection(db, "users", uid, "templates");
 const getMediaCollection = (uid) => collection(db, "users", uid, "media");
 
+// ============== USER PROFILE ==============
+
+const getUserDocRef = (uid) => doc(db, "users", uid);
+
+export const getUserProfile = async (uid) => {
+  if (!uid || !db) return null;
+  const snap = await getDoc(getUserDocRef(uid));
+  if (!snap.exists()) return null;
+  const d = snap.data();
+  return {
+    uid: d.uid,
+    email: d.email ?? "",
+    displayName: d.displayName ?? "",
+    profileUrl: d.profileUrl ?? "",
+    created_at: d.created_at,
+  };
+};
+
+export const updateUserProfile = async (uid, updates) => {
+  if (!uid || !db) return;
+  const ref = getUserDocRef(uid);
+  const payload = {};
+  if (updates.displayName !== undefined) payload.displayName = updates.displayName;
+  if (updates.profileUrl !== undefined) payload.profileUrl = updates.profileUrl;
+  if (Object.keys(payload).length === 0) return;
+  await updateDoc(ref, payload);
+};
+
 // Wizard data lives under wizard/{uid}/...
 const getWizardProgressRef = (uid) =>
   doc(db, "wizard", uid, "progress", "wizard");

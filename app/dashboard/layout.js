@@ -45,7 +45,7 @@ export default function DashboardLayout({ children }) {
       {/* Top Navigation */}
       <nav className="fixed top-0 left-0 right-0 h-16 bg-black/80 backdrop-blur-lg border-b border-white/10 z-50">
         <div className="h-full max-w-7xl mx-auto px-4 flex items-center justify-between">
-          <Link href="/dashboard" className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2">
             <Image
               src="/app_logo.png"
               alt="Deckbase"
@@ -61,7 +61,7 @@ export default function DashboardLayout({ children }) {
 
           <div className="flex items-center gap-4">
             <Link
-              href="/"
+              href="/dashboard"
               className="text-white/70 hover:text-white transition-colors p-2"
               title="Home"
             >
@@ -92,7 +92,10 @@ export default function DashboardLayout({ children }) {
               <Settings className="w-5 h-5" />
             </Link>
 
-            <div className="flex items-center gap-3 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
+            <Link
+              href="/dashboard/profile"
+              className="flex items-center gap-3 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
+            >
               {userProfile?.profileUrl ? (
                 <Image
                   src={userProfile.profileUrl}
@@ -109,7 +112,7 @@ export default function DashboardLayout({ children }) {
               <span className="text-white/80 text-sm hidden sm:block">
                 {userProfile?.displayName || user?.email?.split("@")[0]}
               </span>
-            </div>
+            </Link>
 
             <button
               onClick={handleLogout}

@@ -12,6 +12,7 @@ import {
 } from "firebase/auth";
 import { doc, setDoc, getDoc, Timestamp } from "firebase/firestore";
 import { auth, db } from "@/utils/firebase";
+import { getUserProfile as fetchUserProfile } from "@/utils/firestore";
 
 const AuthContext = createContext({});
 
@@ -107,6 +108,13 @@ export const AuthProvider = ({ children }) => {
     return sendPasswordResetEmail(auth, email);
   };
 
+  // Refresh profile from Firestore (e.g. after editing on profile page)
+  const refreshUserProfile = async () => {
+    if (!user?.uid) return;
+    const profile = await fetchUserProfile(user.uid);
+    if (profile) setUserProfile(profile);
+  };
+
   const value = {
     user,
     userProfile,
@@ -116,6 +124,7 @@ export const AuthProvider = ({ children }) => {
     signInWithGoogle,
     logout,
     resetPassword,
+    refreshUserProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
