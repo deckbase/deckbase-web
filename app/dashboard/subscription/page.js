@@ -30,6 +30,10 @@ export default function SubscriptionPage() {
   const [purchasingPackageId, setPurchasingPackageId] = useState(null);
   const [purchaseError, setPurchaseError] = useState(null);
 
+  const isDev = process.env.NODE_ENV === "development";
+  const manageUrl = customerInfo?.managementURL;
+  const showManageBlock = manageUrl && (isDev || !isVip);
+
   useEffect(() => {
     if (!isConfigured) return;
     let mounted = true;
@@ -127,16 +131,21 @@ export default function SubscriptionPage() {
             {isPro ? (isVip ? "Pro (VIP)" : "Active") : "Free plan"}
           </span>
         </div>
-        {!isVip && customerInfo?.managementURL && (
-          <a
-            href={customerInfo.managementURL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 text-amber-400 hover:text-amber-300 text-sm"
-          >
-            <ExternalLink className="w-4 h-4" />
-            Manage subscription
-          </a>
+        {showManageBlock && (
+          <div className="space-y-1">
+            <a
+              href={manageUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-amber-400 hover:text-amber-300 text-sm"
+            >
+              <ExternalLink className="w-4 h-4" />
+              Manage subscription (cancel or update payment)
+            </a>
+            <p className="text-white/40 text-xs">
+              Cancellation stops future charges; you keep access until the end of your current billing period.
+            </p>
+          </div>
         )}
       </div>
 

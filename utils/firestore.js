@@ -22,6 +22,7 @@ import {
 } from "firebase/storage";
 import { db, storage } from "@/utils/firebase";
 import { v4 as uuidv4 } from "uuid";
+const toMs = (v) => (v && typeof v.toMillis === "function" ? v.toMillis() : v ?? Date.now());
 
 // ============== FIRESTORE PATH HELPERS ==============
 // Decks, cards, templates live under users/{userId}/decks|cards|templates (flashcards collection abolished)
@@ -296,12 +297,16 @@ export const createCardForWizard = async (uid, wizardDeckId, prompt, correctAnsw
     { blockId: promptBlockId, type: "text", text: (prompt || "").trim() || "New card" },
     { blockId: answerBlockId, type: "text", text: (correctAnswer || "").trim() || "" },
   ];
+  const blocksSnapshotData = blocksSnapshot.map(transformBlockToFirestore);
+  const valuesData = values.map(transformValueToFirestore);
   const card = {
     card_id: cardId,
     deck_id: null,
     template_id: null,
-    blocks_snapshot: blocksSnapshot.map(transformBlockToFirestore),
-    values: values.map(transformValueToFirestore),
+    blocks_snapshot: blocksSnapshotData,
+    values: valuesData,
+    blocks_snapshot_json: JSON.stringify(blocksSnapshotData),
+    values_json: JSON.stringify(valuesData),
     main_block_id: promptBlockId,
     sub_block_id: answerBlockId,
     created_at: now,
@@ -528,12 +533,16 @@ export const createCard = async (
   const cardId = uuidv4();
   const now = Timestamp.now();
 
+  const blocksSnapshotData = blocksSnapshot.map(transformBlockToFirestore);
+  const valuesData = values.map(transformValueToFirestore);
   const card = {
     card_id: cardId,
     deck_id: deckId,
     template_id: templateId,
-    blocks_snapshot: blocksSnapshot.map(transformBlockToFirestore),
-    values: values.map(transformValueToFirestore),
+    blocks_snapshot: blocksSnapshotData,
+    values: valuesData,
+    blocks_snapshot_json: JSON.stringify(blocksSnapshotData),
+    values_json: JSON.stringify(valuesData),
     main_block_id: mainBlockId ?? null,
     sub_block_id: subBlockId ?? null,
     created_at: now,
@@ -635,10 +644,19 @@ export const updateCard = async (
 ) => {
   const cardRef = doc(getCardsCollection(uid), cardId);
   const updateData = {
-    values: values.map(transformValueToFirestore),
-    blocks_snapshot: blocksSnapshot.map(transformBlockToFirestore),
     updated_at: Timestamp.now(),
   };
+  // Only write content fields when we have content; write both array and JSON (mobile) format.
+  if (values?.length > 0) {
+    const valuesData = values.map(transformValueToFirestore);
+    updateData.values = valuesData;
+    updateData.values_json = JSON.stringify(valuesData);
+  }
+  if (blocksSnapshot?.length > 0) {
+    const blocksSnapshotData = blocksSnapshot.map(transformBlockToFirestore);
+    updateData.blocks_snapshot = blocksSnapshotData;
+    updateData.blocks_snapshot_json = JSON.stringify(blocksSnapshotData);
+  }
   if (mainBlockId !== undefined) updateData.main_block_id = mainBlockId ?? null;
   if (subBlockId !== undefined) updateData.sub_block_id = subBlockId ?? null;
   await setDoc(cardRef, updateData, { merge: true });
@@ -667,11 +685,12 @@ export const updateCardReview = async (uid, cardId, updates) => {
 
 export const deleteCard = async (uid, cardId, deckId) => {
   const cardRef = doc(getCardsCollection(uid), cardId);
+  const now = Timestamp.now();
   await setDoc(
     cardRef,
     {
       is_deleted: true,
-      updated_at: Timestamp.now(),
+      updated_at: now,
     },
     { merge: true },
   );
@@ -1645,21 +1664,71 @@ const transformDeckFromFirestore = (data) => {
   };
 };
 
+// Normalize object from JSON (mobile may send snake_case or camelCase)
+function normalizeBlockForTransform(b) {
+  if (!b) return b;
+  return {
+    ...b,
+    block_id: b.block_id ?? b.blockId,
+    config_json: b.config_json ?? b.configJson,
+  };
+}
+function normalizeValueForTransform(v) {
+  if (!v) return v;
+  return {
+    ...v,
+    block_id: v.block_id ?? v.blockId,
+    media_ids: v.media_ids ?? v.mediaIds,
+    correct_answers: v.correct_answers ?? v.correctAnswers,
+  };
+}
+
+// Read card content: prefer mobile format (values_json / blocks_snapshot_json) when present
+function parseCardContentFromJson(data) {
+  let blocksSnapshot;
+  let values;
+  if (data.blocks_snapshot_json) {
+    try {
+      const parsed = JSON.parse(data.blocks_snapshot_json);
+      blocksSnapshot = (parsed || []).map((b) =>
+        transformBlockFromFirestore(normalizeBlockForTransform(b)),
+      );
+    } catch (_) {
+      blocksSnapshot = (data.blocks_snapshot || []).map(transformBlockFromFirestore);
+    }
+  } else {
+    blocksSnapshot = (data.blocks_snapshot || []).map(transformBlockFromFirestore);
+  }
+  if (data.values_json) {
+    try {
+      const parsed = JSON.parse(data.values_json);
+      values = (parsed || []).map((v) =>
+        transformValueFromFirestore(normalizeValueForTransform(v)),
+      );
+    } catch (_) {
+      values = (data.values || []).map(transformValueFromFirestore);
+    }
+  } else {
+    values = (data.values || []).map(transformValueFromFirestore);
+  }
+  return { blocksSnapshot, values };
+}
+
 const transformCardFromFirestore = (data) => {
   const createdAt =
     data.created_at?.toMillis?.() || data.created_at || Date.now();
   const updatedAt =
     data.updated_at?.toMillis?.() || data.updated_at || Date.now();
 
+  const { blocksSnapshot, values } = parseCardContentFromJson(data);
+
   return {
     cardId: data.card_id,
     deckId: data.deck_id,
     templateId: data.template_id,
     templateVersion: data.template_version,
-    blocksSnapshot: (data.blocks_snapshot || []).map(
-      transformBlockFromFirestore,
-    ),
-    values: (data.values || []).map(transformValueFromFirestore),
+    blocksSnapshot,
+    values,
     mainBlockId: data.main_block_id ?? null,
     subBlockId: data.sub_block_id ?? null,
     source: data.source
@@ -1727,6 +1796,20 @@ const transformValueToFirestore = (value) => {
   return result;
 };
 
+function ensureArray(value) {
+  if (value == null) return [];
+  if (Array.isArray(value)) return value;
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
 const transformTemplateFromFirestore = (data) => {
   const createdAt =
     data.created_at?.toMillis?.() || data.created_at || Date.now();
@@ -1738,11 +1821,15 @@ const transformTemplateFromFirestore = (data) => {
     name: data.name || "Untitled",
     description: data.description || "",
     version: data.version || 1,
-    blocks: (data.blocks || []).map(transformBlockFromFirestore),
+    blocks: ensureArray(data.blocks).map(transformBlockFromFirestore),
     rendering: data.rendering
       ? {
-          frontBlockIds: data.rendering.front_block_ids || [],
-          backBlockIds: data.rendering.back_block_ids || [],
+          frontBlockIds: ensureArray(
+            data.rendering.front_block_ids ?? data.rendering.frontBlockIds,
+          ),
+          backBlockIds: ensureArray(
+            data.rendering.back_block_ids ?? data.rendering.backBlockIds,
+          ),
         }
       : null,
     mainBlockId: data.main_block_id || null,

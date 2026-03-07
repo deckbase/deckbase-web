@@ -32,6 +32,7 @@ import {
   getDeck,
   updateDeck,
   subscribeToCards,
+  getCards,
   deleteCard,
   createCard,
   getTemplates,
@@ -591,7 +592,14 @@ export default function DeckDetailPage() {
 
   // Add card with AI: build context, call API 1–5 times, create cards, redirect
   const handleAddCardWithAI = async () => {
-    if (!user || !deck || !deckId) return;
+    if (!user) return;
+    // Use deck ID from the current URL so we never use a different deck (avoids stale closure)
+    const pathDeckId = typeof window !== "undefined"
+      ? (window.location.pathname.match(/\/deck\/([^/]+)/)?.[1] ?? null)
+      : null;
+    const activeDeckId = pathDeckId || deckId;
+    if (!activeDeckId) return;
+
     const template = templates.find((t) => t.templateId === addWithAITemplateId) || templates[0];
     if (!template?.blocks?.length) {
       setAddWithAIError("Select a template with at least one block.");
@@ -602,7 +610,29 @@ export default function DeckDetailPage() {
       setAddWithAIDevPrompt(null);
       setAddWithAISuccess(null);
       setAddWithAIGenerating(true);
-    const exampleCards = cards.slice(0, 5).map((card) => {
+
+    // Fetch this deck and only this deck's cards at request time — never use state (can be stale from another deck)
+    let currentDeck = null;
+    let deckCards = [];
+    try {
+      [currentDeck, deckCards] = await Promise.all([
+        getDeck(user.uid, activeDeckId),
+        getCards(user.uid, activeDeckId),
+      ]);
+    } catch (_) {
+      setAddWithAIError("Could not load this deck. Try again.");
+      setAddWithAIGenerating(false);
+      return;
+    }
+    if (!currentDeck || currentDeck.isDeleted) {
+      setAddWithAIError("This deck was not found.");
+      setAddWithAIGenerating(false);
+      return;
+    }
+    // Ensure every card belongs to this deck (safety filter)
+    deckCards = deckCards.filter((c) => c.deckId === activeDeckId);
+
+    const exampleCards = deckCards.slice(0, 5).map((card) => {
       const o = {};
       (card.values || []).forEach((v) => {
         if (v.text != null && String(v.text).trim()) o[v.blockId] = String(v.text).trim();
@@ -612,10 +642,10 @@ export default function DeckDetailPage() {
     // Use template's main block when set; otherwise first block (so we still avoid duplicating existing cards)
     const mainIdForAvoid = template.mainBlockId ?? template.blocks?.[0]?.blockId ?? null;
     const avoidMainPhrases =
-      mainIdForAvoid && cards.length > 0
+      mainIdForAvoid && deckCards.length > 0
         ? [
             ...new Set(
-              cards
+              deckCards
                 .map((card) => {
                   const v = (card.values || []).find((x) => x.blockId === mainIdForAvoid);
                   const t = v?.text != null ? String(v.text).trim() : "";
@@ -650,8 +680,8 @@ export default function DeckDetailPage() {
         method: "POST",
         headers,
         body: JSON.stringify({
-          deckTitle: deck.title || "",
-          deckDescription: deck.description || "",
+          deckTitle: currentDeck.title || "",
+          deckDescription: currentDeck.description || "",
           templateBlocks,
           exampleCards,
           count,

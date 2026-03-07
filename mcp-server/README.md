@@ -1,0 +1,122 @@
+# Deckbase MCP Server
+
+MCP (Model Context Protocol) server for the Deckbase project. Exposes project documentation and tools so Cursor (or other MCP clients) can read Deckbase docs and list/read files.
+
+**Two ways to use it:**
+
+| Mode | Use case |
+|------|----------|
+| **Local (stdio)** | Run `node mcp-server/index.js`; Cursor starts it as a subprocess. No auth. |
+| **Hosted (HTTP)** | Your deployed app exposes `POST /api/mcp`; clients send a Firebase ID token. Use this to share MCP with your team or use from anywhere. |
+
+---
+
+## What it provides
+
+- **Tools**
+  - `list_docs` – List all Markdown files in `docs/`
+  - `read_doc` – Read a doc by path (e.g. `STATE_BASED_SYNC_MOBILE.md` or `docs/FIRESTORE_FLASHCARDS_MIGRATION.md`)
+
+- **Resources**
+  - `deckbase://docs/<filename>` – Read a doc from `docs/` (e.g. `deckbase://docs/STATE_BASED_SYNC_MOBILE.md`)
+
+---
+
+## Hosted MCP with Firebase Auth
+
+The app exposes **POST /api/mcp** (JSON-RPC over HTTP). Only authenticated users can call it.
+
+### Requirements
+
+- Deploy your Next.js app (e.g. Vercel) so it serves `/api/mcp`.
+- Firebase Admin must be configured (`FIREBASE_ADMIN_*` env) so the API can verify ID tokens.
+
+### How to call it
+
+1. **Get a Firebase ID token** (e.g. from your app’s login or `getIdToken()` in the client).
+2. **Send a JSON-RPC 2.0 request** to `https://your-app.com/api/mcp`:
+   - **Method:** POST  
+   - **Headers:** `Content-Type: application/json`, `Authorization: Bearer <Firebase ID token>`  
+   - **Body:** One JSON-RPC request per POST, e.g.  
+     `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}`  
+     or `{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}`  
+     or `{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"read_doc","arguments":{"path":"STATE_BASED_SYNC_MOBILE.md"}}}`
+
+3. **Response:** JSON-RPC response, e.g. `{"jsonrpc":"2.0","id":3,"result":{...}}` or `{"jsonrpc":"2.0","id":3,"error":{...}}`.
+
+### Errors
+
+| HTTP | JSON-RPC error | Meaning |
+|------|----------------|--------|
+| 401 | `Missing Authorization: Bearer <Firebase ID token>` | No or invalid header |
+| 401 | `Invalid or expired token` | Token verification failed |
+| 503 | `Server auth not configured` | Firebase Admin not set up |
+
+### Cursor with hosted MCP
+
+Cursor’s URL-based MCP expects a single endpoint. The MCP protocol is request/response, so you can point Cursor at your URL and send the token in headers. If your Cursor config supports a URL + headers:
+
+```json
+{
+  "mcpServers": {
+    "deckbase-hosted": {
+      "url": "https://your-app.vercel.app/api/mcp",
+      "headers": {
+        "Authorization": "Bearer YOUR_FIREBASE_ID_TOKEN"
+      }
+    }
+  }
+}
+```
+
+**Note:** The ID token expires (often after 1 hour). You’ll need to refresh it and update the header, or use a token-exchange flow that gives Cursor a longer-lived session token (not covered here).
+
+---
+
+## Local (stdio) setup
+
+- **Tools**
+  - `list_docs` – List all Markdown files in `docs/`
+  - `read_doc` – Read a doc by path (e.g. `STATE_BASED_SYNC_MOBILE.md` or `docs/FIRESTORE_FLASHCARDS_MIGRATION.md`)
+
+- **Resources**
+  - `deckbase://docs/<filename>` – Read a doc from `docs/` (e.g. `deckbase://docs/STATE_BASED_SYNC_MOBILE.md`)
+
+## Local (stdio) setup
+
+### 1. Enable in Cursor
+
+A project-level config is in `.cursor/mcp.json`. If Cursor uses it, the Deckbase MCP server will appear when you open this repo.
+
+If not, add the server manually in Cursor settings (MCP):
+
+- **User settings:** Cursor → Settings → MCP → Edit config (e.g. `~/.cursor/mcp.json`)
+- Add:
+
+```json
+{
+  "mcpServers": {
+    "deckbase": {
+      "command": "node",
+      "args": ["/ABSOLUTE/PATH/TO/deckbase-web/mcp-server/index.js"]
+    }
+  }
+}
+```
+
+Replace `/ABSOLUTE/PATH/TO/deckbase-web` with your actual project path. No `cwd` is required; the server resolves paths from its own location.
+
+### 2. Restart Cursor
+
+Restart Cursor (or reload the window) so it picks up the MCP server.
+
+## Run manually (test)
+
+```bash
+cd deckbase-web
+node mcp-server/index.js
+```
+
+Then send JSON-RPC over stdin (newline-delimited JSON). The server responds on stdout.
+
+The server is implemented with plain Node.js (no external dependencies).

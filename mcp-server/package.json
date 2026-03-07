@@ -1,0 +1,8 @@
+{
+  "name": "deckbase-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server for Deckbase - exposes docs and project context",
+  "type": "module",
+  "main": "index.js",
+  "bin": { "deckbase-mcp": "index.js" }
+}

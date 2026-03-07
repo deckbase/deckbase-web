@@ -9,7 +9,7 @@ Use this endpoint from the mobile app to generate and add cards to a deck in one
 ## Add cards with AI
 
 **POST** `/api/mobile/cards/add-with-ai`  
-**Authorization:** `Bearer <Firebase ID token>`  
+**Authorization:** `Bearer <Firebase ID token or API key>`  
 **Content-Type:** `application/json`
 
 ### Request body
@@ -41,7 +41,7 @@ Use this endpoint from the mobile app to generate and add cards to a deck in one
 
 ### Behavior
 
-1. **Auth:** The server verifies the Firebase ID token and uses the token’s `uid` to load the deck and template and to create cards under that user.
+1. **Auth:** The server accepts either a Firebase ID token or an API key in the `Authorization: Bearer <token>` header. API keys don’t expire; you can create and revoke them from the MCP page when logged in.
 2. **Deck & template:** Deck and template must exist and belong to the user. The template must have at least one block.
 3. **AI generation:** The server uses the deck title/description, template blocks, and up to 5 example cards from the deck to generate new card content (same logic as the web “Add card with AI”).
 4. **Audio:** If the template includes an audio block, the server generates TTS from the main block text (using the template’s default voice if set), uploads the audio to Firebase Storage, and attaches it to each new card.
@@ -50,7 +50,7 @@ Use this endpoint from the mobile app to generate and add cards to a deck in one
 
 | Status | Body / cause |
 |--------|----------------|
-| 401    | `Missing Authorization: Bearer <token>` or `Invalid or expired token` |
+| 401    | `Missing Authorization: Bearer <token or API key>` or `Invalid or expired token` |
 | 400    | `deckId and templateId are required` or invalid JSON |
 | 404    | `Deck not found` or `Template not found or has no blocks` |
 | 502    | `AI returned invalid JSON` |
@@ -59,6 +59,7 @@ Use this endpoint from the mobile app to generate and add cards to a deck in one
 
 ### Mobile usage
 
-1. Get a fresh Firebase ID token: `FirebaseAuth.getInstance().currentUser?.getIdToken(true)` (Android) or equivalent on iOS.
-2. POST to `/api/mobile/cards/add-with-ai` with header `Authorization: Bearer <idToken>` and body `{ deckId, templateId, count? }`.
-3. On success, use `created` and `cardIds` to update the UI (e.g. refresh the deck’s card list or navigate to the first new card).
+1. Get a Firebase ID token (expires ~1 hour) or create an API key on the MCP page (doesn’t expire). Use: `FirebaseAuth.getInstance().currentUser?.getIdToken(true)` (Android) or equivalent on iOS for a token, or store an API key securely for long-lived access.
+2. POST to `/api/mobile/cards/add-with-ai` with header `Authorization: Bearer <idToken or API key>` and body `{ deckId, templateId, count? }`.
+3. Use the deck’s **default template** (or “effective default”) for `templateId` when the user doesn’t pick one — see [Default template per deck (mobile)](./MOBILE_DEFAULT_TEMPLATE_PER_DECK.md).
+4. On success, use `created` and `cardIds` to update the UI (e.g. refresh the deck’s card list or navigate to the first new card).

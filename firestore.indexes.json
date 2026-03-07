@@ -24,6 +24,13 @@
       "fields": [
         { "fieldPath": "created_at", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "ops",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "hlc", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

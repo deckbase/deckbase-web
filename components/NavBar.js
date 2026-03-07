@@ -76,6 +76,11 @@ const Navbar = () => {
             </Link>
           </li>
           <li>
+            <Link href="/mcp" className={isActive("/mcp")}>
+              MCP
+            </Link>
+          </li>
+          <li>
             <Link href="/contact-us" className={isActive("/contact-us")}>
               Contact
             </Link>
@@ -178,6 +183,15 @@ const Navbar = () => {
               onClick={toggleMenu}
             >
               Download
+            </Link>
+          </li>
+          <li className="text-3xl">
+            <Link
+              href="/mcp"
+              className={isActive("/mcp")}
+              onClick={toggleMenu}
+            >
+              MCP
             </Link>
           </li>
           <li className="text-3xl">

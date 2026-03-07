@@ -3,14 +3,12 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { useRevenueCat } from "@/contexts/RevenueCatContext";
 import Link from "next/link";
 import Image from "next/image";
-import { LogOut, User, Home, LayoutTemplate, Settings, Crown } from "lucide-react";
+import { LogOut, User, Home, LayoutTemplate, Settings, Crown, Key } from "lucide-react";
 
 export default function DashboardLayout({ children }) {
   const { user, userProfile, loading, logout } = useAuth();
-  const { isVip } = useRevenueCat();
   const router = useRouter();
 
   useEffect(() => {
@@ -75,15 +73,20 @@ export default function DashboardLayout({ children }) {
             >
               <LayoutTemplate className="w-5 h-5" />
             </Link>
-            {!isVip && (
-              <Link
-                href="/dashboard/subscription"
-                className="text-white/70 hover:text-white transition-colors p-2"
-                title="Subscription"
-              >
-                <Crown className="w-5 h-5" />
-              </Link>
-            )}
+            <Link
+              href="/dashboard/api-keys"
+              className="text-white/70 hover:text-white transition-colors p-2"
+              title="API keys"
+            >
+              <Key className="w-5 h-5" />
+            </Link>
+            <Link
+              href="/dashboard/subscription"
+              className="text-white/70 hover:text-white transition-colors p-2"
+              title="Subscription"
+            >
+              <Crown className="w-5 h-5" />
+            </Link>
             <Link
               href="/dashboard/admin"
               className="text-white/70 hover:text-white transition-colors p-2"

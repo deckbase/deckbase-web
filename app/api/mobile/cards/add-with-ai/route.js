@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { buildCardPrompt } from "@/lib/card-ai-prompt";
 import { BlockTypeNames } from "@/utils/firestore";
-import { getAdminAuth } from "@/utils/firebase-admin";
+import { resolveAuth } from "@/lib/auth-api";
 import {
   isAvailable as isAdminAvailable,
   getDeckAdmin,
@@ -36,38 +36,29 @@ const isAudioBlock = (b) => b.type === "audio" || b.type === 7 || b.type === "7"
 
 /**
  * POST /api/mobile/cards/add-with-ai
- * Auth: Authorization: Bearer <Firebase ID token>
+ * Auth: Authorization: Bearer <Firebase ID token or API key>
  * Body: { deckId: string, templateId: string, count?: 1-5 }
  * Creates cards with AI and optionally generates audio if template has audio block.
  * Returns: { created: number, cardIds: string[] }
  */
 export async function POST(request) {
   try {
-    const auth = getAdminAuth();
-    if (!auth) {
-      return NextResponse.json(
-        { error: "Server auth not configured" },
-        { status: 503 }
-      );
-    }
     const authHeader = request.headers.get("authorization") || "";
-    const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
-    if (!idToken) {
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+    if (!token) {
       return NextResponse.json(
-        { error: "Missing Authorization: Bearer <token>" },
+        { error: "Missing Authorization: Bearer <token or API key>" },
         { status: 401 }
       );
     }
-    let decoded;
-    try {
-      decoded = await auth.verifyIdToken(idToken);
-    } catch (e) {
+    const resolved = await resolveAuth(token);
+    if (!resolved) {
       return NextResponse.json(
         { error: "Invalid or expired token" },
         { status: 401 }
       );
     }
-    const uid = decoded.uid;
+    const uid = resolved.uid;
 
     if (process.env.NODE_ENV === "production") {
       const entitled = await isProOrVip(uid);
