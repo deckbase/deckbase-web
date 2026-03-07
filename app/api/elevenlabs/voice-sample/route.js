@@ -31,7 +31,7 @@ const ALLOWED_VOICE_IDS = new Set([
  * 2. If file exists → return its public URL (do NOT call ElevenLabs).
  * 3. If file missing → call ElevenLabs once, save buffer to Storage, make public, return URL.
  * Subsequent requests for same voice_id will hit step 2 and never call ElevenLabs again.
- * In production: X-API-Key or Bearer + Pro.
+ * In production: X-API-Key: <DECKBASE_API_KEY> (dashboard API keys are for MCP only).
  */
 export async function GET(request) {
   const authResult = await requireElevenLabsAuth(request);

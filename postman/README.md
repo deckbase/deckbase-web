@@ -13,27 +13,14 @@
 
 | Variable   | Example                    | Use |
 |-----------|----------------------------|-----|
-| **baseUrl** | **Local:** `http://localhost:3000` · **Prod:** your live URL (e.g. `https://deckbase.vercel.app`) | API base URL. |
-| **idToken** | (Firebase ID token string) | For `Authorization: Bearer {{idToken}}`. Get from your app (e.g. `user.getIdToken(true)`) or Firebase Auth REST API. |
-| **apiKey**  | (value of `ELEVENLABS_MOBILE_API_KEY`) | For ElevenLabs TTS/voice-sample in prod without Firebase; set header `X-API-Key`. |
+| **baseUrl** | **Local:** `http://localhost:3000` · **Prod:** your live URL | API base URL. |
+| **apiKey**  | (value of `DECKBASE_API_KEY` from server env) | For mobile APIs: add-with-ai and ElevenLabs. Send as **X-API-Key** header. Dashboard API keys (Bearer) are for MCP only. |
 
 ## Auth
 
-- **Development:** Many routes (e.g. voice-sample, text-to-speech) do **not** require auth; you can leave `idToken` empty when calling against `http://localhost:3000` with `npm run dev`.
-- **Production:** For ElevenLabs: use either **Bearer {{idToken}}** (Firebase ID token; user must be Pro or VIP) or **X-API-Key: {{apiKey}}** (no Pro check). For Cards AI and `/api/user/vip`, use **Bearer {{idToken}}**.
+- **Development:** Many routes (e.g. voice-sample, text-to-speech) do **not** require auth against a dev server.
+- **Production (mobile APIs):** Use **X-API-Key: {{apiKey}}** with `DECKBASE_API_KEY` from server env for add-with-ai and ElevenLabs. For **MCP** use **Bearer {{dashboardApiKey}}** (key from dashboard, not DECKBASE_API_KEY).
 
-## 401 `auth_missing` on voice-sample or text-to-speech
+## 401 on voice-sample or text-to-speech
 
-In **production** these endpoints require auth. Do one of the following:
-
-1. **X-API-Key (easiest for Postman):** In your environment, set **apiKey** to the value of **ELEVENLABS_MOBILE_API_KEY** from your server env (e.g. from `.env.prod`). The collection uses `X-API-Key: {{apiKey}}` by default for ElevenLabs requests.
-2. **Firebase ID token:** Set **idToken** to a current Firebase ID token, then in the request **Headers** disable `X-API-Key` and enable `Authorization: Bearer {{idToken}}`.
-
-## Getting a Firebase ID token for Postman
-
-1. In your web app, log in, then in the browser console run something like:
-   ```js
-   firebase.auth().currentUser.getIdToken(true).then(t => console.log(t))
-   ```
-   (adjust to your Firebase SDK usage). Copy the token.
-2. Paste into the **idToken** variable in Postman (or set the Authorization header manually). Tokens expire in ~1 hour.
+In **production**, mobile endpoints (add-with-ai, ElevenLabs) require **X-API-Key: {{apiKey}}** where apiKey = `DECKBASE_API_KEY` from server env. MCP uses Bearer with a dashboard API key (different key).

@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { buildCardPrompt } from "@/lib/card-ai-prompt";
 import { BlockTypeNames } from "@/utils/firestore";
-import { resolveAuth } from "@/lib/auth-api";
 import {
   isAvailable as isAdminAvailable,
   getDeckAdmin,
@@ -36,29 +35,39 @@ const isAudioBlock = (b) => b.type === "audio" || b.type === 7 || b.type === "7"
 
 /**
  * POST /api/mobile/cards/add-with-ai
- * Auth: Authorization: Bearer <Firebase ID token or API key>
- * Body: { deckId: string, templateId: string, count?: 1-5 }
+ * Auth: X-API-Key: <DECKBASE_API_KEY> (dashboard API keys are for MCP only).
+ * Body: { deckId: string, templateId: string, uid: string, count?: 1-5 }
  * Creates cards with AI and optionally generates audio if template has audio block.
  * Returns: { created: number, cardIds: string[] }
  */
 export async function POST(request) {
   try {
-    const authHeader = request.headers.get("authorization") || "";
-    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
-    if (!token) {
+    const apiKeyHeader = request.headers.get("x-api-key")?.trim();
+    const expectedKey = process.env.DECKBASE_API_KEY?.trim();
+    if (!expectedKey || apiKeyHeader !== expectedKey) {
       return NextResponse.json(
-        { error: "Missing Authorization: Bearer <token or API key>" },
+        { error: "Missing or invalid X-API-Key (mobile API key)" },
         { status: 401 }
       );
     }
-    const resolved = await resolveAuth(token);
-    if (!resolved) {
+
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
+    const deckId = typeof body.deckId === "string" ? body.deckId.trim() : "";
+    const templateId = typeof body.templateId === "string" ? body.templateId.trim() : "";
+    const uid = typeof body.uid === "string" ? body.uid.trim() : "";
+    const count = Math.min(5, Math.max(1, Number(body.count) || 1));
+
+    if (!deckId || !templateId || !uid) {
       return NextResponse.json(
-        { error: "Invalid or expired token" },
-        { status: 401 }
+        { error: "deckId, templateId, and uid are required" },
+        { status: 400 }
       );
     }
-    const uid = resolved.uid;
 
     if (process.env.NODE_ENV === "production") {
       const entitled = await isProOrVip(uid);
@@ -82,23 +91,6 @@ export async function POST(request) {
       return NextResponse.json(
         { error: "ANTHROPIC_API_KEY is not configured" },
         { status: 503 }
-      );
-    }
-
-    let body;
-    try {
-      body = await request.json();
-    } catch {
-      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-    }
-    const deckId = typeof body.deckId === "string" ? body.deckId.trim() : "";
-    const templateId = typeof body.templateId === "string" ? body.templateId.trim() : "";
-    const count = Math.min(5, Math.max(1, Number(body.count) || 1));
-
-    if (!deckId || !templateId) {
-      return NextResponse.json(
-        { error: "deckId and templateId are required" },
-        { status: 400 }
       );
     }
 

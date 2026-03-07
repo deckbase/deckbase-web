@@ -5,7 +5,7 @@ import { requireElevenLabsAuth } from "@/lib/elevenlabs-auth";
  * POST /api/elevenlabs/text-to-speech
  * Body: { text: string, voice_id?: string }
  * Returns: audio/mpeg binary (or JSON error).
- * In production: X-API-Key or Authorization: Bearer <Firebase ID token> + Pro.
+ * In production: X-API-Key: <DECKBASE_API_KEY> (dashboard API keys are for MCP only).
  */
 export async function POST(request) {
   try {

@@ -1,6 +1,6 @@
 /**
  * Hosted MCP endpoint (JSON-RPC over POST).
- * Auth: Authorization: Bearer <Firebase ID token or API key>.
+ * Auth: Authorization: Bearer <API key> (API key only; no Firebase token).
  *
  * POST /api/mcp
  * Body: JSON-RPC 2.0 request { jsonrpc, id, method, params }
@@ -9,7 +9,7 @@
 
 import { NextResponse } from "next/server";
 import { handleMcpRequest } from "@/lib/mcp-handlers";
-import { resolveAuth } from "@/lib/auth-api";
+import { resolveAuthApiKeyOnly } from "@/lib/auth-api";
 import { isProOrVip } from "@/lib/revenuecat-server";
 
 export async function POST(request) {
@@ -17,15 +17,15 @@ export async function POST(request) {
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
   if (!token) {
     return NextResponse.json(
-      { jsonrpc: "2.0", id: null, error: { code: -32001, message: "Missing Authorization: Bearer <token or API key>" } },
+      { jsonrpc: "2.0", id: null, error: { code: -32001, message: "Missing Authorization: Bearer <API key>" } },
       { status: 401 }
     );
   }
 
-  const resolved = await resolveAuth(token);
+  const resolved = await resolveAuthApiKeyOnly(token);
   if (!resolved) {
     return NextResponse.json(
-      { jsonrpc: "2.0", id: null, error: { code: -32001, message: "Invalid or expired token" } },
+      { jsonrpc: "2.0", id: null, error: { code: -32001, message: "Invalid or unknown API key" } },
       { status: 401 }
     );
   }

@@ -4,7 +4,7 @@
  * Exposes project docs and tools for Cursor/IDE MCP clients.
  * Run from project root: node mcp-server/index.js
  *
- * For hosted MCP with Firebase Auth, use POST /api/mcp with Authorization: Bearer <token>.
+ * For hosted MCP, use POST /api/mcp with Authorization: Bearer <API key>.
  */
 
 import { readFile, readdir } from "fs/promises";

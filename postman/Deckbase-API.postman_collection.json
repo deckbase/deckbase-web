@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Deckbase API",
-    "description": "Deckbase Next.js API routes. Set `baseUrl` (e.g. http://localhost:3000 or your production URL), and for auth either `idToken` (Firebase ID token for Bearer) or `apiKey` (X-API-Key for mobile/Postman).",
+    "description": "Deckbase Next.js API routes. baseUrl + apiKey (DECKBASE_API_KEY for X-API-Key on mobile APIs). For MCP use Bearer with a dashboard API key (created in app).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -31,8 +31,7 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "X-API-Key", "value": "{{apiKey}}", "disabled": false },
-              { "key": "Authorization", "value": "Bearer {{idToken}}", "disabled": true }
+              { "key": "X-API-Key", "value": "{{apiKey}}" }
             ],
             "url": {
               "raw": "{{baseUrl}}/api/elevenlabs/voice-sample?voice_id=dtSEyYGNJqjrtBArPCVZ",
@@ -42,7 +41,7 @@
                 { "key": "voice_id", "value": "dtSEyYGNJqjrtBArPCVZ" }
               ]
             },
-            "description": "Returns { url } (public URL, no expiry). Sample is made public in Storage. In prod use X-API-Key or Bearer."
+            "description": "Returns { url }. In prod send X-API-Key: {{apiKey}} (DECKBASE_API_KEY)."
           }
         },
         {
@@ -51,8 +50,7 @@
             "method": "POST",
             "header": [
               { "key": "Content-Type", "value": "application/json" },
-              { "key": "X-API-Key", "value": "{{apiKey}}", "disabled": false },
-              { "key": "Authorization", "value": "Bearer {{idToken}}", "disabled": true }
+              { "key": "X-API-Key", "value": "{{apiKey}}" }
             ],
             "body": {
               "mode": "raw",
@@ -63,7 +61,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "elevenlabs", "text-to-speech"]
             },
-            "description": "Returns binary MP3. In prod needs Bearer token or X-API-Key + Pro (or VIP)."
+            "description": "Returns binary MP3. In prod send X-API-Key: {{apiKey}} (DECKBASE_API_KEY)."
           }
         }
       ]
@@ -117,18 +115,18 @@
             "method": "POST",
             "header": [
               { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{idToken}}" }
+              { "key": "X-API-Key", "value": "{{apiKey}}" }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"deckId\": \"YOUR_DECK_ID\",\n  \"templateId\": \"YOUR_TEMPLATE_ID\",\n  \"count\": 1\n}"
+              "raw": "{\n  \"deckId\": \"YOUR_DECK_ID\",\n  \"templateId\": \"YOUR_TEMPLATE_ID\",\n  \"uid\": \"YOUR_USER_UID\",\n  \"count\": 1\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/mobile/cards/add-with-ai",
               "host": ["{{baseUrl}}"],
               "path": ["api", "mobile", "cards", "add-with-ai"]
             },
-            "description": "Creates cards with AI (+ optional audio). Pro/VIP required in production."
+            "description": "Creates cards with AI (+ optional audio). X-API-Key: DECKBASE_API_KEY; body must include uid (current user id). Pro/VIP required in production."
           }
         }
       ]

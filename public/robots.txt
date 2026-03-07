@@ -16,6 +16,3 @@ Disallow: /api/
 
 # Sitemap location
 Sitemap: https://deckbase.co/sitemap.xml
-
-# Crawl-delay for polite crawling (optional)
-Crawl-delay: 1

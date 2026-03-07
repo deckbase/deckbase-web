@@ -4,6 +4,7 @@ export default function sitemap() {
   // Define all your public pages with specific priorities
   const routes = [
     { path: "", changeFrequency: "weekly", priority: 1.0 },
+    { path: "/download", changeFrequency: "weekly", priority: 0.95 },
     { path: "/features", changeFrequency: "weekly", priority: 0.9 },
     { path: "/premium", changeFrequency: "weekly", priority: 0.9 },
     { path: "/about-us", changeFrequency: "monthly", priority: 0.7 },

@@ -7,7 +7,7 @@ MCP (Model Context Protocol) server for the Deckbase project. Exposes project do
 | Mode | Use case |
 |------|----------|
 | **Local (stdio)** | Run `node mcp-server/index.js`; Cursor starts it as a subprocess. No auth. |
-| **Hosted (HTTP)** | Your deployed app exposes `POST /api/mcp`; clients send a Firebase ID token. Use this to share MCP with your team or use from anywhere. |
+| **Hosted (HTTP)** | Your deployed app exposes `POST /api/mcp`; clients send an API key (Bearer). Use this to share MCP with your team or use from anywhere. |
 
 ---
 
@@ -22,21 +22,21 @@ MCP (Model Context Protocol) server for the Deckbase project. Exposes project do
 
 ---
 
-## Hosted MCP with Firebase Auth
+## Hosted MCP with API key
 
-The app exposes **POST /api/mcp** (JSON-RPC over HTTP). Only authenticated users can call it.
+The app exposes **POST /api/mcp** (JSON-RPC over HTTP). Auth is **API key only** (no Firebase token). Create an API key in the dashboard and send it as Bearer.
 
 ### Requirements
 
 - Deploy your Next.js app (e.g. Vercel) so it serves `/api/mcp`.
-- Firebase Admin must be configured (`FIREBASE_ADMIN_*` env) so the API can verify ID tokens.
+- Firestore (and API key storage) must be configured so the API can look up keys.
 
 ### How to call it
 
-1. **Get a Firebase ID token** (e.g. from your app’s login or `getIdToken()` in the client).
+1. **Create an API key** in the dashboard (API keys / MCP page). Copy the key (shown once).
 2. **Send a JSON-RPC 2.0 request** to `https://your-app.com/api/mcp`:
    - **Method:** POST  
-   - **Headers:** `Content-Type: application/json`, `Authorization: Bearer <Firebase ID token>`  
+   - **Headers:** `Content-Type: application/json`, `Authorization: Bearer <API key>`  
    - **Body:** One JSON-RPC request per POST, e.g.  
      `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}`  
      or `{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}`  
@@ -48,13 +48,13 @@ The app exposes **POST /api/mcp** (JSON-RPC over HTTP). Only authenticated users
 
 | HTTP | JSON-RPC error | Meaning |
 |------|----------------|--------|
-| 401 | `Missing Authorization: Bearer <Firebase ID token>` | No or invalid header |
-| 401 | `Invalid or expired token` | Token verification failed |
-| 503 | `Server auth not configured` | Firebase Admin not set up |
+| 401 | `Missing Authorization: Bearer <API key>` | No or invalid header |
+| 401 | `Invalid or unknown API key` | Key not found or invalid |
+| 503 | Server not configured | Backend not set up |
 
 ### Cursor with hosted MCP
 
-Cursor’s URL-based MCP expects a single endpoint. The MCP protocol is request/response, so you can point Cursor at your URL and send the token in headers. If your Cursor config supports a URL + headers:
+Cursor’s URL-based MCP expects a single endpoint. The MCP protocol is request/response, so you can point Cursor at your URL and send the API key in headers. If your Cursor config supports a URL + headers:
 
 ```json
 {
@@ -62,14 +62,14 @@ Cursor’s URL-based MCP expects a single endpoint. The MCP protocol is request/
     "deckbase-hosted": {
       "url": "https://your-app.vercel.app/api/mcp",
       "headers": {
-        "Authorization": "Bearer YOUR_FIREBASE_ID_TOKEN"
+        "Authorization": "Bearer YOUR_API_KEY"
       }
     }
   }
 }
 ```
 
-**Note:** The ID token expires (often after 1 hour). You’ll need to refresh it and update the header, or use a token-exchange flow that gives Cursor a longer-lived session token (not covered here).
+**Note:** API keys do not expire. Use the same key until you revoke it.
 
 ---
 
