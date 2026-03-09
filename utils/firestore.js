@@ -701,6 +701,21 @@ export const deleteCard = async (uid, cardId, deckId) => {
 
 // ============== TEMPLATE OPERATIONS ==============
 
+/** Remove undefined values from an object (Firestore does not accept undefined). Preserves Firestore Timestamp etc. */
+function removeUndefined(obj) {
+  if (obj === undefined) return undefined;
+  if (obj === null || typeof obj !== "object") return obj;
+  // Preserve Firestore Timestamp (and similar) so they are stored as timestamp type, not map
+  if (obj != null && typeof obj.toMillis === "function") return obj;
+  if (Array.isArray(obj)) return obj.map(removeUndefined).filter((v) => v !== undefined);
+  const out = {};
+  for (const [k, v] of Object.entries(obj)) {
+    const cleaned = removeUndefined(v);
+    if (cleaned !== undefined) out[k] = cleaned;
+  }
+  return out;
+}
+
 export const createTemplate = async (
   uid,
   name,
@@ -715,8 +730,8 @@ export const createTemplate = async (
 
   const template = {
     template_id: templateId,
-    name,
-    description,
+    name: name ?? "",
+    description: description ?? "",
     version: 1,
     blocks: blocks.map(transformBlockToFirestore),
     rendering: rendering
@@ -725,14 +740,17 @@ export const createTemplate = async (
           back_block_ids: rendering.backBlockIds || [],
         }
       : null,
-    main_block_id: mainBlockId,
-    sub_block_id: subBlockId,
+    main_block_id: mainBlockId ?? null,
+    sub_block_id: subBlockId ?? null,
     created_at: now,
     updated_at: now,
     is_deleted: false,
   };
 
-  await setDoc(doc(getTemplatesCollection(uid), templateId), template);
+  const cleaned = removeUndefined(template);
+  if (cleaned) {
+    await setDoc(doc(getTemplatesCollection(uid), templateId), cleaned);
+  }
   return transformTemplateFromFirestore(template);
 };
 
@@ -794,9 +812,9 @@ export const updateTemplate = async (uid, templateId, updates) => {
       : null;
   }
   if (updates.mainBlockId !== undefined)
-    updateData.main_block_id = updates.mainBlockId;
+    updateData.main_block_id = updates.mainBlockId ?? null;
   if (updates.subBlockId !== undefined)
-    updateData.sub_block_id = updates.subBlockId;
+    updateData.sub_block_id = updates.subBlockId ?? null;
   if (updates.isDeleted !== undefined)
     updateData.is_deleted = updates.isDeleted;
 
@@ -806,7 +824,10 @@ export const updateTemplate = async (uid, templateId, updates) => {
     updateData.version = (existing.version || 1) + 1;
   }
 
-  await setDoc(templateRef, updateData, { merge: true });
+  const cleaned = removeUndefined(updateData);
+  if (cleaned && Object.keys(cleaned).length > 0) {
+    await setDoc(templateRef, cleaned, { merge: true });
+  }
 };
 
 export const deleteTemplate = async (uid, templateId) => {
@@ -934,693 +955,6 @@ export const getCardCount = async (uid, deckId) => {
 
   const snapshot = await getDocs(q);
   return snapshot.size;
-};
-
-// ============== SPEECH ANALYSIS OPERATIONS ==============
-
-export const getSpeechPeople = async () => {
-  if (!db) return [];
-  const snapshot = await getDocs(collection(db, "people"));
-  const people = snapshot.docs.map((docSnap) => {
-    const data = docSnap.data() || {};
-    return {
-      personId: docSnap.id,
-      ...data,
-      displayName: data.displayName || data.name || docSnap.id,
-      status: data.status || "active",
-    };
-  });
-
-  return people
-    .filter((person) => person.status !== "disabled")
-    .sort((a, b) => (a.displayName || "").localeCompare(b.displayName || ""));
-};
-
-/**
- * Source of truth for speech analysis: all session metadata and analysis results
- * live in this collection only. There is no separate "analysis" or "analysis/v1" doc.
- * Path: people/{personId}/analysis_sessions/{sessionId}
- * Doc fields: status, draftTranscriptId, progress, vocabulary, learningPhrases,
- * patternPhrases, signaturePhrases, corpusStats, updatedAt, etc.
- */
-const ANALYSIS_SESSIONS_COLLECTION = "analysis_sessions";
-
-/**
- * Clear analysis fields on a session doc so the UI shows a blank state for this run.
- * Analysis lives in the session doc only (analysis_sessions = source of truth).
- */
-export const clearSpeechAnalysis = async (personId, sessionId) => {
-  if (!db || !personId || !sessionId) throw new Error("personId and sessionId required");
-  const now = Timestamp.now();
-  const sessionRef = doc(db, "people", personId, ANALYSIS_SESSIONS_COLLECTION, sessionId);
-  await setDoc(sessionRef, {
-    vocabulary: [],
-    learningPhrases: [],
-    patternPhrases: [],
-    signaturePhrases: [],
-    corpusStats: { docCount: 0, tokenCount: 0, updatedAt: now, methodVersion: "1.0" },
-    progress: { processedDocs: 0, totalDocs: 0, percent: 0, updatedAt: now, status: "idle" },
-    updatedAt: now,
-  }, { merge: true });
-};
-
-/**
- * Hierarchy: speaker owns sessions. analysis_sessions is the only place to read/write
- * analysis (vocabulary, phrases, progress). All session access is scoped by personId.
- */
-
-/**
- * Create a new analysis session for the given speaker (used when user taps "Start new analysis").
- * Does not overwrite any existing session; previous sessions remain in the subcollection.
- * Path: people/{personId}/analysis_sessions/{sessionId}
- */
-export const createAnalysisSession = async (personId) => {
-  if (!db || !personId) throw new Error("personId required");
-  const col = collection(db, "people", personId, ANALYSIS_SESSIONS_COLLECTION);
-  const now = Timestamp.now();
-  const data = {
-    status: "draft",
-    draftTranscriptId: null,
-    createdAt: now,
-    updatedAt: now,
-  };
-  const ref = await addDoc(col, data);
-  return ref.id;
-};
-
-/**
- * Update an existing analysis session by id (speaker-scoped).
- * status: "draft" | "processing" | "done". draftTranscriptId: optional.
- * analysisTranscript: optional { transcriptLines, speakerLabel } (stored on session doc; replaces analysis_transcript collection).
- */
-export const updateAnalysisSession = async (personId, sessionId, { status, draftTranscriptId, analysisTranscript }) => {
-  if (!db || !personId || !sessionId) throw new Error("personId and sessionId required");
-  if (status != null && !["draft", "processing", "done"].includes(status))
-    throw new Error("Invalid session status");
-  if (status === "processing") {
-    console.log("[firestore] updateAnalysisSession: setting status=processing", { personId, sessionId });
-  }
-  const sessionRef = doc(db, "people", personId, ANALYSIS_SESSIONS_COLLECTION, sessionId);
-  const updates = { updatedAt: Timestamp.now() };
-  if (status != null) updates.status = status;
-  if (draftTranscriptId !== undefined) updates.draftTranscriptId = draftTranscriptId ?? null;
-  if (analysisTranscript != null) {
-    const lines = analysisTranscript.transcriptLines ?? [];
-    updates.analysisTranscript = {
-      transcriptLines: lines.map((line) => ({
-        speaker: line.speaker,
-        text: line.text ?? line.content ?? "",
-      })),
-      speakerLabel: analysisTranscript.speakerLabel ?? null,
-    };
-  }
-  await updateDoc(sessionRef, updates);
-  if (status === "processing") {
-    console.log("[firestore] updateAnalysisSession: write done (status=processing)");
-  }
-};
-
-/**
- * Delete an analysis session by id (speaker-scoped).
- */
-export const deleteAnalysisSession = async (personId, sessionId) => {
-  if (!db || !personId || !sessionId) throw new Error("personId and sessionId required");
-  const sessionRef = doc(db, "people", personId, ANALYSIS_SESSIONS_COLLECTION, sessionId);
-  await deleteDoc(sessionRef);
-};
-
-/**
- * Subscribe to the current analysis session for this speaker (the most recently updated one).
- * Callback receives the full session doc (source of truth: vocabulary, learningPhrases, progress, etc.) or null.
- */
-export const subscribeToAnalysisSession = (personId, callback) => {
-  if (!db || !personId) {
-    callback(null);
-    return () => {};
-  }
-  const col = collection(db, "people", personId, ANALYSIS_SESSIONS_COLLECTION);
-  const q = query(col, orderBy("updatedAt", "desc"), limit(1));
-  return onSnapshot(q, (snapshot) => {
-    if (snapshot.empty) {
-      callback(null);
-      return;
-    }
-    const d = snapshot.docs[0];
-    callback({ id: d.id, ...d.data() });
-  });
-};
-
-/**
- * Subscribe to all analysis sessions for this speaker (newest first).
- * Callback receives array of session docs from analysis_sessions (source of truth).
- */
-export const subscribeToAnalysisSessions = (personId, callback) => {
-  if (!db || !personId) {
-    callback([]);
-    return () => {};
-  }
-  const col = collection(db, "people", personId, ANALYSIS_SESSIONS_COLLECTION);
-  const q = query(col, orderBy("updatedAt", "desc"));
-  return onSnapshot(q, (snapshot) => {
-    const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-    callback(list);
-  });
-};
-
-/**
- * Subscribe to a single analysis session by id (e.g. when opening detail with ?sessionId=).
- * Callback receives the full session doc (source of truth) or null.
- */
-export const subscribeToAnalysisSessionById = (personId, sessionId, callback) => {
-  if (!db || !personId || !sessionId) {
-    callback(null);
-    return () => {};
-  }
-  const sessionRef = doc(db, "people", personId, ANALYSIS_SESSIONS_COLLECTION, sessionId);
-  return onSnapshot(sessionRef, (snapshot) => {
-    callback(snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null);
-  });
-};
-
-// Session-scoped saved transcripts (replaces admin_youtube_transcripts for this flow).
-// Path: people/{personId}/analysis_sessions/{sessionId}/saved_transcripts/{transcriptId}
-const SAVED_TRANSCRIPTS_COLLECTION = "saved_transcripts";
-
-/**
- * Save a YouTube transcript into the current session (speaker-owned, session-owned).
- * Returns { transcriptId }. Caller should set session.draftTranscriptId to transcriptId.
- */
-export const saveTranscriptToSession = async (
-  personId,
-  sessionId,
-  {
-    youtubeUrl,
-    videoId,
-    speakerCount,
-    transcript,
-    fromDiarization,
-    defaultSpeakerToAnalyze = null,
-  },
-) => {
-  if (!db || !personId || !sessionId) throw new Error("personId and sessionId required");
-  if (!transcript?.length) throw new Error("transcript is required");
-  const col = collection(
-    db,
-    "people",
-    personId,
-    ANALYSIS_SESSIONS_COLLECTION,
-    sessionId,
-    SAVED_TRANSCRIPTS_COLLECTION,
-  );
-  const now = Timestamp.now();
-  const data = {
-    youtubeUrl: (youtubeUrl || "").trim() || null,
-    videoId: videoId || null,
-    speakerCount: speakerCount ?? null,
-    transcript: transcript.map((line) => ({
-      speaker: line.speaker,
-      text: line.text,
-      start: line.start,
-      end: line.end,
-    })),
-    fromDiarization: Boolean(fromDiarization),
-    defaultSpeakerToAnalyze:
-      defaultSpeakerToAnalyze != null && defaultSpeakerToAnalyze !== ""
-        ? String(defaultSpeakerToAnalyze)
-        : null,
-    createdAt: now,
-    updatedAt: now,
-  };
-  const ref = await addDoc(col, data);
-  return { transcriptId: ref.id, ...data };
-};
-
-/**
- * Subscribe to saved transcripts for a session (newest first).
- */
-export const subscribeToSessionTranscripts = (personId, sessionId, callback) => {
-  if (!db || !personId || !sessionId) {
-    callback([]);
-    return () => {};
-  }
-  const col = collection(
-    db,
-    "people",
-    personId,
-    ANALYSIS_SESSIONS_COLLECTION,
-    sessionId,
-    SAVED_TRANSCRIPTS_COLLECTION,
-  );
-  const q = query(col, orderBy("createdAt", "desc"));
-  return onSnapshot(q, (snapshot) => {
-    const list = snapshot.docs.map((d) => {
-      const data = d.data();
-      return {
-        transcriptId: d.id,
-        youtubeUrl: data.youtubeUrl ?? null,
-        videoId: data.videoId ?? null,
-        speakerCount: data.speakerCount ?? null,
-        transcript: data.transcript ?? [],
-        fromDiarization: Boolean(data.fromDiarization),
-        defaultSpeakerToAnalyze: data.defaultSpeakerToAnalyze ?? null,
-        createdAt: data.createdAt?.toMillis?.() ?? data.createdAt ?? null,
-      };
-    });
-    callback(list);
-  });
-};
-
-/**
- * Update default speaker for a session transcript.
- */
-export const updateSessionTranscriptSpeaker = async (
-  personId,
-  sessionId,
-  transcriptId,
-  { defaultSpeakerToAnalyze },
-) => {
-  if (!db || !personId || !sessionId || !transcriptId) throw new Error("personId, sessionId, transcriptId required");
-  const docRef = doc(
-    db,
-    "people",
-    personId,
-    ANALYSIS_SESSIONS_COLLECTION,
-    sessionId,
-    SAVED_TRANSCRIPTS_COLLECTION,
-    transcriptId,
-  );
-  await updateDoc(docRef, {
-    updatedAt: Timestamp.now(),
-    defaultSpeakerToAnalyze:
-      defaultSpeakerToAnalyze != null && defaultSpeakerToAnalyze !== ""
-        ? String(defaultSpeakerToAnalyze)
-        : null,
-  });
-};
-
-/**
- * Delete a saved transcript from a session.
- */
-export const deleteSessionTranscript = async (personId, sessionId, transcriptId) => {
-  if (!db || !personId || !sessionId || !transcriptId) throw new Error("personId, sessionId, transcriptId required");
-  const docRef = doc(
-    db,
-    "people",
-    personId,
-    ANALYSIS_SESSIONS_COLLECTION,
-    sessionId,
-    SAVED_TRANSCRIPTS_COLLECTION,
-    transcriptId,
-  );
-  await deleteDoc(docRef);
-};
-
-/**
- * Transcript used for analysis is stored on the session doc (analysisTranscript), not a separate collection.
- */
-
-export const createSpeechPerson = async (displayName) => {
-  if (!db) throw new Error("Firestore is not available");
-  const trimmedName = (displayName || "").trim();
-  if (!trimmedName) throw new Error("Speaker name is required");
-
-  const personRef = doc(collection(db, "people"));
-  const now = Timestamp.now();
-  const data = {
-    displayName: trimmedName,
-    status: "active",
-    createdAt: now,
-    updatedAt: now,
-  };
-
-  await setDoc(personRef, data);
-  return { personId: personRef.id, ...data };
-};
-
-export const updateSpeechPerson = async (personId, updates) => {
-  if (!db || !personId) throw new Error("Firestore or personId required");
-  const personRef = doc(db, "people", personId);
-  const data = { updatedAt: Timestamp.now() };
-  if (updates.displayName !== undefined) data.displayName = String(updates.displayName).trim();
-  if (updates.imageUrl !== undefined) data.imageUrl = updates.imageUrl ? String(updates.imageUrl).trim() : null;
-  await updateDoc(personRef, data);
-  return data;
-};
-
-/**
- * Upload a speaker avatar image to Storage and return the download URL.
- * Path: people-avatars/{personId}/{uuid}.{ext}
- */
-export const uploadPersonImage = async (personId, file) => {
-  if (!storage || !personId || !file) throw new Error("Storage, personId, and file required");
-  const ext = file.name?.split(".").pop()?.toLowerCase() || "jpg";
-  const safeExt = /^[a-z0-9]+$/.test(ext) ? ext : "jpg";
-  const storagePath = `people-avatars/${personId}/${uuidv4()}.${safeExt}`;
-  const storageRef = ref(storage, storagePath);
-  await uploadBytes(storageRef, file, { contentType: file.type || "image/jpeg" });
-  const downloadUrl = await getDownloadURL(storageRef);
-  return downloadUrl;
-};
-
-export const uploadSpeechTranscript = async ({
-  personId,
-  text,
-  file,
-  title,
-  sourceUrl,
-}) => {
-  if (!db || !storage) throw new Error("Storage is not available");
-  if (!personId) throw new Error("personId is required");
-
-  let transcriptText = text;
-  let sourceFile = file;
-  if (!transcriptText && !sourceFile) {
-    throw new Error("Transcript text or file is required");
-  }
-
-  if (!transcriptText && sourceFile) {
-    transcriptText = await sourceFile.text();
-  }
-
-  const trimmedText = (transcriptText || "").trim();
-  if (!trimmedText) throw new Error("Transcript text is empty");
-
-  const docRef = doc(collection(db, "people", personId, "docs"));
-  const docId = docRef.id;
-  const storagePath = `speech-transcripts/${personId}/${docId}.txt`;
-  const storageRef = ref(storage, storagePath);
-  const uploadBlob = sourceFile
-    ? sourceFile
-    : new Blob([trimmedText], { type: "text/plain" });
-  await uploadBytes(storageRef, uploadBlob, { contentType: "text/plain" });
-  const downloadUrl = await getDownloadURL(storageRef);
-  const bucketName = storage?.app?.options?.storageBucket;
-  const gsUrl = bucketName ? `gs://${bucketName}/${storagePath}` : storagePath;
-
-  const wordCount = trimmedText.split(/\s+/).filter(Boolean).length;
-  const now = Timestamp.now();
-  const docData = {
-    title:
-      title ||
-      sourceFile?.name ||
-      `Manual transcript ${now.toDate().toISOString().slice(0, 10)}`,
-    sourceType: sourceUrl ? "youtube" : sourceFile ? "upload" : "manual",
-    sourceUrl: sourceUrl ? String(sourceUrl).trim() : null,
-    storagePath: gsUrl,
-    downloadUrl,
-    tokenCount: wordCount,
-    docDate: now,
-    status: "queued",
-    createdAt: now,
-    updatedAt: now,
-  };
-
-  await setDoc(docRef, docData);
-  return { docId, ...docData };
-};
-
-/**
- * List transcript docs for a speaker (sources used for analysis).
- * Path: people/{personId}/docs
- */
-export const getSpeechPersonDocs = async (personId) => {
-  if (!db || !personId) return [];
-  const docsRef = collection(db, "people", personId, "docs");
-  const q = query(docsRef, orderBy("createdAt", "desc"));
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map((d) => {
-    const data = d.data() || {};
-    return {
-      docId: d.id,
-      ...data,
-      createdAt: data.createdAt?.toDate?.()?.toISOString?.() ?? data.createdAt,
-    };
-  });
-};
-
-/**
- * Remove a transcript source for a speaker: delete the doc and its storage file,
- * then set all remaining docs to status "queued" so the next analysis run
- * recomputes counts without this source.
- * Caller should then trigger analysis (POST /api/speech/trigger-analysis).
- */
-export const removeSpeechPersonSource = async (personId, docId) => {
-  if (!db || !storage || !personId || !docId) {
-    throw new Error("personId and docId required");
-  }
-  const docRef = doc(db, "people", personId, "docs", docId);
-  const storagePath = `speech-transcripts/${personId}/${docId}.txt`;
-  const storageRef = ref(storage, storagePath);
-
-  try {
-    await deleteObject(storageRef);
-  } catch (e) {
-    if (e?.code !== "storage/object-not-found") {
-      console.error("Error deleting transcript file:", e);
-      throw e;
-    }
-  }
-
-  await deleteDoc(docRef);
-
-  const docsRef = collection(db, "people", personId, "docs");
-  const snapshot = await getDocs(docsRef);
-  const batch = [];
-  snapshot.docs.forEach((d) => {
-    batch.push(updateDoc(d.ref, { status: "queued", updatedAt: Timestamp.now() }));
-  });
-  if (batch.length > 0) {
-    await Promise.all(batch);
-  }
-};
-
-// Deprecated for session flow: saved transcripts now live under
-// people/{personId}/analysis_sessions/{sessionId}/saved_transcripts.
-// Kept for backward compat or other use.
-const ADMIN_YOUTUBE_TRANSCRIPTS = "admin_youtube_transcripts";
-
-/**
- * Save a YouTube transcript to the admin collection (not under user data).
- * Path: admin_youtube_transcripts/{docId}
- * Optional: personId (scope to speaker so list can filter by speaker), speakerAssignments, defaultSpeakerToAnalyze.
- */
-export const saveYoutubeTranscriptToFirebase = async ({
-  userId,
-  personId = null,
-  youtubeUrl,
-  videoId,
-  speakerCount,
-  transcript,
-  fromDiarization,
-  speakerAssignments = null,
-  defaultSpeakerToAnalyze = null,
-}) => {
-  if (!db) throw new Error("Firestore is not available");
-  if (!userId) throw new Error("userId is required");
-  if (!transcript?.length) throw new Error("Transcript is required");
-
-  const col = collection(db, ADMIN_YOUTUBE_TRANSCRIPTS);
-  const docRef = doc(col);
-  const now = Timestamp.now();
-  const data = {
-    userId,
-    youtubeUrl: (youtubeUrl || "").trim() || null,
-    videoId: videoId || null,
-    speakerCount: speakerCount ?? null,
-    transcript: transcript.map((line) => ({
-      speaker: line.speaker,
-      text: line.text,
-      start: line.start,
-      end: line.end,
-    })),
-    fromDiarization: Boolean(fromDiarization),
-    createdAt: now,
-    updatedAt: now,
-  };
-  if (personId) {
-    data.personId = String(personId);
-  }
-  if (speakerAssignments != null && typeof speakerAssignments === "object") {
-    data.speakerAssignments = speakerAssignments;
-  }
-  if (defaultSpeakerToAnalyze != null && defaultSpeakerToAnalyze !== "") {
-    data.defaultSpeakerToAnalyze = String(defaultSpeakerToAnalyze);
-  }
-
-  await setDoc(docRef, data);
-  return { transcriptId: docRef.id, ...data };
-};
-
-/**
- * Update speaker assignments and default speaker for a saved transcript.
- * Persists which speaker label maps to which personId so loading the transcript can prefill the UI.
- */
-export const updateYoutubeTranscriptSpeakerAssignments = async (
-  userId,
-  transcriptId,
-  { speakerAssignments, defaultSpeakerToAnalyze },
-) => {
-  if (!db) throw new Error("Firestore is not available");
-  if (!userId || !transcriptId) throw new Error("userId and transcriptId are required");
-  const docRef = doc(db, ADMIN_YOUTUBE_TRANSCRIPTS, transcriptId);
-  const updates = { updatedAt: Timestamp.now() };
-  if (speakerAssignments != null && typeof speakerAssignments === "object") {
-    updates.speakerAssignments = speakerAssignments;
-  }
-  if (defaultSpeakerToAnalyze !== undefined) {
-    updates.defaultSpeakerToAnalyze =
-      defaultSpeakerToAnalyze != null && defaultSpeakerToAnalyze !== ""
-        ? String(defaultSpeakerToAnalyze)
-        : null;
-  }
-  await updateDoc(docRef, updates);
-};
-
-/**
- * Load saved YouTube transcripts for the user from the admin collection (newest first).
- * If personId is provided, only returns transcripts saved for that speaker (avoids showing other sessions/speakers).
- * Index: admin_youtube_transcripts: userId (ASC), createdAt (DESC); with personId filter add composite: userId, personId, createdAt (DESC).
- */
-export const getYoutubeTranscriptsFromFirebase = async (userId, options = {}) => {
-  if (!db) throw new Error("Firestore is not available");
-  if (!userId) return [];
-
-  const { personId } = options;
-  const col = collection(db, ADMIN_YOUTUBE_TRANSCRIPTS);
-
-  let q;
-  if (personId) {
-    q = query(
-      col,
-      where("userId", "==", userId),
-      where("personId", "==", String(personId)),
-      orderBy("createdAt", "desc"),
-      limit(50),
-    );
-  } else {
-    q = query(
-      col,
-      where("userId", "==", userId),
-      orderBy("createdAt", "desc"),
-      limit(50),
-    );
-  }
-
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map((d) => {
-    const data = d.data();
-    return {
-      transcriptId: d.id,
-      youtubeUrl: data.youtubeUrl ?? null,
-      videoId: data.videoId ?? null,
-      speakerCount: data.speakerCount ?? null,
-      transcript: data.transcript ?? [],
-      fromDiarization: Boolean(data.fromDiarization),
-      speakerAssignments: data.speakerAssignments ?? null,
-      defaultSpeakerToAnalyze: data.defaultSpeakerToAnalyze ?? null,
-      createdAt: data.createdAt?.toMillis?.() ?? null,
-    };
-  });
-};
-
-/**
- * Delete a saved YouTube transcript from the admin collection.
- * Path: admin_youtube_transcripts/{transcriptId}
- * Rules should allow delete only when doc.userId === request.auth.uid.
- */
-export const deleteYoutubeTranscriptFromFirebase = async (
-  userId,
-  transcriptId,
-) => {
-  if (!db) throw new Error("Firestore is not available");
-  if (!userId || !transcriptId)
-    throw new Error("userId and transcriptId are required");
-  const docRef = doc(db, ADMIN_YOUTUBE_TRANSCRIPTS, transcriptId);
-  await deleteDoc(docRef);
-};
-
-export const createSpeechDiarizationJob = async ({
-  youtubeUrl,
-  speakers,
-  speakerSamples = [],
-  requestedBy,
-}) => {
-  if (!db || !storage) throw new Error("Storage is not available");
-  const trimmedUrl = (youtubeUrl || "").trim();
-  if (!trimmedUrl) throw new Error("YouTube URL is required");
-
-  const normalizeLabel = (label) => label.trim().replace(/\s+/g, " ");
-  const seenLabels = new Set();
-  const normalizedSpeakers = (speakers || [])
-    .map((speaker) => ({
-      label: normalizeLabel(speaker?.label || ""),
-      personId: speaker?.personId || null,
-    }))
-    .filter((speaker) => speaker.label)
-    .filter((speaker) => {
-      const key = speaker.label.toLowerCase();
-      if (seenLabels.has(key)) return false;
-      seenLabels.add(key);
-      return true;
-    });
-
-  if (normalizedSpeakers.length < 2) {
-    throw new Error("At least two speakers are required");
-  }
-
-  const jobRef = doc(collection(db, "speech_diarization_jobs"));
-  const jobId = jobRef.id;
-  const now = Timestamp.now();
-
-  const slugify = (value) =>
-    value
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "");
-
-  const uploadedSamples = [];
-  for (const sample of speakerSamples) {
-    if (!sample?.file || !sample?.label) continue;
-    const labelSlug = slugify(sample.label) || "speaker";
-    const extension = sample.file.name?.split(".").pop() || "wav";
-    const sampleId = uuidv4();
-    const storagePath = `speech-diarization-samples/${jobId}/${labelSlug}/${sampleId}.${extension}`;
-    const storageRef = ref(storage, storagePath);
-    await uploadBytes(storageRef, sample.file, {
-      contentType: sample.file.type || "audio/mpeg",
-    });
-    const downloadUrl = await getDownloadURL(storageRef);
-    uploadedSamples.push({
-      label: sample.label,
-      personId: sample.personId || null,
-      storagePath,
-      downloadUrl,
-      fileName: sample.file.name,
-      fileSize: sample.file.size,
-      mimeType: sample.file.type || null,
-    });
-  }
-
-  const jobData = {
-    jobId,
-    sourceType: "youtube",
-    assignmentMode: "voice",
-    youtubeUrl: trimmedUrl,
-    speakers: normalizedSpeakers,
-    speakerLabels: normalizedSpeakers.map((speaker) => speaker.label),
-    speakerSamples: uploadedSamples,
-    status: "queued",
-    progress: {
-      status: "queued",
-      percent: 0,
-    },
-    requestedBy: requestedBy || null,
-    createdAt: now,
-    updatedAt: now,
-  };
-
-  await setDoc(jobRef, jobData);
-  return { jobId, ...jobData };
 };
 
 // ============== BLOCK TYPES ==============
@@ -1763,12 +1097,12 @@ const transformBlockFromFirestore = (data) => ({
 
 const transformBlockToFirestore = (block) => {
   const result = {
-    block_id: block.blockId,
-    type: block.type,
+    block_id: block.blockId ?? null,
+    type: block.type ?? "text",
     label: block.label || "",
     required: block.required || false,
   };
-  if (block.configJson !== undefined) {
+  if (block.configJson !== undefined && block.configJson !== null) {
     result.config_json = block.configJson;
   }
   return result;
@@ -1815,13 +1149,18 @@ const transformTemplateFromFirestore = (data) => {
     data.created_at?.toMillis?.() || data.created_at || Date.now();
   const updatedAt =
     data.updated_at?.toMillis?.() || data.updated_at || Date.now();
+  // Normalize blocks (mobile may store blocks as JSON string with camelCase)
+  const rawBlocks = ensureArray(data.blocks);
+  const blocks = rawBlocks.map((b) =>
+    transformBlockFromFirestore(normalizeBlockForTransform(b))
+  );
 
   return {
-    templateId: data.template_id,
+    templateId: data.template_id ?? data.templateId,
     name: data.name || "Untitled",
     description: data.description || "",
     version: data.version || 1,
-    blocks: ensureArray(data.blocks).map(transformBlockFromFirestore),
+    blocks,
     rendering: data.rendering
       ? {
           frontBlockIds: ensureArray(
@@ -1832,11 +1171,11 @@ const transformTemplateFromFirestore = (data) => {
           ),
         }
       : null,
-    mainBlockId: data.main_block_id || null,
-    subBlockId: data.sub_block_id || null,
+    mainBlockId: data.main_block_id ?? data.mainBlockId ?? null,
+    subBlockId: data.sub_block_id ?? data.subBlockId ?? null,
     createdAt,
     updatedAt,
-    isDeleted: data.is_deleted || false,
+    isDeleted: data.is_deleted ?? false,
   };
 };
 

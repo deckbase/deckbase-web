@@ -4,6 +4,7 @@ dotenv.config();
 
 const nextConfig = {
   reactStrictMode: true,
+  allowedDevOrigins: ["dev.deckbase.co"],
   env: {
     NEXT_PUBLIC_REVENUECAT_WEB_API_KEY: process.env.NEXT_PUBLIC_REVENUECAT_WEB_API_KEY || "",
   },

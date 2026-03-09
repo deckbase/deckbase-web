@@ -46,3 +46,6 @@ next-env.d.ts
 
 # firebase
 google-services.json
+# Google service account key (GA4 / Search Console) — do not commit
+deckbase-prod-43772307f763.json
+.env*.local

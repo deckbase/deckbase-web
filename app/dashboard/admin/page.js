@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Mic, Settings, BookOpenText } from "lucide-react";
+import { ArrowLeft, Settings, BookOpenText, BarChart2, Smartphone } from "lucide-react";
 
 export default function AdminPage() {
   return (
@@ -24,16 +24,31 @@ export default function AdminPage() {
       </div>
       <div className="space-y-3">
         <Link
-          href="/dashboard/admin/speech"
+          href="/dashboard/admin/seo"
           className="flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-colors group"
         >
           <div className="w-12 h-12 rounded-lg bg-accent/20 flex items-center justify-center group-hover:bg-accent/30 transition-colors">
-            <Mic className="w-6 h-6 text-accent" />
+            <BarChart2 className="w-6 h-6 text-accent" />
           </div>
           <div className="flex-1">
-            <h2 className="text-lg font-semibold text-white">Speech Analysis</h2>
+            <h2 className="text-lg font-semibold text-white">SEO Command Center</h2>
             <p className="text-white/50 text-sm">
-              YouTube transcripts, speaker labeling, vocabulary and phrase extraction
+              Live SEO data, content health, keyword rankings, and programmatic strategy
+            </p>
+          </div>
+        </Link>
+
+        <Link
+          href="/dashboard/admin/aso"
+          className="flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-colors group"
+        >
+          <div className="w-12 h-12 rounded-lg bg-accent/20 flex items-center justify-center group-hover:bg-accent/30 transition-colors">
+            <Smartphone className="w-6 h-6 text-accent" />
+          </div>
+          <div className="flex-1">
+            <h2 className="text-lg font-semibold text-white">ASO Command Center</h2>
+            <p className="text-white/50 text-sm">
+              App Store Optimization: keyword discovery, filtering, and opportunities for iOS & Android
             </p>
           </div>
         </Link>

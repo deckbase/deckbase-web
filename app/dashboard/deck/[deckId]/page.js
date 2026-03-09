@@ -44,6 +44,7 @@ import {
   SpreadsheetFileType,
   getFileTypeFromPath,
 } from "@/utils/spreadsheetParser";
+import { parseAudioBlockConfig } from "@/lib/audio-block-config";
 import * as XLSX from "xlsx";
 
 // Import steps matching mobile
@@ -803,13 +804,7 @@ export default function DeckDetailPage() {
           }
           if (mainText) {
             setAddWithAIProgress(`${cardNum}Generating audio…`);
-            let defaultVoiceId = null;
-            if (audioBlock.configJson) {
-              try {
-                const config = JSON.parse(audioBlock.configJson);
-                defaultVoiceId = config.defaultVoiceId || null;
-              } catch {}
-            }
+            const { defaultVoiceId } = parseAudioBlockConfig(audioBlock.configJson);
             try {
               const ttsHeaders = { "Content-Type": "application/json" };
               if (isProduction && user) {

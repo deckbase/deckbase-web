@@ -1,6 +1,6 @@
 # Add Cards with AI – Mobile API
 
-Use this endpoint from the mobile app to generate and add cards to a deck in one request. The server generates card content with AI, optionally generates audio (if the template has an audio block), and creates the cards in Firestore.
+Two-step flow (like the web): the API **generates** card content first; the **client** shows the cards and lets the user choose which to add or cancel. Only when the user confirms does the client call the add endpoint to create cards in Firestore.
 
 **Base URL:** Your deployed Next.js API base (e.g. `https://your-app.com`)
 
@@ -8,7 +8,7 @@ Use this endpoint from the mobile app to generate and add cards to a deck in one
 
 ---
 
-## Add cards with AI
+## Step 1: Generate cards (no creation)
 
 **POST** `/api/mobile/cards/add-with-ai`  
 **Headers:** `X-API-Key: <DECKBASE_API_KEY>`, `Content-Type: application/json`
@@ -17,19 +17,83 @@ Use this endpoint from the mobile app to generate and add cards to a deck in one
 
 | Field        | Type   | Required | Description                                      |
 |-------------|--------|----------|--------------------------------------------------|
-| `deckId`    | string | Yes      | Deck ID to add cards to                          |
-| `templateId`| string | Yes      | Template ID (user’s template)                   |
-| `uid`       | string | Yes      | Current user ID (from your app auth, e.g. Firebase Auth UID) |
+| `deckId`    | string | Yes      | Deck ID (for context and avoid list)             |
+| `templateId`| string | Yes      | Template ID (user’s template)                    |
+| `uid`       | string | Yes      | Current user ID (e.g. Firebase Auth UID)         |
 | `count`     | number | No       | Number of cards to generate (1–5). Default: 1    |
+
+### Response (200)
+
+Returns generated cards only; **does not create** any cards in Firestore.
+
+```json
+{
+  "cards": [
+    {
+      "templateId": "abc-123-template-id",
+      "blocksSnapshot": [{ "blockId": "...", "type": 0, "label": "Header 1", "required": false }, "..."],
+      "values": [{ "blockId": "...", "type": "header1", "text": "break the ice" }, { "blockId": "...", "type": "hiddenText", "text": "to start a conversation..." }, "..."],
+      "mainBlockId": "...",
+      "subBlockId": "..."
+    }
+  ]
+}
+```
+
+- **cards:** Array of card payloads ready to be added. Each has `templateId`, `blocksSnapshot`, `values` (with TTS `mediaIds` if the template has an audio block), `mainBlockId`, `subBlockId`. Pass these as-is to the add endpoint when the user confirms.
+- Duplicates (within batch or matching existing deck content) are omitted from `cards`.
+
+### Behavior
+
+1. **Auth:** Send `X-API-Key` with `DECKBASE_API_KEY`. Send `uid` for deck/template access and Pro check.
+2. **Deck & template:** Must exist and belong to the user. Template must have at least one block.
+3. **AI:** Generates content; uses deck’s existing cards for avoid list and examples. Pro/VIP required in production.
+4. **Audio:** If the template has an audio block, the server generates TTS and attaches `mediaIds` to the corresponding value in `values`. No cards are written to Firestore in this step.
+
+### Errors (Step 1)
+
+| Status | Body / cause |
+|--------|----------------|
+| 401    | `Missing or invalid X-API-Key (mobile API key)` |
+| 400    | `deckId, templateId, and uid are required` or invalid JSON |
+| 403    | `Active subscription required to use AI features` |
+| 404    | `Deck not found`, `Template not found` (code: `template_not_found`), or `Template has no blocks` (code: `template_no_blocks`) |
+| 502    | `AI returned invalid JSON` |
+| 503    | `Server storage not configured` or `ANTHROPIC_API_KEY is not configured` |
+| 500    | `Failed to add cards` (server error) |
+
+---
+
+## Step 2: Add selected cards to the deck
+
+Call this only when the user confirms they want to add (some or all of) the generated cards. If the user cancels, do not call this.
+
+**POST** `/api/mobile/cards/add`  
+**Headers:** `X-API-Key: <DECKBASE_API_KEY>`, `Content-Type: application/json`
+
+### Request body
+
+| Field   | Type  | Required | Description |
+|--------|-------|----------|-------------|
+| `uid`  | string| Yes      | Current user ID |
+| `deckId` | string | Yes    | Deck ID to add cards to |
+| `cards` | array | Yes     | Array of card objects from Step 1 (or subset). Each: `{ templateId, blocksSnapshot, values, mainBlockId?, subBlockId? }` |
 
 ### Example
 
 ```json
 {
-  "deckId": "8d1120fb-ebfe-464c-8a79-1e8036778789",
-  "templateId": "abc-123-template-id",
   "uid": "firebase-user-uid-here",
-  "count": 3
+  "deckId": "8d1120fb-ebfe-464c-8a79-1e8036778789",
+  "cards": [
+    {
+      "templateId": "abc-123-template-id",
+      "blocksSnapshot": [...],
+      "values": [...],
+      "mainBlockId": "...",
+      "subBlockId": "..."
+    }
+  ]
 }
 ```
 
@@ -37,35 +101,29 @@ Use this endpoint from the mobile app to generate and add cards to a deck in one
 
 ```json
 {
-  "created": 3,
-  "cardIds": ["card-uuid-1", "card-uuid-2", "card-uuid-3"]
+  "created": 1,
+  "cardIds": ["card-uuid-1"]
 }
 ```
 
-### Behavior
-
-1. **Auth:** Send `X-API-Key` with the value of `DECKBASE_API_KEY` from your server env. Dashboard API keys (Bearer) are for MCP only.
-2. **uid:** Send the logged-in user’s ID so the server can load their deck/template and enforce Pro. Get it from your app auth (e.g. Firebase Auth `user.uid`).
-3. **Deck & template:** Deck and template must exist and belong to that user. The template must have at least one block.
-4. **AI generation:** Same logic as the web “Add card with AI”. Pro/VIP required in production.
-5. **Audio:** If the template has an audio block, the server generates TTS and attaches it to each new card.
-
-### Errors
+### Errors (Step 2)
 
 | Status | Body / cause |
 |--------|----------------|
 | 401    | `Missing or invalid X-API-Key (mobile API key)` |
-| 400    | `deckId, templateId, and uid are required` or invalid JSON |
-| 403    | `Active subscription required to use AI features` |
-| 404    | `Deck not found` or `Template not found or has no blocks` |
-| 502    | `AI returned invalid JSON` |
-| 503    | `Server storage not configured` or `ANTHROPIC_API_KEY is not configured` |
-| 500    | `Failed to add cards` (server error) |
+| 400    | `uid and deckId are required` or `cards array is required and must not be empty` |
+| 404    | `Deck not found` |
+| 503    | `Server storage not configured` |
+| 500    | `Failed to add cards` |
 
-### Mobile usage
+---
 
-1. Set `DECKBASE_API_KEY` on the server. In the app, send it in the `X-API-Key` header on every request.
-2. Get the current user’s `uid` from your auth (e.g. Firebase Auth) and include it in the body.
-3. POST to `/api/mobile/cards/add-with-ai` with header `X-API-Key: <DECKBASE_API_KEY>` and body `{ deckId, templateId, uid, count? }`.
-4. Use the deck’s **default template** (or “effective default”) for `templateId` when the user doesn’t pick one — see [Default template per deck (mobile)](./MOBILE_DEFAULT_TEMPLATE_PER_DECK.md).
-5. On success, use `created` and `cardIds` to update the UI.
+## Mobile usage (two-step flow)
+
+1. **Generate:** POST `/api/mobile/cards/add-with-ai` with `{ deckId, templateId, uid, count? }`. Use the deck’s default template when the user doesn’t pick one — see [Default template per deck (mobile)](./MOBILE_DEFAULT_TEMPLATE_PER_DECK.md).
+2. **Show:** Display the returned `cards` in your UI (e.g. list with previews). Let the user select which to add or cancel.
+3. **Add or cancel:**
+   - If the user **adds:** POST `/api/mobile/cards/add` with `{ uid, deckId, cards }` where `cards` is the array (or subset) from Step 1. Use the response `cardIds` to update the UI.
+   - If the user **cancels:** Do not call add; discard the generated cards.
+
+This matches the web flow: generate → show in modal → user chooses → add selected to deck.

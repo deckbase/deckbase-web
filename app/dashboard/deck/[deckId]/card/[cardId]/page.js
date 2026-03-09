@@ -35,6 +35,7 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import { BLOCK_TYPES, TEXT_BLOCK_TYPES } from "@/components/blocks/blockTypes";
 import { ELEVENLABS_VOICES, ELEVENLABS_SAMPLE_PHRASE } from "@/lib/elevenlabs-voices";
+import { parseAudioBlockConfig } from "@/lib/audio-block-config";
 
 const safeJsonParse = (value) => {
   if (!value || typeof value !== "string") return null;
@@ -584,14 +585,15 @@ export default function CardEditorPage() {
             blockTypeNum !== null
               ? BlockTypeNames[blockTypeNum] === "audio"
               : block.type === "audio";
-          const audioConfig = isAudio ? safeJsonParse(block.configJson) || {} : {};
+          const audioConfig = isAudio
+            ? parseAudioBlockConfig(block.configJson, { mainBlockId })
+            : {};
           const defaultVoiceId = audioConfig.defaultVoiceId || undefined;
-          const defaultSourceBlockId =
-            audioConfig.defaultSourceBlockId || (isAudio ? mainBlockId ?? undefined : undefined);
+          const defaultSourceBlockId = audioConfig.defaultSourceBlockId || undefined;
 
           return (
             <BlockEditor
-              key={block.blockId}
+              key={block.blockId || `block-${index}`}
               block={block}
               value={values[block.blockId]}
               allBlocks={blocks}

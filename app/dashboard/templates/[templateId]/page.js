@@ -39,6 +39,12 @@ import {
 } from "@/utils/firestore";
 import { v4 as uuidv4 } from "uuid";
 import { ELEVENLABS_VOICES } from "@/lib/elevenlabs-voices";
+import { parseAudioBlockConfig } from "@/lib/audio-block-config";
+
+const LOG_AUDIO_BLOCK = true; // set to false to reduce console noise
+function logAudio(...args) {
+  if (LOG_AUDIO_BLOCK) console.log("[TemplateEditor:audio]", ...args);
+}
 
 // Block type configurations
 const BLOCK_TYPE_CONFIG = {
@@ -169,6 +175,21 @@ export default function TemplateEditorPage() {
           setName(template.name);
           setDescription(template.description || "");
           setBlocks(template.blocks || []);
+          logAudio("Template loaded from Firestore", {
+            templateId: template.templateId,
+            name: template.name,
+            mainBlockId: template.mainBlockId,
+            subBlockId: template.subBlockId,
+            blocksCount: (template.blocks || []).length,
+            blocks: (template.blocks || []).map((b, i) => ({
+              index: i,
+              blockId: b?.blockId,
+              type: b?.type,
+              label: b?.label,
+              hasConfigJson: !!b?.configJson,
+              configJsonLength: typeof b?.configJson === "string" ? b.configJson.length : 0,
+            })),
+          });
           // Load main/sub block IDs directly from template
           if (template.mainBlockId) {
             setMainBlockId(template.mainBlockId);
@@ -469,9 +490,16 @@ export default function TemplateEditorPage() {
                 b.blockId !== block.blockId &&
                 isTextBlock(getBlockTypeForConfig(b.type))
             );
+            logAudio(
+              "Block list item",
+              { index, blockId: block.blockId, type: block.type, label: block.label },
+              "otherTextBlocks count:",
+              otherTextBlocks.length,
+              otherTextBlocks.map((b) => ({ blockId: b.blockId, type: b.type, label: b.label }))
+            );
             return (
               <BlockCard
-                key={block.blockId}
+                key={block.blockId != null ? `${block.blockId}-${index}` : `block-${index}`}
                 block={block}
                 index={index}
                 totalCount={blocks.length}
@@ -479,6 +507,7 @@ export default function TemplateEditorPage() {
                 isSubBlock={effectiveSubBlockId === block.blockId}
                 canSetMainSub={isTextBlock(block.type)}
                 otherTextBlocksForAudio={otherTextBlocks}
+                effectiveMainBlockId={effectiveMainBlockId}
                 onSetAsMain={() => {
                   if (subBlockId === block.blockId) {
                     setSubBlockId(mainBlockId);
@@ -642,6 +671,7 @@ function BlockCard({
   isSubBlock,
   canSetMainSub,
   otherTextBlocksForAudio = [],
+  effectiveMainBlockId = null,
   onSetAsMain,
   onSetAsSub,
   onMoveUp,
@@ -663,12 +693,32 @@ function BlockCard({
 
   const isAudioBlock = typeForConfig === BlockType.audio;
 
-  // Parse block config
+  // Parse block config (support camelCase and snake_case from Firestore/mobile). See docs/WEB_AUDIO_BLOCK_SETTINGS.md.
   let blockConfig = {};
   if (block.configJson) {
     try {
       blockConfig = JSON.parse(block.configJson);
-    } catch {}
+    } catch (e) {
+      logAudio("Block config JSON parse error", block.blockId, e);
+    }
+  }
+  // For audio blocks: normalize so defaultVoiceId/defaultSourceBlockId work from Firestore (mobile may send snake_case)
+  if (isAudioBlock) {
+    const normalized = parseAudioBlockConfig(block.configJson, {
+      mainBlockId: effectiveMainBlockId ?? undefined,
+    });
+    blockConfig = { ...blockConfig, ...normalized };
+    logAudio("Audio block config", {
+      blockId: block.blockId,
+      rawConfigJson: block.configJson,
+      parsedThenNormalized: blockConfig,
+      effectiveMainBlockId,
+      otherTextBlocksForAudioCount: otherTextBlocksForAudio?.length ?? 0,
+      otherTextBlocksForAudio: (otherTextBlocksForAudio ?? []).map((b) => ({
+        blockId: b.blockId,
+        label: b.label,
+      })),
+    });
   }
 
   return (
@@ -829,8 +879,17 @@ function BlockCard({
 
 // Audio Block Settings: default voice + default block to copy text from
 function AudioBlockSettings({ config, onConfigChange, otherTextBlocks = [] }) {
-  const defaultVoiceId = config.defaultVoiceId ?? "";
-  const defaultSourceBlockId = config.defaultSourceBlockId ?? "";
+  // Support both camelCase and snake_case when reading (mobile may send snake_case). See docs/WEB_AUDIO_BLOCK_SETTINGS.md.
+  const defaultVoiceId = config.defaultVoiceId ?? config.default_voice_id ?? "";
+  const defaultSourceBlockId = config.defaultSourceBlockId ?? config.default_source_block_id ?? "";
+
+  logAudio("AudioBlockSettings render", {
+    configKeys: config ? Object.keys(config) : [],
+    defaultVoiceId,
+    defaultSourceBlockId,
+    otherTextBlocksCount: otherTextBlocks.length,
+    otherTextBlocks: otherTextBlocks.map((b) => ({ blockId: b.blockId, label: b.label })),
+  });
 
   return (
     <div className="mt-3 pt-3 border-t border-white/10 space-y-4">

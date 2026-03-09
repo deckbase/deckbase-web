@@ -1,6 +1,6 @@
 {
   "name": "deckbase-functions",
-  "description": "Firebase Cloud Functions (e.g. trigger speech analyzer on new transcript)",
+  "description": "Firebase Cloud Functions",
   "main": "index.js",
   "type": "module",
   "engines": { "node": ">=18" },

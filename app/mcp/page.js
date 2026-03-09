@@ -6,6 +6,39 @@ import { useState, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRevenueCat } from "@/contexts/RevenueCatContext";
 import Link from "next/link";
+import Image from "next/image";
+import { siCursor } from "simple-icons";
+
+/** Render a simple-icons icon as an inline SVG (currentColor). */
+function SimpleIconSvg({ icon, className = "w-5 h-5", ...props }) {
+  if (!icon?.path) return null;
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      fill="currentColor"
+      aria-hidden
+      {...props}
+    >
+      <path d={icon.path} />
+    </svg>
+  );
+}
+
+/** Platform icon from public/icons - consistent size */
+function PlatformIcon({ src, className = "w-6 h-6 flex-shrink-0" }) {
+  return (
+    <Image
+      src={src}
+      alt=""
+      width={24}
+      height={24}
+      className={className}
+      aria-hidden
+    />
+  );
+}
 
 const configSnippet = (mcpUrl) => `{
   "mcpServers": {
@@ -68,6 +101,22 @@ export default function McpPage() {
 url = "${mcpUrl}"`;
 
   const claudeCodeCommand = `claude mcp add --transport http deckbase ${mcpUrl}`;
+
+  // Cursor one-click install: config is the server entry (base64), see https://cursor.com/docs/mcp/install-links
+  const cursorInstallConfig = {
+    deckbase: {
+      url: mcpUrl,
+      headers: {
+        Authorization: "Bearer YOUR_API_KEY",
+      },
+    },
+  };
+  const configJson = JSON.stringify(cursorInstallConfig);
+  const configBase64 =
+    typeof window !== "undefined"
+      ? btoa(configJson)
+      : (typeof Buffer !== "undefined" ? Buffer.from(configJson).toString("base64") : "");
+  const cursorInstallUrl = `cursor://anysphere.cursor-deeplink/mcp/install?name=deckbase&config=${encodeURIComponent(configBase64)}`;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-neutral-950 via-neutral-950 to-black pt-24 pb-20">
@@ -141,7 +190,23 @@ url = "${mcpUrl}"`;
 
           {/* Cursor */}
           <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 sm:p-8">
-          <h2 className="text-xl font-semibold text-white mb-4">Cursor</h2>
+          <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+            <SimpleIconSvg icon={siCursor} className="w-6 h-6 flex-shrink-0" />
+            Cursor
+          </h2>
+          <p className="text-white/80 text-sm mb-4">
+            Install in one click, then add your API key in Cursor Settings → MCP.
+          </p>
+          <a
+            href={cursorInstallUrl}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#0d1117] hover:bg-[#161b22] text-white font-medium border border-white/20 transition-colors mb-6"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <SimpleIconSvg icon={siCursor} className="w-5 h-5" />
+            Add to Cursor
+          </a>
+          <p className="text-white/70 text-sm font-medium mb-2">Or add the configuration manually:</p>
           <ol className="list-decimal list-inside space-y-3 text-white/85 text-sm sm:text-base mb-4">
             <li>
               Use an API key (create one in the dashboard above). The API accepts only API keys; Firebase tokens are not used.
@@ -228,7 +293,10 @@ url = "${mcpUrl}"`;
 
           {/* VS Code (GitHub Copilot) */}
           <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 sm:p-8">
-          <h2 className="text-xl font-semibold text-white mb-4">VS Code (GitHub Copilot)</h2>
+          <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+            <PlatformIcon src="/icons/vscode.png" className="w-6 h-6 flex-shrink-0" />
+            VS Code (GitHub Copilot)
+          </h2>
           <ol className="list-decimal list-inside space-y-3 text-white/85 text-sm sm:text-base mb-4">
             <li>
               Create a <code className="px-1.5 py-0.5 rounded bg-white/15 text-accent font-mono text-sm">.vscode/mcp.json</code> file in your workspace.
@@ -271,7 +339,10 @@ url = "${mcpUrl}"`;
 
           {/* Claude Code */}
           <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 sm:p-8">
-          <h2 className="text-xl font-semibold text-white mb-4">Claude Code</h2>
+          <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+            <PlatformIcon src="/icons/claude.svg" className="w-6 h-6 flex-shrink-0" />
+            Claude Code
+          </h2>
           <ol className="list-decimal list-inside space-y-3 text-white/85 text-sm sm:text-base mb-4">
             <li>
               In your terminal, run:{" "}
@@ -300,7 +371,10 @@ url = "${mcpUrl}"`;
 
           {/* Claude Desktop */}
           <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 sm:p-8">
-          <h2 className="text-xl font-semibold text-white mb-4">Claude Desktop</h2>
+          <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+            <PlatformIcon src="/icons/claude.svg" className="w-6 h-6 flex-shrink-0" />
+            Claude Desktop
+          </h2>
           <ol className="list-decimal list-inside space-y-3 text-white/85 text-sm sm:text-base mb-4">
             <li>
               Open <strong>Settings</strong> → <strong>Connectors</strong>.
@@ -341,7 +415,10 @@ url = "${mcpUrl}"`;
 
           {/* Windsurf */}
           <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 sm:p-8">
-          <h2 className="text-xl font-semibold text-white mb-4">Windsurf</h2>
+          <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+            <PlatformIcon src="/icons/windsurf.jpg" className="w-6 h-6 flex-shrink-0" />
+            Windsurf
+          </h2>
           <ol className="list-decimal list-inside space-y-3 text-white/85 text-sm sm:text-base mb-4">
             <li>
               Open <strong>Windsurf Settings</strong> (<code className="px-1.5 py-0.5 rounded bg-white/15 font-mono text-sm">Cmd+,</code> on Mac) and search for <strong>MCP</strong>.
@@ -381,7 +458,10 @@ url = "${mcpUrl}"`;
 
           {/* ChatGPT */}
           <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 sm:p-8">
-          <h2 className="text-xl font-semibold text-white mb-4">ChatGPT</h2>
+          <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+            <PlatformIcon src="/icons/chatgtp.webp" className="w-6 h-6 flex-shrink-0" />
+            ChatGPT
+          </h2>
           <ol className="list-decimal list-inside space-y-3 text-white/85 text-sm sm:text-base mb-4">
             <li>
               Go to <strong>chatgpt.com/#settings/Connectors</strong> (requires login).
@@ -422,7 +502,10 @@ url = "${mcpUrl}"`;
 
           {/* Codex */}
           <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 sm:p-8">
-          <h2 className="text-xl font-semibold text-white mb-4">Codex</h2>
+          <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+            <PlatformIcon src="/icons/codex.png" className="w-6 h-6 flex-shrink-0" />
+            Codex
+          </h2>
           <ol className="list-decimal list-inside space-y-3 text-white/85 text-sm sm:text-base mb-4">
             <li>
               Add the Deckbase server to your Codex config at <code className="px-1.5 py-0.5 rounded bg-white/15 text-accent font-mono text-sm">~/.codex/config.toml</code>:
