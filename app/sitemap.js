@@ -7,6 +7,8 @@ export default function sitemap() {
     { path: "/download", changeFrequency: "weekly", priority: 0.95 },
     { path: "/features", changeFrequency: "weekly", priority: 0.9 },
     { path: "/premium", changeFrequency: "weekly", priority: 0.9 },
+    { path: "/deckbase-vs-anki", changeFrequency: "monthly", priority: 0.8 },
+    { path: "/deckbase-vs-quizlet", changeFrequency: "monthly", priority: 0.8 },
     { path: "/about-us", changeFrequency: "monthly", priority: 0.7 },
     { path: "/contact-us", changeFrequency: "monthly", priority: 0.6 },
     { path: "/updates", changeFrequency: "weekly", priority: 0.6 },

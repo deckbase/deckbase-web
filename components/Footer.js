@@ -63,7 +63,7 @@ const Footer = () => {
                 href="/premium"
                 className="cursor-pointer transition-all hover:text-silver"
               >
-                Premium
+                Pricing
               </Link>
               <Link
                 href="/updates"

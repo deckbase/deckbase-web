@@ -24,6 +24,7 @@ import {
   Settings,
   Download,
   ChevronDown,
+  CircleDot,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
@@ -110,6 +111,15 @@ export default function DeckDetailPage() {
   const [addWithAISelectedIndices, setAddWithAISelectedIndices] = useState(new Set());
   const addWithAIAddingToDeckRef = useRef(false);
 
+  // Import from file (file → AI cards)
+  const [showFileToAIModal, setShowFileToAIModal] = useState(false);
+  const [fileToAIFile, setFileToAIFile] = useState(null);
+  const [fileToAITemplateId, setFileToAITemplateId] = useState("");
+  const [fileToAIMaxCards, setFileToAIMaxCards] = useState(15);
+  const [fileToAILoading, setFileToAILoading] = useState(false);
+  const [fileToAIError, setFileToAIError] = useState(null);
+  const fileToAIFileInputRef = useRef(null);
+
   // Add card (normal): template vs blank
   const [showAddCardModal, setShowAddCardModal] = useState(false);
   const [addCardMode, setAddCardMode] = useState("template"); // "template" | "blank"
@@ -149,6 +159,12 @@ export default function DeckDetailPage() {
       setAddWithAITemplateId(effectiveDefaultTemplateId);
     }
   }, [showAddWithAIModal, templates, addWithAITemplateId, effectiveDefaultTemplateId]);
+
+  useEffect(() => {
+    if (showFileToAIModal && templates.length > 0 && !fileToAITemplateId && effectiveDefaultTemplateId) {
+      setFileToAITemplateId(effectiveDefaultTemplateId);
+    }
+  }, [showFileToAIModal, templates, fileToAITemplateId, effectiveDefaultTemplateId]);
 
   useEffect(() => {
     if (showAddCardModal && templates.length > 0 && !addCardTemplateId && effectiveDefaultTemplateId) {
@@ -732,6 +748,77 @@ export default function DeckDetailPage() {
     setAddWithAISelectedIndices(new Set());
   };
 
+  const handleFileToAISubmit = async () => {
+    if (!user || !deckId || !fileToAIFile) return;
+    const template = templates.find((t) => t.templateId === fileToAITemplateId) || templates[0];
+    if (!template?.blocks?.length) {
+      setFileToAIError("Select a template with at least one block.");
+      return;
+    }
+    setFileToAIError(null);
+    setFileToAILoading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", fileToAIFile);
+      formData.append("deckId", deckId);
+      formData.append("templateId", template.templateId);
+      formData.append("uid", user.uid);
+      formData.append("maxCards", String(fileToAIMaxCards));
+      const headers = {};
+      if (isProduction && user) {
+        const token = await user.getIdToken();
+        if (token) headers.Authorization = `Bearer ${token}`;
+      }
+      const res = await fetch("/api/cards/file-to-ai", {
+        method: "POST",
+        headers,
+        body: formData,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || data.message || "Import failed");
+      }
+      const rawCards = data.cards ?? [];
+      const blocksSnapshot = template.blocks.map((b) => ({
+        blockId: b.blockId,
+        type: b.type,
+        label: b.label || "",
+        required: b.required || false,
+        configJson: b.configJson,
+      }));
+      const generatedCards = rawCards.map((values) => ({
+        blocksSnapshot,
+        values: (values || []).map((v) => ({
+          ...v,
+          ...(v.type === "audio" ? { mediaIds: [] } : {}),
+        })),
+        templateId: template.templateId,
+      }));
+      if (data._devPrompt) {
+        setAddWithAIDevPrompt(data._devPrompt);
+        setShowDevPrompt(true);
+      }
+      setAddWithAIGeneratedCards(generatedCards);
+      setAddWithAISelectedIndices(new Set(generatedCards.map((_, i) => i)));
+      setShowFileToAIModal(false);
+      setFileToAIFile(null);
+      if (fileToAIFileInputRef.current) fileToAIFileInputRef.current.value = "";
+      setShowAddWithAIModal(true);
+    } catch (err) {
+      console.error("File to AI:", err);
+      setFileToAIError(err.message || "Import failed");
+    } finally {
+      setFileToAILoading(false);
+    }
+  };
+
+  const closeFileToAIModal = () => {
+    setShowFileToAIModal(false);
+    setFileToAIFile(null);
+    setFileToAIError(null);
+    if (fileToAIFileInputRef.current) fileToAIFileInputRef.current.value = "";
+  };
+
   const handleCopyPrompt = () => {
     if (!addWithAIDevPrompt) return;
     const text = `System:\n\n${addWithAIDevPrompt.system}\n\nUser:\n\n${addWithAIDevPrompt.user}`;
@@ -869,31 +956,66 @@ export default function DeckDetailPage() {
     }
   };
 
-  // Get preview text from card values using card's or template's main/sub blocks
+  const QUIZ_BLOCK_TYPES = ["quizSingleSelect", "quizMultiSelect", "quizTextAnswer"];
+  const resolveBlockType = (type) => {
+    if (type == null) return type;
+    const num = Number(type);
+    const byId = { 8: "quizMultiSelect", 9: "quizSingleSelect", 10: "quizTextAnswer" };
+    return byId[num] || type;
+  };
+  const isQuizBlock = (block) => QUIZ_BLOCK_TYPES.includes(resolveBlockType(block?.type));
+
+  // Get preview text from card values using card's or template's main/sub blocks (quiz question like mobile)
   const getCardPreview = (card) => {
     if (!card.values || card.values.length === 0) return { main: "Empty card", sub: null };
 
     const template = templates.find((t) => t.templateId === card.templateId);
     const mainId = card.mainBlockId ?? template?.mainBlockId;
     const subId = card.subBlockId ?? template?.subBlockId;
+    const blocks = card.blocksSnapshot || [];
 
     if (mainId || subId) {
+      const mainBlock = mainId ? blocks.find((b) => b.blockId === mainId) : null;
       const mainValue = mainId ? card.values.find((v) => v.blockId === mainId) : null;
       const subValue = subId ? card.values.find((v) => v.blockId === subId) : null;
 
+      let mainText = mainValue?.text?.substring(0, 100);
+      if (!mainText && mainBlock && isQuizBlock(mainBlock)) {
+        try {
+          const config = typeof mainBlock.configJson === "string" ? JSON.parse(mainBlock.configJson || "{}") : mainBlock.configJson || {};
+          mainText = (config.question || "Quiz").substring(0, 100);
+        } catch {
+          mainText = "Quiz";
+        }
+      }
       return {
-        main: mainValue?.text?.substring(0, 100) || card.values.find((v) => v.text)?.text?.substring(0, 100) || "Empty card",
+        main: mainText || card.values.find((v) => v.text)?.text?.substring(0, 100) || "Empty card",
         sub: subValue?.text?.substring(0, 80) || null,
       };
     }
 
-    // Fallback: use first two text values
+    // Fallback: use first two text values; if first is quiz, use its question
+    const firstBlock = blocks[0];
+    if (firstBlock && isQuizBlock(firstBlock)) {
+      try {
+        const config = typeof firstBlock.configJson === "string" ? JSON.parse(firstBlock.configJson || "{}") : firstBlock.configJson || {};
+        return {
+          main: (config.question || "Quiz").substring(0, 100),
+          sub: null,
+        };
+      } catch {
+        return { main: "Quiz", sub: null };
+      }
+    }
     const textValues = card.values.filter((v) => v.text && v.text.trim());
     return {
       main: textValues[0]?.text?.substring(0, 100) || "Empty card",
       sub: textValues[1]?.text?.substring(0, 80) || null,
     };
   };
+
+  const cardHasQuiz = (card) =>
+    (card.blocksSnapshot || []).some((b) => isQuizBlock(b));
 
   // Filter cards by search
   const filteredCards = cards.filter((card) => {
@@ -1050,6 +1172,21 @@ export default function DeckDetailPage() {
             )}
             <button
               type="button"
+              disabled={!aiEntitled}
+              title={!aiEntitled ? "Pro required for AI features" : "Import PDF, Word, or Excel and generate cards with AI"}
+              onClick={() => {
+                setFileToAIError(null);
+                setFileToAIFile(null);
+                setFileToAITemplateId(effectiveDefaultTemplateId || templates[0]?.templateId || "");
+                setShowFileToAIModal(true);
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors font-medium disabled:opacity-50 disabled:pointer-events-none"
+            >
+              <FileSpreadsheet className="w-5 h-5" />
+              Import from file
+            </button>
+            <button
+              type="button"
               onClick={() => {
                 setAddCardTemplateId(effectiveDefaultTemplateId || templates[0]?.templateId || "");
                 setShowAddCardModal(true);
@@ -1090,7 +1227,7 @@ export default function DeckDetailPage() {
               : "Create your first card to get started"}
           </p>
           {!searchQuery && (
-            <div className="flex items-center justify-center gap-3">
+            <div className="flex items-center justify-center gap-3 flex-wrap">
               <button
                 onClick={() => setShowImportModal(true)}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
@@ -1098,6 +1235,21 @@ export default function DeckDetailPage() {
                 <Upload className="w-5 h-5" />
                 Import Cards
               </button>
+              {aiEntitled && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFileToAIError(null);
+                    setFileToAIFile(null);
+                    setFileToAITemplateId(effectiveDefaultTemplateId || templates[0]?.templateId || "");
+                    setShowFileToAIModal(true);
+                  }}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
+                >
+                  <FileSpreadsheet className="w-5 h-5" />
+                  Import from file (AI)
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => {
@@ -1125,21 +1277,28 @@ export default function DeckDetailPage() {
                 href={`/dashboard/deck/${deckId}/card/${card.cardId}`}
                 className="block p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-colors"
               >
-                {(() => {
-                  const preview = getCardPreview(card);
-                  return (
-                    <>
-                      <p className="text-white font-medium line-clamp-2">
-                        {preview.main}
-                      </p>
-                      {preview.sub && (
-                        <p className="text-white/50 text-sm line-clamp-2 mt-1">
-                          {preview.sub}
-                        </p>
-                      )}
-                    </>
-                  );
-                })()}
+                <div className="flex items-start gap-2">
+                  <div className="flex-1 min-w-0">
+                    {(() => {
+                      const preview = getCardPreview(card);
+                      return (
+                        <>
+                          <p className="text-white font-medium line-clamp-2">
+                            {preview.main}
+                          </p>
+                          {preview.sub && (
+                            <p className="text-white/50 text-sm line-clamp-2 mt-1">
+                              {preview.sub}
+                            </p>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </div>
+                  {cardHasQuiz(card) && (
+                    <CircleDot className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" title="Quiz" />
+                  )}
+                </div>
                 <p className="text-white/30 text-xs mt-2">
                   {new Date(card.createdAt).toLocaleDateString()}
                 </p>
@@ -1610,6 +1769,108 @@ export default function DeckDetailPage() {
                   </div>
                 </>
               )}
+            </div>
+          </Modal>
+        )}
+      </AnimatePresence>
+
+      {/* Import from file (File → AI cards) Modal */}
+      <AnimatePresence>
+        {showFileToAIModal && deck && (
+          <Modal onClose={() => !fileToAILoading && closeFileToAIModal()}>
+            <div className="flex flex-col max-h-[85vh]">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <FileSpreadsheet className="w-5 h-5 text-white/70" />
+                  Import from file
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => !fileToAILoading && closeFileToAIModal()}
+                  className="p-1 hover:bg-white/10 rounded transition-colors"
+                >
+                  <X className="w-5 h-5 text-white/50" />
+                </button>
+              </div>
+              <p className="text-white/60 text-sm mb-4">
+                Upload a PDF, Word, or Excel file. AI will map the content to your template and generate cards.
+              </p>
+              <div className="space-y-3 mb-4">
+                <div>
+                  <label className="text-white/70 text-sm block mb-1">File (PDF, DOCX, XLSX)</label>
+                  <input
+                    ref={fileToAIFileInputRef}
+                    type="file"
+                    accept=".pdf,.docx,.xlsx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    onChange={(e) => setFileToAIFile(e.target.files?.[0] ?? null)}
+                    className="w-full text-white/80 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-white/10 file:text-white file:cursor-pointer"
+                  />
+                  {fileToAIFile && (
+                    <p className="text-white/50 text-xs mt-1">{fileToAIFile.name}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="text-white/70 text-sm block mb-1">Template</label>
+                  <select
+                    value={fileToAITemplateId}
+                    onChange={(e) => setFileToAITemplateId(e.target.value)}
+                    disabled={fileToAILoading}
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-amber-500/50"
+                  >
+                    {templates.map((t) => (
+                      <option key={t.templateId} value={t.templateId}>
+                        {t.name} ({t.blocks?.length ?? 0} blocks)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-white/70 text-sm block mb-1">Max cards to generate</label>
+                  <select
+                    value={fileToAIMaxCards}
+                    onChange={(e) => setFileToAIMaxCards(Number(e.target.value))}
+                    disabled={fileToAILoading}
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-amber-500/50"
+                  >
+                    {[5, 10, 15, 20, 30].map((n) => (
+                      <option key={n} value={n}>
+                        Up to {n} cards
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              {fileToAIError && (
+                <p className="text-red-400 text-sm mb-4">{fileToAIError}</p>
+              )}
+              <div className="flex gap-2 justify-end">
+                <button
+                  type="button"
+                  onClick={closeFileToAIModal}
+                  disabled={fileToAILoading}
+                  className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleFileToAISubmit}
+                  disabled={fileToAILoading || !fileToAIFile || !fileToAITemplateId}
+                  className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                >
+                  {fileToAILoading ? (
+                    <>
+                      <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                      Extracting & generating…
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4" />
+                      Generate cards from file
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </Modal>
         )}

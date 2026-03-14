@@ -111,7 +111,7 @@ export const storage = getStorage(app);
 
 > **Important**:
 >
-> - Decks, cards, and templates live under `users/{uid}/` (see [FIRESTORE_FLASHCARDS_MIGRATION.md](./FIRESTORE_FLASHCARDS_MIGRATION.md) for the migration from the legacy `flashcards` collection).
+> - Decks, cards, and templates live under `users/{uid}/` (see [FIRESTORE_FLASHCARDS_MIGRATION.md](../FIRESTORE_FLASHCARDS_MIGRATION.md) for the migration from the legacy `flashcards` collection).
 > - Media files are stored in **Firebase Storage** (not Firestore). Only the storage path is referenced in card values.
 
 ---

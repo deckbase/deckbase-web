@@ -1,41 +1,91 @@
 "use client";
+import { useState } from "react";
 import { motion } from "framer-motion";
+
+const MONTHLY = "monthly";
+const YEARLY = "yearly";
 
 const plans = [
   {
     id: "01",
-    title: "Free Tier",
+    title: "Free",
     price: "$0",
-    billing: "Free Forever",
+    priceYearly: null,
+    billing: "Free forever",
+    billingYearly: null,
     benefits: [
-      "Manual flashcard creation",
-      "Basic spaced repetition",
-      "Up to 500 cards",
-      "Basic analytics",
+      "No AI card generation",
+      "Unlimited OCR",
+      "Unlimited decks",
+      "Unlimited cards",
+      "Unlimited spaced repetition",
+      "Unlimited quizzes",
+      "Supported media: Image, Audio",
+      "No text-to-speech",
+      "No MCP",
+      "Import: CSV only",
+      "Export: CSV only",
+      "No cloud backup",
     ],
+    bestFor: "Manual card testing",
   },
   {
     id: "02",
-    title: "Premium Tier",
-    price: "$4.99",
-    billing: "Billed Annually at $49.99",
+    title: "Basic",
+    popular: true,
+    price: "$5.99",
+    priceYearly: "$59",
+    billing: "Per month",
+    billingYearly: "Save 18%",
     benefits: [
-      "Unlimited AI card generation",
-      "Priority AI processing",
-      "Unlimited cards & decks",
-      "Advanced analytics",
-      "Cloud backup & sync",
-      "Deck sharing",
+      "250 AI card generations/month",
+      "Unlimited OCR",
+      "Unlimited decks",
+      "Unlimited cards",
+      "Unlimited spaced repetition",
+      "Unlimited quizzes",
+      "Supported media: Image, Audio",
+      "Premium voices + speed (up to 30K chars/mo)",
+      "MCP",
+      "Import: CSV, Excel, Anki",
+      "Export: CSV, Excel, Anki",
+      "2GB cloud backup",
     ],
+    bestFor: "Regular students",
+  },
+  {
+    id: "03",
+    title: "Pro",
+    price: "$11.99",
+    priceYearly: "$119",
+    billing: "Per month",
+    billingYearly: "Save 17%",
+    benefits: [
+      "600 AI card generations/month",
+      "Unlimited OCR",
+      "Unlimited decks",
+      "Unlimited cards",
+      "Unlimited spaced repetition",
+      "Unlimited quizzes",
+      "Supported media: Image, Audio",
+      "Premium voices (up to 50K chars/mo)",
+      "MCP",
+      "Import: CSV, Excel, Anki",
+      "Export: CSV, Excel, Anki",
+      "20GB cloud backup",
+    ],
+    bestFor: "Exam prep, heavy users",
   },
 ];
 
 const PricingPlans = () => {
+  const [billingPeriod, setBillingPeriod] = useState(MONTHLY);
+
   return (
     <motion.section
       initial={{ opacity: 0 }}
       animate={{ opacity: 1, transition: { duration: 0.8 } }}
-      className="relative z-10 w-full bg-white "
+      className="relative z-10 w-full bg-white pt-24 md:pt-28"
     >
       <article className="container mx-auto py-14 p-4 px-5 md:px-[5%] 2xl:px-0 max-w-[1200px] gap-4flex flex-col items-center justify-center gap-4">
         <div className="flex flex-col items-center justify-center">
@@ -56,49 +106,137 @@ const PricingPlans = () => {
 
           <article className="flex flex-col items-center justify-center mt-16">
             <p className="text-justify md:max-w-[60%] md:text-center">
-              Compare our Free and Premium plans to find the perfect fit for
-              your learning goals. Start learning smarter today.
+              Compare Free, Basic, and Pro plans to find the right fit for your
+              learning goals. Start learning smarter today.
             </p>
           </article>
+
+          <div className="flex items-center justify-center gap-2 mt-8">
+            <button
+              type="button"
+              onClick={() => setBillingPeriod(MONTHLY)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                billingPeriod === MONTHLY
+                  ? "bg-gradient-to-r from-accent to-purple-600 text-white"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              Monthly
+            </button>
+            <button
+              type="button"
+              onClick={() => setBillingPeriod(YEARLY)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                billingPeriod === YEARLY
+                  ? "bg-gradient-to-r from-accent to-purple-600 text-white"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              Yearly
+            </button>
+          </div>
         </div>
-        <div className="mt-16 lg:mt-26 grid grid-cols-1 md:grid-cols-2 gap-16">
-          {plans.map((paragraph) => (
+        <div className="mt-16 lg:mt-26 grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-10">
+          {plans.map((plan) => (
             <motion.article
-              key={paragraph.id}
+              key={plan.id}
               initial={{ opacity: 0, y: 100 }}
               whileInView={{ opacity: 1, y: 0, transition: { duration: 0.5 } }}
               viewport={{ once: true }}
-              className="my-2 border shadow-lg flex flex-col gap-4 lg:p-10 p-10 rounded-xl"
+              className="my-2 shadow-lg flex flex-col gap-4 lg:p-8 p-8 rounded-xl relative"
             >
-              <h3 className="text-h2 font-bold">
-                {paragraph.price}
-                <span className="text-h5 font-inter">/Month</span>
-              </h3>
-              <h4 className="text-h4 font-bold font-inter mt-3 lg:mt-0">
-                {paragraph.title}
-              </h4>
-              <p className="text-[#505050]">{paragraph.billing}</p>
-              <ul className="mt-2 grid grid-cols-1 gap-4 mb-5">
-                {paragraph.benefits.map((benefit, index) => (
-                  <li key={index} className="flex items-center">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="w-6 h-6 mr-3"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                    <span className="text-gray-700">{benefit}</span>
+              {plan.popular && (
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-gradient-to-r from-accent to-purple-600 text-white text-xs font-semibold rounded-full shadow">
+                  Popular
+                </span>
+              )}
+              <div className={`flex flex-col gap-0 ${billingPeriod === YEARLY ? "h-[14rem]" : "min-h-[11.5rem]"}`}>
+                <h3 className="text-h2 font-bold flex flex-wrap items-baseline gap-x-1.5">
+                  {billingPeriod === YEARLY && plan.priceYearly
+                    ? (() => {
+                        const annualNum = parseFloat(plan.priceYearly.replace(/[$,]/g, ""));
+                        const perMonth = (annualNum / 12).toFixed(2);
+                        return (
+                          <>
+                            <span>${perMonth}</span>
+                            <span className="text-sm font-normal text-[#505050]">per month</span>
+                          </>
+                        );
+                      })()
+                    : plan.price}
+                  {plan.price !== "$0" && billingPeriod === MONTHLY && (
+                    <span className="text-h5 font-inter">/mo</span>
+                  )}
+                </h3>
+                <h4 className="text-h4 font-bold font-inter mt-3 lg:mt-0">
+                  {plan.title}
+                </h4>
+                <p className="text-[#505050] flex flex-wrap items-center gap-2">
+                  {billingPeriod === YEARLY && plan.priceYearly ? (
+                    <>
+                      <span>Billed annually at ${parseFloat(plan.priceYearly.replace(/[$,]/g, "")).toFixed(2)}</span>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-gradient-to-r from-accent to-purple-600 text-white">
+                        {plan.billingYearly}
+                      </span>
+                    </>
+                  ) : (
+                    plan.billing
+                  )}
+                </p>
+                {billingPeriod === YEARLY && plan.priceYearly && plan.price !== "$0" && (() => {
+                  const monthlyNum = parseFloat(plan.price.replace(/[$,]/g, ""));
+                  const annualNum = parseFloat(plan.priceYearly.replace(/[$,]/g, ""));
+                  const savePerMonth = (monthlyNum - annualNum / 12).toFixed(2);
+                  const savePerYear = ((monthlyNum * 12) - annualNum).toFixed(2);
+                  return (
+                    <p className="text-sm text-[#505050] mt-0.5">
+                      Save ${savePerMonth}/mo · ${savePerYear}/yr vs monthly
+                    </p>
+                  );
+                })()}
+              </div>
+              <ul className="mt-2 grid grid-cols-1 gap-3 mb-4 flex-1">
+                {plan.benefits.map((benefit, index) => (
+                  <li key={index} className="flex items-start">
+                    <span className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0 flex items-center justify-center">
+                      {plan.price === "$0" &&
+                      ![
+                        "Unlimited OCR",
+                        "Unlimited decks",
+                        "Unlimited cards",
+                        "Unlimited spaced repetition",
+                        "Unlimited quizzes",
+                        "Supported media: Image, Audio",
+                        "Import: CSV only",
+                        "Export: CSV only",
+                      ].includes(benefit) ? (
+                        <span className="text-gray-400">—</span>
+                      ) : (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="w-5 h-5 text-green-600"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                      )}
+                    </span>
+                    <span className="text-gray-700 text-sm">{benefit}</span>
                   </li>
                 ))}
               </ul>
+              {plan.bestFor && (
+                <p className="text-[#505050] text-sm pt-2 border-t border-gray-200">
+                  Best for: {plan.bestFor}
+                </p>
+              )}
             </motion.article>
           ))}
         </div>

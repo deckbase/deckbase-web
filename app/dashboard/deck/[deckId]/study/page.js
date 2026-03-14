@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, BookOpen, CheckCircle2, RefreshCcw } from "lucide-react";
+import { ArrowLeft, BookOpen, Check, CheckCircle2, RefreshCcw } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   getDeck,
@@ -445,6 +445,7 @@ export default function StudySessionPage() {
 
   const handleQuizChange = (blockId, value) => {
     if (showAnswer) return;
+    setError(""); // clear "select at least one" when user selects
     setQuizState((prev) => ({
       ...prev,
       [blockId]: value,
@@ -455,6 +456,18 @@ export default function StudySessionPage() {
     if (!currentCard || !user || sessionComplete || isSaving) return;
 
     if (hasRevealableBlocks && !showAnswer) {
+      const multiSelectBlocks = (currentCard.blocksSnapshot || []).filter(
+        (b) => resolveBlockType(b.type) === "quizMultiSelect"
+      );
+      for (const block of multiSelectBlocks) {
+        const selected = quizState[block.blockId];
+        const count = Array.isArray(selected) ? selected.length : 0;
+        if (count === 0) {
+          setError("Please select at least one option.");
+          return;
+        }
+      }
+      setError("");
       triggerReveal();
       return;
     }
@@ -496,6 +509,7 @@ export default function StudySessionPage() {
       setCardShownAt(Date.now());
       setRevealedBlocks({});
       setQuizState({});
+      setError("");
     } else {
       setSessionComplete(true);
     }
@@ -700,6 +714,11 @@ export default function StudySessionPage() {
 
           {/* Rating Buttons */}
           <div className="mt-6">
+            {error === "Please select at least one option." && (
+              <div className="mb-4 rounded-lg border border-red-500/50 bg-red-500/15 text-red-200 text-sm px-4 py-3 text-center">
+                Please select at least one option before revealing.
+              </div>
+            )}
             {hasRevealableBlocks && (
               <p className="text-center text-white/40 text-xs mb-3">
                 {showAnswer
@@ -1017,12 +1036,13 @@ function FlashcardContent({
                     const isSelected = selected.has(option);
                     const isCorrect = showAnswer && correctSet.has(option);
                     const isWrong = showAnswer && isSelected && !isCorrect;
+                    const showCheck = isSelected || isCorrect;
                     return (
                       <button
                         key={option}
                         onClick={() => toggleOption(option)}
                         disabled={showAnswer}
-                        className={`w-full text-left px-3 py-2 rounded-lg border transition-colors ${
+                        className={`w-full text-left px-3 py-2 rounded-lg border transition-colors flex items-center gap-2 ${
                           isCorrect
                             ? "border-green-400 bg-green-500/10 text-green-100"
                             : isWrong
@@ -1032,7 +1052,10 @@ function FlashcardContent({
                             : "border-white/10 text-white/70 hover:border-white/30"
                         }`}
                       >
-                        {option}
+                        {showCheck && (
+                          <Check className="w-4 h-4 shrink-0" strokeWidth={2.5} />
+                        )}
+                        <span>{option}</span>
                       </button>
                     );
                   })}

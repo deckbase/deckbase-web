@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   ArrowLeft,
+  Check,
   Plus,
   Trash2,
   GripVertical,
@@ -36,6 +37,7 @@ import { v4 as uuidv4 } from "uuid";
 import { BLOCK_TYPES, TEXT_BLOCK_TYPES } from "@/components/blocks/blockTypes";
 import { ELEVENLABS_VOICES, ELEVENLABS_SAMPLE_PHRASE } from "@/lib/elevenlabs-voices";
 import { parseAudioBlockConfig } from "@/lib/audio-block-config";
+import { getBlockValidationErrors as getBlockValidationErrorsFromValidators } from "@/lib/block-validators";
 
 const safeJsonParse = (value) => {
   if (!value || typeof value !== "string") return null;
@@ -44,6 +46,14 @@ const safeJsonParse = (value) => {
   } catch {
     return null;
   }
+};
+
+// Get block config object; template/card may store configJson as string or object (Firestore)
+const getBlockConfig = (block) => {
+  const raw = block?.configJson;
+  if (raw == null) return null;
+  if (typeof raw === "object") return raw;
+  return safeJsonParse(raw);
 };
 
 // Normalize block type so edit (Firestore/template numeric) and create (string) use same UI
@@ -282,6 +292,20 @@ export default function CardEditorPage() {
     });
   };
 
+  // Reorder block by drag-and-drop (fromIndex → toIndex)
+  const moveBlock = (fromIndex, toIndex) => {
+    if (fromIndex === toIndex) return;
+    setBlocks((prev) => {
+      const newBlocks = [...prev];
+      const [removed] = newBlocks.splice(fromIndex, 1);
+      newBlocks.splice(toIndex, 0, removed);
+      return newBlocks;
+    });
+  };
+
+  const [draggedBlockIndex, setDraggedBlockIndex] = useState(null);
+  const [dragOverBlockIndex, setDragOverBlockIndex] = useState(null);
+
   // Handle image upload
   const handleImageUpload = async (blockId, files) => {
     if (!files || files.length === 0) return;
@@ -499,8 +523,15 @@ export default function CardEditorPage() {
     }
   };
 
+  const resolveBlockType = (block) => normalizeBlockType(block?.type);
+
   // Save card
   const handleSave = async () => {
+    const { errors } = getBlockValidationErrorsFromValidators(blocks, values, {
+      resolveBlockType,
+      getBlockConfig,
+    });
+    if (errors.length > 0) return;
     setSaving(true);
     try {
       await persistCard(blocks, values, { redirect: true });
@@ -511,12 +542,11 @@ export default function CardEditorPage() {
     }
   };
 
-  // Check if card has content
-  const hasContent = () => {
-    return Object.values(values).some(
-      (v) => (v.text && v.text.trim()) || (v.mediaIds && v.mediaIds.length > 0)
-    );
-  };
+  const cardValidation = getBlockValidationErrorsFromValidators(blocks, values, {
+    resolveBlockType,
+    getBlockConfig,
+  });
+  const isCardValid = cardValidation.valid;
 
   if (loading) {
     return (
@@ -557,7 +587,7 @@ export default function CardEditorPage() {
           )}
           <button
             onClick={handleSave}
-            disabled={saving || !hasContent()}
+            disabled={saving || !isCardValid}
             className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent/90 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? (
@@ -571,6 +601,17 @@ export default function CardEditorPage() {
           </button>
         </div>
       </div>
+
+      {cardValidation.errors.length > 0 && (
+        <div className="mb-6 rounded-lg border border-amber-500/50 bg-amber-500/10 text-amber-200 text-sm px-4 py-3">
+          <p className="font-medium mb-1">Please fix the following:</p>
+          <ul className="list-disc list-inside space-y-0.5">
+            {cardValidation.errors.map((msg, i) => (
+              <li key={i}>{msg}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Blocks */}
       <div className="space-y-4">
@@ -590,33 +631,62 @@ export default function CardEditorPage() {
             : {};
           const defaultVoiceId = audioConfig.defaultVoiceId || undefined;
           const defaultSourceBlockId = audioConfig.defaultSourceBlockId || undefined;
+          const isDragging = draggedBlockIndex === index;
+          const isDragOver = dragOverBlockIndex === index;
 
           return (
-            <BlockEditor
+            <div
               key={block.blockId || `block-${index}`}
-              block={block}
-              value={values[block.blockId]}
-              allBlocks={blocks}
-              allValues={values}
-              mediaCache={mediaCache}
-              isMainBlock={mainBlockId === block.blockId}
-              isSubBlock={subBlockId === block.blockId}
-              onValueChange={(text) => updateBlockValue(block.blockId, text)}
-              onRemove={() => removeBlock(block.blockId)}
-              onImageUpload={(files) => handleImageUpload(block.blockId, files)}
-              onImageRemove={(mediaId) => removeImage(block.blockId, mediaId)}
-              onAudioUpload={(files) => handleAudioUpload(block.blockId, files)}
-              onAudioRemove={(mediaId) => removeAudio(block.blockId, mediaId)}
-              onGenerateAudio={audioProEntitled ? (text, voiceId) => handleGenerateAudio(block.blockId, text, voiceId) : undefined}
-              generateAudioProRequired={isProduction && !audioProEntitled}
-              onPlayVoiceSample={handlePlayVoiceSample}
-              playingSampleVoiceId={playingSampleVoiceId}
-              voiceOptions={ELEVENLABS_VOICES}
-              defaultVoiceId={defaultVoiceId}
-              defaultSourceBlockId={defaultSourceBlockId}
-              generatingAudio={generatingAudioBlockId === block.blockId}
-              onConfigChange={(config) => updateBlockConfig(block.blockId, config)}
-            />
+              draggable
+              onDragStart={(e) => {
+                e.dataTransfer.effectAllowed = "move";
+                e.dataTransfer.setData("text/plain", String(index));
+                setDraggedBlockIndex(index);
+              }}
+              onDragEnd={() => {
+                setDraggedBlockIndex(null);
+                setDragOverBlockIndex(null);
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
+                setDragOverBlockIndex(index);
+              }}
+              onDragLeave={() => setDragOverBlockIndex((i) => (i === index ? null : i))}
+              onDrop={(e) => {
+                e.preventDefault();
+                const from = draggedBlockIndex;
+                if (from != null && from !== index) moveBlock(from, index);
+                setDraggedBlockIndex(null);
+                setDragOverBlockIndex(null);
+              }}
+              className={`rounded-xl transition-colors cursor-grab active:cursor-grabbing ${isDragOver ? "ring-2 ring-accent/50 bg-accent/5" : ""} ${isDragging ? "opacity-60" : ""}`}
+            >
+              <BlockEditor
+                block={block}
+                value={values[block.blockId]}
+                allBlocks={blocks}
+                allValues={values}
+                mediaCache={mediaCache}
+                isMainBlock={mainBlockId === block.blockId}
+                isSubBlock={subBlockId === block.blockId}
+                onValueChange={(text) => updateBlockValue(block.blockId, text)}
+                onRemove={() => removeBlock(block.blockId)}
+                onImageUpload={(files) => handleImageUpload(block.blockId, files)}
+                onImageRemove={(mediaId) => removeImage(block.blockId, mediaId)}
+                onAudioUpload={(files) => handleAudioUpload(block.blockId, files)}
+                onAudioRemove={(mediaId) => removeAudio(block.blockId, mediaId)}
+                onGenerateAudio={audioProEntitled ? (text, voiceId) => handleGenerateAudio(block.blockId, text, voiceId) : undefined}
+                generateAudioProRequired={isProduction && !audioProEntitled}
+                onPlayVoiceSample={handlePlayVoiceSample}
+                playingSampleVoiceId={playingSampleVoiceId}
+                voiceOptions={ELEVENLABS_VOICES}
+                defaultVoiceId={defaultVoiceId}
+                defaultSourceBlockId={defaultSourceBlockId}
+                generatingAudio={generatingAudioBlockId === block.blockId}
+                onConfigChange={(config) => updateBlockConfig(block.blockId, config)}
+              />
+            </div>
           );
         })}
       </div>
@@ -991,7 +1061,7 @@ function BlockEditor({
         return <hr className="border-white/20" />;
 
       case "space": {
-        const spaceConfig = safeJsonParse(block.configJson) || { height: 32 };
+        const spaceConfig = getBlockConfig(block) || { height: 32 };
         return (
           <div className="flex items-center gap-3">
             <span className="text-white/40 text-sm">Height:</span>
@@ -1011,7 +1081,7 @@ function BlockEditor({
       }
 
       case "quizSingleSelect": {
-        const qConfig = safeJsonParse(block.configJson) || {
+        const qConfig = getBlockConfig(block) || {
           question: "",
           options: ["", ""],
           correctAnswers: [],
@@ -1108,7 +1178,7 @@ function BlockEditor({
       }
 
       case "quizMultiSelect": {
-        const qConfig = safeJsonParse(block.configJson) || {
+        const qConfig = getBlockConfig(block) || {
           question: "",
           options: ["", ""],
           correctAnswers: [],
@@ -1128,7 +1198,7 @@ function BlockEditor({
             />
             <div className="space-y-2">
               <span className="text-white/40 text-xs uppercase tracking-wide">
-                Options — check boxes to mark correct
+                Options — check to mark correct
               </span>
               {options.map((option, i) => (
                 <div key={i} className="flex items-center gap-2">
@@ -1147,12 +1217,14 @@ function BlockEditor({
                         correctAnswers: Array.from(next),
                       });
                     }}
-                    className={`w-4 h-4 rounded border-2 flex-shrink-0 transition-colors ${
+                    className={`w-5 h-5 rounded border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
                       correct.has(option) && option
-                        ? "border-accent bg-accent"
-                        : "border-white/30"
+                        ? "border-accent bg-accent text-white"
+                        : "border-white/30 text-transparent"
                     }`}
-                  />
+                  >
+                    {correct.has(option) && option && <Check className="w-3 h-3" strokeWidth={2.5} />}
+                  </button>
                   <input
                     type="text"
                     value={option}
@@ -1218,7 +1290,7 @@ function BlockEditor({
       }
 
       case "quizTextAnswer": {
-        const qConfig = safeJsonParse(block.configJson) || {
+        const qConfig = getBlockConfig(block) || {
           question: "",
           correctAnswer: "",
           hint: "",

@@ -271,6 +271,20 @@ export default function TemplateEditorPage() {
     });
   };
 
+  // Reorder block by drag-and-drop (fromIndex → toIndex)
+  const moveBlock = (fromIndex, toIndex) => {
+    if (fromIndex === toIndex) return;
+    setBlocks((prev) => {
+      const newBlocks = [...prev];
+      const [removed] = newBlocks.splice(fromIndex, 1);
+      newBlocks.splice(toIndex, 0, removed);
+      return newBlocks;
+    });
+  };
+
+  const [draggedBlockIndex, setDraggedBlockIndex] = useState(null);
+  const [dragOverBlockIndex, setDragOverBlockIndex] = useState(null);
+
   // Duplicate a block
   const duplicateBlock = (index) => {
     const originalBlock = blocks[index];
@@ -526,6 +540,30 @@ export default function TemplateEditorPage() {
                 onRemove={() => removeBlock(block.blockId)}
                 onLabelChange={(label) => updateBlockLabel(block.blockId, label)}
                 onConfigChange={(config) => updateBlockConfig(block.blockId, config)}
+                onDragStart={(e) => {
+                  e.dataTransfer.effectAllowed = "move";
+                  e.dataTransfer.setData("text/plain", String(index));
+                  setDraggedBlockIndex(index);
+                }}
+                onDragEnd={() => {
+                  setDraggedBlockIndex(null);
+                  setDragOverBlockIndex(null);
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = "move";
+                  setDragOverBlockIndex(index);
+                }}
+                onDragLeave={() => setDragOverBlockIndex((i) => (i === index ? null : i))}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const from = draggedBlockIndex;
+                  if (from != null && from !== index) moveBlock(from, index);
+                  setDraggedBlockIndex(null);
+                  setDragOverBlockIndex(null);
+                }}
+                isDragging={draggedBlockIndex === index}
+                isDragOver={dragOverBlockIndex === index}
               />
             );
           })
@@ -680,6 +718,13 @@ function BlockCard({
   onRemove,
   onLabelChange,
   onConfigChange,
+  onDragStart,
+  onDragEnd,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  isDragging = false,
+  isDragOver = false,
 }) {
   const [showSettings, setShowSettings] = useState(false);
   const typeForConfig = getBlockTypeForConfig(block.type);
@@ -725,12 +770,20 @@ function BlockCard({
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white/5 border border-white/10 rounded-xl p-4 group"
+      draggable
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      className={`bg-white/5 border rounded-xl p-4 group transition-colors ${
+        isDragOver ? "border-accent/60 bg-accent/10 ring-1 ring-accent/30" : "border-white/10"
+      } ${isDragging ? "opacity-60" : ""}`}
     >
       <div className="flex items-start gap-3">
         {/* Drag Handle & Icon */}
-        <div className="flex flex-col items-center gap-1 pt-1">
-          <GripVertical className="w-4 h-4 text-white/20 cursor-grab" />
+        <div className="flex flex-col items-center gap-1 pt-1 cursor-grab active:cursor-grabbing">
+          <GripVertical className="w-4 h-4 text-white/20" />
           <Icon className="w-4 h-4 text-white/40" />
         </div>
 

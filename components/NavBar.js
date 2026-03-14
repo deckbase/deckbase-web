@@ -67,7 +67,7 @@ const Navbar = () => {
           </li>
           <li>
             <Link href="/premium" className={isActive("/premium")}>
-              Premium
+              Pricing
             </Link>
           </li>
           <li>
@@ -87,10 +87,10 @@ const Navbar = () => {
           </li>
           <li>
             <Link
-              href="/dashboard"
+              href="/login"
               className="px-4 py-2 bg-accent hover:bg-accent/90 text-white font-medium rounded-lg transition-colors"
             >
-              Dashboard
+              Sign in
             </Link>
           </li>
         </ul>
@@ -173,7 +173,7 @@ const Navbar = () => {
               className={isActive("/premium")}
               onClick={toggleMenu}
             >
-              Premium
+              Pricing
             </Link>
           </li>
           <li className="text-3xl">
@@ -205,11 +205,11 @@ const Navbar = () => {
           </li>
           <li className="text-2xl mt-4">
             <Link
-              href="/dashboard"
+              href="/login"
               className="px-6 py-3 bg-accent hover:bg-accent/90 text-white font-medium rounded-lg transition-colors"
               onClick={toggleMenu}
             >
-              Dashboard
+              Sign in
             </Link>
           </li>
         </ul>
