@@ -224,25 +224,29 @@ export const parseApkgBytes = async (bytes, fileName) => {
     throw new Error("Failed to extract APKG: database file not found");
   }
 
-  // Parse media mapping
+  // Parse media mapping (Anki: JSON object numericId -> filename; keys can be string "0","1" or number)
   let mediaMapping = {};
   const mediaFile = zip.file("media");
   if (mediaFile) {
     try {
       const content = await mediaFile.async("string");
-      mediaMapping = JSON.parse(content);
+      const parsed = JSON.parse(content);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        mediaMapping = parsed;
+      }
     } catch {
       // Ignore media mapping errors
     }
   }
 
-  // Extract media files
+  // Extract media files (ZIP entries are named by numeric id as string, e.g. "0", "1")
   const media = {};
   for (const [numericId, originalName] of Object.entries(mediaMapping)) {
-    const mediaFileInZip = zip.file(numericId);
-    if (mediaFileInZip) {
+    const key = String(numericId);
+    const mediaFileInZip = zip.file(key);
+    if (mediaFileInZip && originalName != null && String(originalName).trim()) {
       try {
-        media[originalName] = await mediaFileInZip.async("uint8array");
+        media[String(originalName).trim()] = await mediaFileInZip.async("uint8array");
       } catch {
         // Ignore individual media errors
       }
@@ -265,19 +269,23 @@ const parseSqliteDatabase = (dbData, fileName, media) => {
   const modelFieldNames = {};
 
   try {
-    // Get deck name and field names from 'col' table
+    // Get deck name and field names from 'col' table (required for Anki APKG)
     const colResult = db.exec("SELECT decks, models FROM col LIMIT 1");
     if (colResult.length > 0 && colResult[0].values.length > 0) {
-      const [decksJson, modelsJson] = colResult[0].values[0];
+      const row = colResult[0].values[0];
+      const decksJson = row[0] != null ? String(row[0]) : "";
+      const modelsJson = row[1] != null ? String(row[1]) : "";
 
       // Parse decks JSON to get deck name
-      if (decksJson) {
+      if (decksJson.trim()) {
         try {
           const decks = JSON.parse(decksJson);
-          for (const deck of Object.values(decks)) {
-            if (deck.name && deck.name !== "Default" && deck.name.trim()) {
-              deckName = deck.name;
-              break;
+          if (decks && typeof decks === "object" && !Array.isArray(decks)) {
+            for (const deck of Object.values(decks)) {
+              if (deck && deck.name && deck.name !== "Default" && String(deck.name).trim()) {
+                deckName = String(deck.name).trim();
+                break;
+              }
             }
           }
         } catch {
@@ -286,38 +294,38 @@ const parseSqliteDatabase = (dbData, fileName, media) => {
       }
 
       // Parse models JSON to get field names for ALL models
-      if (modelsJson) {
+      if (modelsJson.trim()) {
         try {
           const models = JSON.parse(modelsJson);
-
-          for (const [modelId, model] of Object.entries(models)) {
-            if (model.flds) {
-              const names = model.flds.map((f) => f.name || "Field");
-              modelFieldNames[modelId] = names;
-            }
-          }
-
-          // Find the model with most fields to use as header
-          if (Object.keys(modelFieldNames).length > 0) {
-            let maxFields = 0;
-            for (const fields of Object.values(modelFieldNames)) {
-              if (fields.length > maxFields) {
-                maxFields = fields.length;
-                fieldNames = fields;
+          if (models && typeof models === "object" && !Array.isArray(models)) {
+            for (const [modelId, model] of Object.entries(models)) {
+              if (model && Array.isArray(model.flds)) {
+                const names = model.flds.map((f) => (f && f.name != null ? String(f.name) : "Field"));
+                modelFieldNames[String(modelId)] = names;
               }
             }
 
-            // If there are multiple models with different field structures,
-            // use generic field names to avoid confusion
-            if (Object.keys(modelFieldNames).length > 1) {
-              const allFieldNameSets = new Set(
-                Object.values(modelFieldNames).map((f) => f.join("|"))
-              );
-              if (allFieldNameSets.size > 1) {
-                fieldNames = Array.from(
-                  { length: maxFields },
-                  (_, i) => `Field ${i + 1}`
+            // Find the model with most fields to use as header
+            if (Object.keys(modelFieldNames).length > 0) {
+              let maxFields = 0;
+              for (const fields of Object.values(modelFieldNames)) {
+                if (fields.length > maxFields) {
+                  maxFields = fields.length;
+                  fieldNames = fields;
+                }
+              }
+
+              // If there are multiple models with different field structures, use generic names
+              if (Object.keys(modelFieldNames).length > 1) {
+                const allFieldNameSets = new Set(
+                  Object.values(modelFieldNames).map((f) => f.join("|"))
                 );
+                if (allFieldNameSets.size > 1) {
+                  fieldNames = Array.from(
+                    { length: maxFields },
+                    (_, i) => `Field ${i + 1}`
+                  );
+                }
               }
             }
           }
@@ -327,19 +335,23 @@ const parseSqliteDatabase = (dbData, fileName, media) => {
       }
     }
 
-    // Get notes from 'notes' table
+    // Get notes from 'notes' table (columns: id, mid, flds, tags in that order)
     const notesResult = db.exec("SELECT id, mid, flds, tags FROM notes");
-    if (notesResult.length > 0) {
+    if (notesResult.length > 0 && notesResult[0].values) {
       for (const row of notesResult[0].values) {
-        const [id, modelId, fieldsStr, tagsStr] = row;
+        if (!Array.isArray(row) || row.length < 4) continue;
+        const id = row[0];
+        const modelId = row[1];
+        const fieldsStr = row[2] != null ? String(row[2]) : "";
+        const tagsStr = row[3] != null ? String(row[3]) : "";
 
         // Fields are separated by \x1f (unit separator, char code 31)
-        const rawFields = (fieldsStr || "").split("\x1f");
+        const rawFields = fieldsStr.split("\x1f");
         const fields = rawFields.map((f) => cleanAnkiField(f));
-        const tags = (tagsStr || "")
+        const tags = tagsStr
           .trim()
-          .split(" ")
-          .filter((t) => t);
+          .split(/\s+/)
+          .filter((t) => t.length > 0);
 
         // Ensure we have enough fields to match headers
         while (fields.length < fieldNames.length) {

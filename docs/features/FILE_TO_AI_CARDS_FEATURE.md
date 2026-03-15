@@ -8,10 +8,10 @@ Convert **images, PDF, Word, and Excel** into **AI-generated flashcards** that u
 
 | Item | Description |
 |------|--------------|
-| **Input** | Single file: image (PNG, JPEG, WebP), PDF, DOC/DOCX, or XLS/XLSX. |
+| **Input** | Single file: image (PNG, JPEG, WebP), PDF, or DOCX. For CSV/Excel/Anki use **Import spreadsheet** (mapping or “Use AI instead”). |
 | **Flow** | Upload → extract text (or image → vision/OCR) → AI generates cards from content + template → user reviews and adds to deck. |
 | **Output** | Same card payload as [Add with AI](./MOBILE_ADD_CARDS_WITH_AI.md): `{ templateId, blocksSnapshot, values, mainBlockId, subBlockId }[]` so the client can call the existing add endpoint. |
-| **Where** | Web dashboard (deck detail or dedicated “Import from file”); optional later: mobile. |
+| **Where** | Web dashboard — deck detail **AI from file** (next to Add Card with AI); optional later: mobile. |
 
 **User story:** “I have lecture slides (PDF), a textbook page (image), or a vocabulary list (Excel). I upload the file, pick my deck and template, and get draft cards to edit and add.”
 
@@ -163,11 +163,11 @@ Convert **images, PDF, Word, and Excel** into **AI-generated flashcards** that u
 
 ## 9. Success criteria (v1)
 
-- [ ] User can upload one file (image, PDF, DOCX, or XLSX) from the deck UI.  
-- [ ] Extracted content is turned into card-shaped JSON using the user’s template.  
-- [ ] User sees a preview of generated cards and can add (all or selected) to the deck.  
-- [ ] File type/size validation and clear errors; no cards created until user confirms.  
-- [ ] Documented API and flow; Pro/VIP gating applied if product requires it.
+- [x] User can upload one file (image, PDF, DOCX, or XLS/XLSX) from the deck UI (**AI from file** — distinct from **Import spreadsheet**).  
+- [x] Extracted content (or vision for images) is turned into card-shaped JSON using the user’s template (`POST /api/cards/file-to-ai`).  
+- [x] User sees a preview of generated cards and can add (all or selected) to the deck (same flow as Add with AI).  
+- [x] File type/size validation and clear errors; no cards created until user confirms.  
+- [x] Pro/VIP gating in production (same as generate-with-ai). Legacy `.doc` is not supported in v1 (use DOCX).
 
 ---
 

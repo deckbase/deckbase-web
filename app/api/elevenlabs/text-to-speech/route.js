@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { requireElevenLabsAuth } from "@/lib/elevenlabs-auth";
+import { isProOrVip } from "@/lib/revenuecat-server";
+import { checkTTSLimit, incrementTTSChars } from "@/lib/usage-limits";
 
 /**
  * POST /api/elevenlabs/text-to-speech
- * Body: { text: string, voice_id?: string }
+ * Body: { text: string, voice_id?: string, uid?: string } (uid for mobile when using X-API-Key)
  * Returns: audio/mpeg binary (or JSON error).
- * In production: X-API-Key: <DECKBASE_API_KEY> (dashboard API keys are for MCP only).
+ * Web: Bearer token → Pro + TTS limit enforced. Mobile: X-API-Key + body.uid → same.
  */
 export async function POST(request) {
   try {
@@ -26,12 +28,31 @@ export async function POST(request) {
     const body = await request.json();
     const text = typeof body.text === "string" ? body.text.trim() : "";
     const voiceId = body.voice_id || defaultVoiceId;
+    const bodyUid = typeof body.uid === "string" ? body.uid.trim() : "";
+    const effectiveUid = authResult.uid || bodyUid || null;
 
     if (!text) {
       return NextResponse.json(
         { error: "Missing or empty text" },
         { status: 400 }
       );
+    }
+
+    if (process.env.NODE_ENV === "production" && effectiveUid) {
+      const entitled = await isProOrVip(effectiveUid);
+      if (!entitled) {
+        return NextResponse.json(
+          { error: "Pro subscription required for text-to-speech" },
+          { status: 403 }
+        );
+      }
+      const limitCheck = await checkTTSLimit(effectiveUid, text.length);
+      if (!limitCheck.allowed) {
+        return NextResponse.json(
+          { error: limitCheck.message || "Monthly TTS limit reached" },
+          { status: 403 }
+        );
+      }
     }
 
     const response = await fetch(
@@ -66,6 +87,12 @@ export async function POST(request) {
     }
 
     const audioBuffer = await response.arrayBuffer();
+
+    if (effectiveUid && text.length > 0) {
+      incrementTTSChars(effectiveUid, text.length).catch((err) =>
+        console.warn("[elevenlabs/text-to-speech] usage increment failed", err?.message)
+      );
+    }
 
     return new NextResponse(audioBuffer, {
       status: 200,

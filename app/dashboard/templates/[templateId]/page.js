@@ -40,6 +40,7 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import { ELEVENLABS_VOICES } from "@/lib/elevenlabs-voices";
 import { parseAudioBlockConfig } from "@/lib/audio-block-config";
+import { CROP_ASPECT_OPTIONS, DEFAULT_CROP_ASPECT, getCropAspectFromConfig } from "@/lib/image-block-config";
 
 const LOG_AUDIO_BLOCK = true; // set to false to reduce console noise
 function logAudio(...args) {
@@ -229,17 +230,21 @@ export default function TemplateEditorPage() {
         correctAnswer: "",
         caseSensitive: false,
       });
+    } else if (type === BlockType.image) {
+      configJson = JSON.stringify({ cropAspect: DEFAULT_CROP_ASPECT });
     }
 
-    const newBlock = {
-      blockId: newBlockId,
-      type,
-      label: config?.label || "Block",
-      required: false,
-      configJson,
-    };
-
-    setBlocks((prev) => [...prev, newBlock]);
+    setBlocks((prev) => {
+      const isFirstBlock = prev.length === 0;
+      const newBlock = {
+        blockId: newBlockId,
+        type,
+        label: config?.label || "Block",
+        required: isFirstBlock,
+        configJson,
+      };
+      return [...prev, newBlock];
+    });
     setShowBlockPicker(false);
   };
 
@@ -737,14 +742,20 @@ function BlockCard({
     typeForConfig === BlockType.quizTextAnswer;
 
   const isAudioBlock = typeForConfig === BlockType.audio;
+  const isImageBlock = typeForConfig === BlockType.image;
 
   // Parse block config (support camelCase and snake_case from Firestore/mobile). See docs/WEB_AUDIO_BLOCK_SETTINGS.md.
+  // configJson may be string (from form) or object (from Firestore/transformBlockFromFirestore).
   let blockConfig = {};
-  if (block.configJson) {
-    try {
-      blockConfig = JSON.parse(block.configJson);
-    } catch (e) {
-      logAudio("Block config JSON parse error", block.blockId, e);
+  if (block.configJson != null) {
+    if (typeof block.configJson === "object") {
+      blockConfig = { ...block.configJson };
+    } else {
+      try {
+        blockConfig = JSON.parse(block.configJson);
+      } catch (e) {
+        logAudio("Block config JSON parse error", block.blockId, e);
+      }
     }
   }
   // For audio blocks: normalize so defaultVoiceId/defaultSourceBlockId work from Firestore (mobile may send snake_case)
@@ -924,6 +935,14 @@ function BlockCard({
               otherTextBlocks={otherTextBlocksForAudio ?? []}
             />
           )}
+
+          {/* Image Block Settings: default crop aspect ratio (synced to Firebase; mobile can read cropAspect) */}
+          {isImageBlock && (
+            <ImageBlockSettings
+              config={blockConfig}
+              onConfigChange={onConfigChange}
+            />
+          )}
         </div>
       </div>
     </motion.div>
@@ -986,6 +1005,36 @@ function AudioBlockSettings({ config, onConfigChange, otherTextBlocks = [] }) {
           Pre-fills the text area when editing a card
         </p>
       </div>
+    </div>
+  );
+}
+
+// Image Block Settings: default crop aspect (synced via configJson; mobile reads cropAspect)
+function ImageBlockSettings({ config, onConfigChange }) {
+  const cropAspect = getCropAspectFromConfig(config);
+
+  return (
+    <div className="mt-3 pt-3 border-t border-white/10">
+      <label className="text-white/70 text-sm block mb-2">Default crop aspect</label>
+      <div className="flex flex-wrap gap-2">
+        {CROP_ASPECT_OPTIONS.map((opt) => (
+          <button
+            key={opt.label}
+            type="button"
+            onClick={() => onConfigChange({ ...config, cropAspect: opt.value })}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              cropAspect === opt.value
+                ? "bg-accent/20 text-accent"
+                : "bg-white/5 text-white/70 hover:bg-white/10"
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+      <p className="text-white/40 text-xs mt-1">
+        Used when cropping images in cards. Synced to Firebase for mobile.
+      </p>
     </div>
   );
 }

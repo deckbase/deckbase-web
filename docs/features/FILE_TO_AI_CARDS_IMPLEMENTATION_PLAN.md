@@ -34,7 +34,7 @@ Concrete tasks to implement the [File to AI Cards feature](./FILE_TO_AI_CARDS_FE
 
 | Task | Description | Deps |
 |------|-------------|------|
-| **3.1** | On deck detail (“Add cards” or “Add with AI” area): add “Import from file” entry point (button or tab). | — |
+| **3.1** | On deck detail: **AI from file** (amber, Sparkles) vs **Import spreadsheet** (Upload) — distinct labels. | — |
 | **3.2** | “Import from file” flow: file input (accept image, pdf, docx, xlsx); dropdown or default for template; optional “Max cards” (e.g. 5–30). | 3.1 |
 | **3.3** | On submit: upload file to `POST /api/cards/file-to-ai`; show loading (“Extracting…” / “Generating cards…”). | 2.1 |
 | **3.4** | On success: show generated cards in same preview UX as “Add with AI” (editable list); “Add to deck” / “Add selected” calls existing add-cards flow (e.g. createCard or mobile add API). | Existing add flow |

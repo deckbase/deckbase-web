@@ -8,17 +8,17 @@ This doc is for the **mobile team**. It describes moving from **op-log sync** (`
 
 - **Op log grows forever** unless we run cleanup (cursor-based or time-based). State-based sync avoids that: Firestore holds only current state (and tombstones).
 - **Simpler model:** Same pattern as Anki/Evernote: server stores current state; clients sync by reading state, merging locally, and writing back changes. No replay of ops.
-- **Web alignment:** The web app already reads and writes `decks` and `cards` (and dual-writes to ops today). After this migration, web will **stop** emitting/consuming ops and use only decks/cards. Mobile and web will both sync via the same collections.
+- **Web alignment:** The web app reads and writes only `decks` and `cards` (no ops). Mobile and web sync via the same collections.
 
 ---
 
 ## What changes for mobile
 
-| Before (op log) | After (state-based) |
-|-----------------|---------------------|
-| Push: write ops to `users/{uid}/ops` | Push: write directly to `users/{uid}/decks`, `users/{uid}/cards` |
-| Pull: read ops, apply to local | Pull: read decks/cards, merge into local (see “Pull” below) |
-| Delete: emit delete op | Delete: set `is_deleted: true` (and `updated_at`) on the doc — **tombstone** |
+| Before (op log)                                           | After (state-based)                                                                                          |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Push: write ops to `users/{uid}/ops`                      | Push: write directly to `users/{uid}/decks`, `users/{uid}/cards`                                             |
+| Pull: read ops, apply to local                            | Pull: read decks/cards, merge into local (see “Pull” below)                                                  |
+| Delete: emit delete op                                    | Delete: set `is_deleted: true` (and `updated_at`) on the doc — **tombstone**                                 |
 | Bootstrap: one-time read of decks/cards when cursor empty | No bootstrap; sync is always “read decks/cards, merge” (and optionally “what changed since X” if you add it) |
 
 You **stop** reading and writing `users/{uid}/ops`. You **only** read and write `users/{uid}/decks` and `users/{uid}/cards`.
@@ -34,34 +34,34 @@ Store fields in **snake_case** in Firestore so web and mobile stay aligned.
 
 ### Deck document (minimal for sync)
 
-| Field | Type | Notes |
-|-------|------|--------|
-| `deck_id` | string | Same as doc id |
-| `title` | string | |
-| `description` | string | |
-| `created_at` | Timestamp or number (ms) | |
-| `updated_at` | Timestamp or number (ms) | |
-| `is_deleted` | boolean | `true` = tombstone (deleted); default `false` |
+| Field         | Type                     | Notes                                         |
+| ------------- | ------------------------ | --------------------------------------------- |
+| `deck_id`     | string                   | Same as doc id                                |
+| `title`       | string                   |                                               |
+| `description` | string                   |                                               |
+| `created_at`  | Timestamp or number (ms) |                                               |
+| `updated_at`  | Timestamp or number (ms) |                                               |
+| `is_deleted`  | boolean                  | `true` = tombstone (deleted); default `false` |
 
 (Web may have more fields; you can add them as needed. These are the ones used for sync and filtering.)
 
 ### Card document (minimal for sync)
 
-| Field | Type | Notes |
-|-------|------|--------|
-| `card_id` | string | Same as doc id |
-| `deck_id` | string | |
-| `template_id` | string | |
-| `blocks_snapshot` | array | Block definitions (web also uses this) |
-| `blocks_snapshot_json` | string | JSON string of same (preferred for mobile; web reads both) |
-| `values` | array | Block values |
-| `values_json` | string | JSON string of same (preferred for mobile; web reads both) |
-| `main_block_id` | string | |
-| `sub_block_id` | string | |
-| `created_at` | Timestamp or number (ms) | |
-| `updated_at` | Timestamp or number (ms) | |
-| `is_deleted` | boolean | `true` = tombstone; default `false` |
-| `srs_state`, `srs_step`, `srs_due`, `srs_last_review`, `review_count` | (your SRS types) | Web uses these for study |
+| Field                                                                 | Type                     | Notes                                                      |
+| --------------------------------------------------------------------- | ------------------------ | ---------------------------------------------------------- |
+| `card_id`                                                             | string                   | Same as doc id                                             |
+| `deck_id`                                                             | string                   |                                                            |
+| `template_id`                                                         | string                   |                                                            |
+| `blocks_snapshot`                                                     | array                    | Block definitions (web also uses this)                     |
+| `blocks_snapshot_json`                                                | string                   | JSON string of same (preferred for mobile; web reads both) |
+| `values`                                                              | array                    | Block values                                               |
+| `values_json`                                                         | string                   | JSON string of same (preferred for mobile; web reads both) |
+| `main_block_id`                                                       | string                   |                                                            |
+| `sub_block_id`                                                        | string                   |                                                            |
+| `created_at`                                                          | Timestamp or number (ms) |                                                            |
+| `updated_at`                                                          | Timestamp or number (ms) |                                                            |
+| `is_deleted`                                                          | boolean                  | `true` = tombstone; default `false`                        |
+| `srs_state`, `srs_step`, `srs_due`, `srs_last_review`, `review_count` | (your SRS types)         | Web uses these for study                                   |
 
 For content, web reads **either** `values` / `blocks_snapshot` **or** `values_json` / `blocks_snapshot_json` (prefers `_json` when present). Writing both keeps web and mobile compatible.
 
@@ -73,12 +73,12 @@ For content, web reads **either** `values` / `blocks_snapshot` **or** `values_js
 
 Mobile needs to know when cloud data (decks/cards) has changed so it can pull and merge. Common options:
 
-| Approach | How it works | Pros | Cons |
-|----------|----------------|------|------|
-| **Real-time listeners** | Subscribe to `users/{uid}/decks` and `users/{uid}/cards` with Firestore `onSnapshot`. Firestore pushes an event whenever a doc is added, updated, or deleted. | Updates appear as soon as web (or another device) writes; no polling. | Keeps a connection open; more battery/network if many docs. |
-| **Polling (full)** | On a timer or when app comes to foreground, run a full pull: read all decks and all cards (or per-deck), then merge into local. | Simple; no long-lived listener. | Delay until next poll; may read more data than needed. |
-| **Polling (incremental)** | Store `lastSyncTimestamp` locally. On sync, query decks/cards where `updated_at > lastSyncTimestamp` (and still include tombstones so deletes are seen). Merge only changed docs. | Fewer reads and less data after first sync. | Requires an index on `updated_at` (or composite); must handle first sync with full pull. |
-| **Manual sync** | User taps "Sync"; mobile runs push then pull once. | No background work. | User must trigger; no automatic detection. |
+| Approach                  | How it works                                                                                                                                                                      | Pros                                                                  | Cons                                                                                     |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| **Real-time listeners**   | Subscribe to `users/{uid}/decks` and `users/{uid}/cards` with Firestore `onSnapshot`. Firestore pushes an event whenever a doc is added, updated, or deleted.                     | Updates appear as soon as web (or another device) writes; no polling. | Keeps a connection open; more battery/network if many docs.                              |
+| **Polling (full)**        | On a timer or when app comes to foreground, run a full pull: read all decks and all cards (or per-deck), then merge into local.                                                   | Simple; no long-lived listener.                                       | Delay until next poll; may read more data than needed.                                   |
+| **Polling (incremental)** | Store `lastSyncTimestamp` locally. On sync, query decks/cards where `updated_at > lastSyncTimestamp` (and still include tombstones so deletes are seen). Merge only changed docs. | Fewer reads and less data after first sync.                           | Requires an index on `updated_at` (or composite); must handle first sync with full pull. |
+| **Manual sync**           | User taps "Sync"; mobile runs push then pull once.                                                                                                                                | No background work.                                                   | User must trigger; no automatic detection.                                               |
 
 **Recommendation:** Use **real-time listeners** (`onSnapshot`) on the decks and cards collections if you want instant sync when the user edits on web. Use **polling** (full or incremental) if you prefer to sync only when the app is opened or on a schedule. Document the chosen approach so web and backend stay aligned.
 
@@ -129,8 +129,8 @@ Use the same rule on both clients so they converge.
 
 ## What web has done
 
-- **Done:** The web app **no longer** reads or writes `users/{uid}/ops`. It only reads and writes `users/{uid}/decks` and `users/{uid}/cards`, with tombstones (`is_deleted: true`) for deletes.
-- Web uses `is_deleted` and filters it in queries. Once mobile also uses only decks/cards (and tombstones), both clients will sync through the same collections.
+- **Done:** The web app uses **state-based sync only**. It reads and writes `users/{uid}/decks` and `users/{uid}/cards`, with tombstones (`is_deleted: true`) for deletes. The op-based sync code (`utils/ops`, `hooks/useOpsSync`) and Firestore `users/{uid}/ops` rules have been removed; sync is exclusively via these collections.
+- Web uses `is_deleted` and filters it in queries. Once mobile also uses only decks/cards (and tombstones), both clients sync through the same collections.
 
 ---
 
@@ -141,8 +141,8 @@ Use the same rule on both clients so they converge.
 3. **Optional interim:** For a short period, mobile could write to **both** ops and decks/cards so web (still on ops) continues to see mobile changes; then web switches to state-only and stops ops; then mobile drops ops.
 4. **Cutover:** Once both sides use only decks/cards:
    - Mobile stops reading/writing `users/{uid}/ops`.
-   - Web stops emitting and subscribing to ops.
-   - You can later add a one-time cleanup (e.g. delete or archive the `ops` collection) if desired; no ongoing op log cleanup needed.
+   - Web has already removed ops (no emit/subscribe). Firestore rules no longer expose `users/{uid}/ops`.
+   - You can run a one-time cleanup to delete or archive any existing `ops` subcollections if desired.
 
 ---
 

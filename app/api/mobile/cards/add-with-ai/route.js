@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { buildCardPrompt } from "@/lib/card-ai-prompt";
+import { parseGeneratedCard } from "@/lib/ai-card-parse";
 import { BlockTypeNames } from "@/utils/firestore";
 import {
   isAvailable as isAdminAvailable,
@@ -12,6 +13,12 @@ import {
 import { generateTTS } from "@/lib/elevenlabs-server";
 import { parseAudioBlockConfig } from "@/lib/audio-block-config";
 import { isProOrVip } from "@/lib/revenuecat-server";
+import {
+  checkAIGenerationLimit,
+  checkTTSLimit,
+  incrementAIGenerations,
+  incrementTTSChars,
+} from "@/lib/usage-limits";
 
 function normalizeBlockType(type) {
   if (type == null) return "text";
@@ -23,26 +30,22 @@ function normalizeBlockType(type) {
   return String(type);
 }
 
-function parseCardFromParsed(parsed, templateBlocks, normalizeBlockType) {
-  const values = [];
-  for (const block of templateBlocks) {
-    const type = normalizeBlockType(block.type);
-    const include = ["header1", "header2", "header3", "text", "example", "hiddenText", "audio"].includes(type);
-    const rawVal = parsed[block.blockId];
-    const text = rawVal != null ? String(rawVal).trim() : "";
-    if (include) values.push({ blockId: block.blockId, type, text: text || "" });
-    if (process.env.DECKBASE_DEBUG_ADD_WITH_AI === "true") {
-      console.log("[mobile add-with-ai] block", {
-        blockId: block.blockId,
-        rawType: block.type,
-        normalizedType: type,
-        include,
-        parsedKeyExists: block.blockId != null && block.blockId in parsed,
-        textLen: text.length,
-      });
+function parseConfigJson(configJson) {
+  if (configJson == null || configJson === "") return {};
+  if (typeof configJson === "string") {
+    try {
+      const o = JSON.parse(configJson);
+      return o && typeof o === "object" ? o : {};
+    } catch {
+      return {};
     }
   }
-  return values;
+  return typeof configJson === "object" ? configJson : {};
+}
+
+function isQuizType(type) {
+  const t = normalizeBlockType(type);
+  return t === "quizSingleSelect" || t === "quizMultiSelect" || t === "quizTextAnswer";
 }
 
 const isAudioBlock = (b) => b.type === "audio" || b.type === 7 || b.type === "7";
@@ -90,6 +93,13 @@ export async function POST(request) {
       if (!entitled) {
         return NextResponse.json(
           { error: "Active subscription required to use AI features" },
+          { status: 403 }
+        );
+      }
+      const limitCheck = await checkAIGenerationLimit(uid);
+      if (!limitCheck.allowed || limitCheck.used + count > limitCheck.limit) {
+        return NextResponse.json(
+          { error: limitCheck.message || "Monthly AI generation limit reached" },
           { status: 403 }
         );
       }
@@ -222,10 +232,13 @@ export async function POST(request) {
       systemFull: system,
     });
 
+    const hasQuiz = templateBlocksArray.some((b) => isQuizType(b.type));
+    const maxTokens = count > 1 ? (hasQuiz ? 4096 : 2048) : hasQuiz ? 2048 : 1024;
+
     const anthropic = new Anthropic({ apiKey });
     const msg = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: count > 1 ? 2048 : 1024,
+      max_tokens: maxTokens,
       system,
       messages: [{ role: "user", content: user }],
     });
@@ -255,20 +268,34 @@ export async function POST(request) {
           : {},
     });
 
+    const templateFull = templateBlocksArray.map((b) => ({
+      blockId: b.blockId,
+      type: b.type,
+      label: b.label || "",
+      required: Boolean(b.required),
+      configJson: b.configJson,
+    }));
+
     const generatedCards = [];
     if (count > 1) {
       const arr = Array.isArray(parsed) ? parsed : [parsed];
       for (let i = 0; i < count && i < arr.length; i++) {
         const item = arr[i] && typeof arr[i] === "object" ? arr[i] : {};
-        generatedCards.push(parseCardFromParsed(item, templateBlocks, normalizeBlockType));
+        generatedCards.push(parseGeneratedCard(item, templateFull, normalizeBlockType));
       }
     } else {
-      generatedCards.push(parseCardFromParsed(parsed, templateBlocks, normalizeBlockType));
+      const item =
+        Array.isArray(parsed) && parsed[0] && typeof parsed[0] === "object"
+          ? parsed[0]
+          : parsed && typeof parsed === "object" && !Array.isArray(parsed)
+            ? parsed
+            : {};
+      generatedCards.push(parseGeneratedCard(item, templateFull, normalizeBlockType));
     }
 
-    console.log("[mobile add-with-ai] parseCardFromParsed result", {
+    console.log("[mobile add-with-ai] parseGeneratedCard result", {
       generatedCardsCount: generatedCards.length,
-      firstCardValues: generatedCards[0]?.map((v) => ({
+      firstCardValues: generatedCards[0]?.values?.map((v) => ({
         blockId: v.blockId,
         type: v.type,
         textLength: v.text?.length ?? 0,
@@ -282,27 +309,38 @@ export async function POST(request) {
         : null,
     });
 
-    const blocksSnapshot = templateBlocksArray.map((b) => ({
-      blockId: b.blockId,
-      type: b.type,
-      label: b.label || "",
-      required: b.required || false,
-      configJson: b.configJson,
-    }));
-    const audioBlock = blocksSnapshot.find(isAudioBlock);
-
-    const getContentKey = (vals) => {
-      const mainVal = mainBlockId ? vals.find((v) => v.blockId === mainBlockId) : null;
-      const subVal = subBlockId ? vals.find((v) => v.blockId === subBlockId) : null;
-      const mainText = (mainVal?.text != null ? String(mainVal.text).trim() : "") || "";
-      const subText = (subVal?.text != null ? String(subVal.text).trim() : "") || "";
+    const getContentKey = (vals, snap) => {
+      const mainBlock = mainBlockId ? snap.find((b) => b.blockId === mainBlockId) : null;
+      const subBlock = subBlockId ? snap.find((b) => b.blockId === subBlockId) : null;
+      let mainText = "";
+      let subText = "";
+      if (mainBlockId) {
+        if (mainBlock && isQuizType(mainBlock.type)) {
+          mainText = String(parseConfigJson(mainBlock.configJson).question || "").trim();
+        } else {
+          const mainVal = vals.find((v) => v.blockId === mainBlockId);
+          mainText = (mainVal?.text != null ? String(mainVal.text).trim() : "") || "";
+        }
+      }
+      if (subBlockId) {
+        if (subBlock && isQuizType(subBlock.type)) {
+          subText = String(parseConfigJson(subBlock.configJson).question || "").trim();
+        } else {
+          const subVal = vals.find((v) => v.blockId === subBlockId);
+          subText = (subVal?.text != null ? String(subVal.text).trim() : "") || "";
+        }
+      }
       return normalizeContentKey(`${mainText}\n${subText}`);
     };
 
     const contentKeys = new Set(existingContentKeys);
     const cards = [];
     for (let i = 0; i < generatedCards.length; i++) {
-      let values = [...generatedCards[i]];
+      const { values: vals0, blocksSnapshot: snap0 } = generatedCards[i];
+      let values = [...vals0];
+      const blocksSnapshot = snap0.map((b) => ({ ...b }));
+
+      const audioBlock = blocksSnapshot.find(isAudioBlock);
 
       if (i === 0) {
         console.log("[mobile add-with-ai] first card payload", {
@@ -311,7 +349,7 @@ export async function POST(request) {
         });
       }
 
-      const contentKey = getContentKey(values);
+      const contentKey = getContentKey(values, blocksSnapshot);
       if (contentKeys.has(contentKey)) continue;
       if (!contentKey) continue;
       contentKeys.add(contentKey);
@@ -319,8 +357,13 @@ export async function POST(request) {
       if (audioBlock) {
         let mainText = "";
         if (mainBlockId) {
-          const mainVal = values.find((v) => v.blockId === mainBlockId);
-          mainText = (mainVal?.text != null ? String(mainVal.text) : "").trim();
+          const mainMeta = blocksSnapshot.find((b) => b.blockId === mainBlockId);
+          if (mainMeta && isQuizType(mainMeta.type)) {
+            mainText = String(parseConfigJson(mainMeta.configJson).question || "").trim();
+          } else {
+            const mainVal = values.find((v) => v.blockId === mainBlockId);
+            mainText = (mainVal?.text != null ? String(mainVal.text) : "").trim();
+          }
         }
         if (!mainText) {
           const first = values.find((v) => String(v?.text || "").trim());
@@ -328,20 +371,47 @@ export async function POST(request) {
         }
         if (mainText) {
           try {
-            const { defaultVoiceId: voiceId } = parseAudioBlockConfig(audioBlock.configJson);
-            const buffer = await generateTTS({ text: mainText, voiceId });
-            if (buffer) {
-              const { mediaId } = await uploadAudioBufferAdmin(uid, buffer, "audio/mpeg");
-              const audioIdx = values.findIndex((v) => v.blockId === audioBlock.blockId);
-              if (audioIdx >= 0) {
-                values[audioIdx] = { ...values[audioIdx], mediaIds: [mediaId] };
+            if (process.env.NODE_ENV === "production") {
+              const ttsCheck = await checkTTSLimit(uid, mainText.length);
+              if (!ttsCheck.allowed) {
+                console.warn("[mobile add-with-ai] TTS limit reached, skipping TTS for card", i);
               } else {
-                values.push({
-                  blockId: audioBlock.blockId,
-                  type: "audio",
-                  text: "",
-                  mediaIds: [mediaId],
-                });
+                const { defaultVoiceId: voiceId } = parseAudioBlockConfig(audioBlock.configJson);
+                const buffer = await generateTTS({ text: mainText, voiceId });
+                if (buffer) {
+                  incrementTTSChars(uid, mainText.length).catch((e) =>
+                    console.warn("[mobile add-with-ai] TTS usage increment failed", e?.message)
+                  );
+                  const { mediaId } = await uploadAudioBufferAdmin(uid, buffer, "audio/mpeg");
+                  const audioIdx = values.findIndex((v) => v.blockId === audioBlock.blockId);
+                  if (audioIdx >= 0) {
+                    values[audioIdx] = { ...values[audioIdx], mediaIds: [mediaId] };
+                  } else {
+                    values.push({
+                      blockId: audioBlock.blockId,
+                      type: "audio",
+                      text: "",
+                      mediaIds: [mediaId],
+                    });
+                  }
+                }
+              }
+            } else {
+              const { defaultVoiceId: voiceId } = parseAudioBlockConfig(audioBlock.configJson);
+              const buffer = await generateTTS({ text: mainText, voiceId });
+              if (buffer) {
+                const { mediaId } = await uploadAudioBufferAdmin(uid, buffer, "audio/mpeg");
+                const audioIdx = values.findIndex((v) => v.blockId === audioBlock.blockId);
+                if (audioIdx >= 0) {
+                  values[audioIdx] = { ...values[audioIdx], mediaIds: [mediaId] };
+                } else {
+                  values.push({
+                    blockId: audioBlock.blockId,
+                    type: "audio",
+                    text: "",
+                    mediaIds: [mediaId],
+                  });
+                }
               }
             }
           } catch (err) {
@@ -354,9 +424,15 @@ export async function POST(request) {
         templateId,
         blocksSnapshot,
         values,
-        mainBlockId,
-        subBlockId,
+        mainBlockId: template.mainBlockId || null,
+        subBlockId: template.subBlockId || null,
       });
+    }
+
+    if (process.env.NODE_ENV === "production" && uid && cards.length > 0) {
+      incrementAIGenerations(uid, cards.length).catch((err) =>
+        console.warn("[mobile add-with-ai] usage increment failed", err?.message)
+      );
     }
 
     return NextResponse.json({ cards });

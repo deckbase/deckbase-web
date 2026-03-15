@@ -17,6 +17,7 @@ import {
 import {
   ref,
   uploadBytes,
+  uploadBytesResumable,
   getDownloadURL,
   deleteObject,
 } from "firebase/storage";
@@ -535,13 +536,31 @@ export const createCard = async (
 
   const blocksSnapshotData = blocksSnapshot.map(transformBlockToFirestore);
   const valuesData = values.map(transformValueToFirestore);
+  const quizBlocksWritten = blocksSnapshotData.filter((b) => isQuizBlockType(b.type));
+  if (quizBlocksWritten.length > 0) {
+    console.log("[createCard] WRITE quiz blocks count", quizBlocksWritten.length);
+    quizBlocksWritten.forEach((b, idx) => {
+      console.log("[createCard] WRITE quiz block", idx, {
+        block_id: b.block_id,
+        type: b.type,
+        typeOf: typeof b.type,
+        has_config_json: !!b.config_json,
+        config_json_full: b.config_json,
+        config_json_keys: b.config_json ? Object.keys(b.config_json) : [],
+        question: b.config_json?.question,
+        options_length: b.config_json?.options?.length,
+      });
+    });
+  }
+  const blocksSnapshotJsonStr = JSON.stringify(blocksSnapshotData);
+  console.log("[createCard] WRITE cardId", cardId, "blocks_snapshot length", blocksSnapshotData.length, "blocks_snapshot_json length", blocksSnapshotJsonStr.length, "json preview", blocksSnapshotJsonStr.slice(0, 400));
   const card = {
     card_id: cardId,
     deck_id: deckId,
     template_id: templateId,
     blocks_snapshot: blocksSnapshotData,
     values: valuesData,
-    blocks_snapshot_json: JSON.stringify(blocksSnapshotData),
+    blocks_snapshot_json: blocksSnapshotJsonStr,
     values_json: JSON.stringify(valuesData),
     main_block_id: mainBlockId ?? null,
     sub_block_id: subBlockId ?? null,
@@ -628,7 +647,16 @@ export const getCard = async (uid, cardId) => {
   const cardRef = doc(getCardsCollection(uid), cardId);
   const cardSnap = await getDoc(cardRef);
   if (cardSnap.exists()) {
-    return transformCardFromFirestore(cardSnap.data());
+    const raw = cardSnap.data();
+    console.log("[getCard] READ cardId", cardId, "has blocks_snapshot_json?", !!raw.blocks_snapshot_json, "blocks_snapshot length", Array.isArray(raw.blocks_snapshot) ? raw.blocks_snapshot.length : 0);
+    const transformed = transformCardFromFirestore(raw);
+    const quizBlocks = (transformed.blocksSnapshot || []).filter((b) => isQuizBlockType(b.type));
+    if (quizBlocks.length > 0) {
+      console.log("[getCard] READ transformed quiz blocks", quizBlocks.length, quizBlocks.map((b) => ({ blockId: b.blockId, type: b.type, hasConfigJson: !!b.configJson, configKeys: b.configJson ? Object.keys(b.configJson) : [], question: b.configJson?.question })));
+    } else {
+      console.log("[getCard] READ no quiz blocks in transformed. blocksSnapshot length", transformed.blocksSnapshot?.length, "block types", (transformed.blocksSnapshot || []).map((b) => b.type));
+    }
+    return transformed;
   }
   return null;
 };
@@ -654,6 +682,10 @@ export const updateCard = async (
   }
   if (blocksSnapshot?.length > 0) {
     const blocksSnapshotData = blocksSnapshot.map(transformBlockToFirestore);
+    const imageBlocksWritten = blocksSnapshotData.filter((b) => b.type === "image" || b.type === 6);
+    if (imageBlocksWritten.length) {
+      console.log("[RATIO] updateCard writing to CARD doc", { cardId, imageBlocks: imageBlocksWritten.map((b) => ({ block_id: b.block_id, config_json: b.config_json })) });
+    }
     updateData.blocks_snapshot = blocksSnapshotData;
     updateData.blocks_snapshot_json = JSON.stringify(blocksSnapshotData);
   }
@@ -836,19 +868,40 @@ export const deleteTemplate = async (uid, templateId) => {
 
 // ============== MEDIA OPERATIONS ==============
 
-export const uploadImage = async (uid, file) => {
+/**
+ * Upload image to Storage and create media doc.
+ * @param {string} uid - User id
+ * @param {File|Blob} file - Image file (e.g. from crop)
+ * @param {{ onProgress?: (percent: number) => void }} options - Optional onProgress(0-100) for upload progress
+ */
+export const uploadImage = async (uid, file, options = {}) => {
+  const { onProgress } = options;
   const mediaId = uuidv4();
-  const extension = file.name.split(".").pop();
+  const name = file.name || "image.png";
+  const extension = (typeof name === "string" && name.split(".").pop()) || "png";
   const storagePath = `users/${uid}/media/${mediaId}.${extension}`;
   const storageRef = ref(storage, storagePath);
 
-  // Upload file
-  await uploadBytes(storageRef, file);
+  if (typeof onProgress === "function") {
+    const task = uploadBytesResumable(storageRef, file);
+    await new Promise((resolve, reject) => {
+      task.on(
+        "state_changed",
+        (snapshot) => {
+          const percent = snapshot.totalBytes > 0
+            ? Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100)
+            : 0;
+          onProgress(Math.min(100, percent));
+        },
+        reject,
+        resolve
+      );
+    });
+  } else {
+    await uploadBytes(storageRef, file);
+  }
 
-  // Get download URL
   const downloadUrl = await getDownloadURL(storageRef);
-
-  // Create media document
   const now = Timestamp.now();
   const media = {
     media_id: mediaId,
@@ -856,14 +909,13 @@ export const uploadImage = async (uid, file) => {
     download_url: downloadUrl,
     type: "image",
     file_size: file.size,
-    mime_type: file.type,
+    mime_type: file.type || "image/png",
     created_at: now,
     updated_at: now,
     is_deleted: false,
   };
 
   await setDoc(doc(getMediaCollection(uid), mediaId), media);
-
   return transformMediaFromFirestore(media);
 };
 
@@ -924,12 +976,14 @@ export const getMedia = async (uid, mediaId) => {
 };
 
 export const deleteMedia = async (uid, mediaId, storagePath) => {
-  // Delete from Storage
-  try {
-    const storageRef = ref(storage, storagePath);
-    await deleteObject(storageRef);
-  } catch (error) {
-    console.error("Error deleting file from storage:", error);
+  // Delete from Storage when path is known
+  if (storagePath) {
+    try {
+      const storageRef = ref(storage, storagePath);
+      await deleteObject(storageRef);
+    } catch (error) {
+      console.error("Error deleting file from storage:", error);
+    }
   }
 
   // Soft delete from Firestore
@@ -1013,6 +1067,7 @@ function normalizeValueForTransform(v) {
     ...v,
     block_id: v.block_id ?? v.blockId,
     media_ids: v.media_ids ?? v.mediaIds,
+    original_media_ids: v.original_media_ids ?? v.originalMediaIds,
     correct_answers: v.correct_answers ?? v.correctAnswers,
   };
 }
@@ -1021,13 +1076,23 @@ function normalizeValueForTransform(v) {
 function parseCardContentFromJson(data) {
   let blocksSnapshot;
   let values;
+  const usedJson = !!data.blocks_snapshot_json;
+  const rawArrayLength = Array.isArray(data.blocks_snapshot) ? data.blocks_snapshot.length : 0;
+  console.log("[parseCardContentFromJson] READ using blocks_snapshot_json?", usedJson, "raw blocks_snapshot length", rawArrayLength, "json length", typeof data.blocks_snapshot_json === "string" ? data.blocks_snapshot_json.length : 0);
   if (data.blocks_snapshot_json) {
     try {
       const parsed = JSON.parse(data.blocks_snapshot_json);
-      blocksSnapshot = (parsed || []).map((b) =>
+      const arr = parsed || [];
+      console.log("[parseCardContentFromJson] READ parsed array length", arr.length, "first 200 chars", JSON.stringify(arr).slice(0, 200));
+      blocksSnapshot = arr.map((b) =>
         transformBlockFromFirestore(normalizeBlockForTransform(b)),
       );
-    } catch (_) {
+      const quizRead = (blocksSnapshot || []).filter((b) => isQuizBlockType(b.type));
+      if (quizRead.length > 0) {
+        console.log("[parseCardContentFromJson] READ after transform quiz blocks", quizRead.length, quizRead.map((b) => ({ blockId: b.blockId, type: b.type, hasConfigJson: !!b.configJson, configKeys: b.configJson ? Object.keys(b.configJson) : [], question: b.configJson?.question?.slice?.(0, 30) })));
+      }
+    } catch (e) {
+      console.warn("[parseCardContentFromJson] READ JSON parse failed", e.message);
       blocksSnapshot = (data.blocks_snapshot || []).map(transformBlockFromFirestore);
     }
   } else {
@@ -1087,13 +1152,57 @@ const transformCardFromFirestore = (data) => {
   };
 };
 
-const transformBlockFromFirestore = (data) => ({
-  blockId: data.block_id,
-  type: data.type,
-  label: data.label || "",
-  required: data.required || false,
-  configJson: data.config_json,
-});
+const DEFAULT_IMAGE_CONFIG = { cropAspect: 1 };
+
+/** Quiz block types (sync with mobile); used to normalize config_json for web/mobile sync. */
+function isQuizBlockType(type) {
+  if (type === 8 || type === 9 || type === 10) return true;
+  if (typeof type === "string" && /^(8|9|10)$/.test(type)) return true;
+  return (
+    type === "quizMultiSelect" ||
+    type === "quizSingleSelect" ||
+    type === "quizTextAnswer"
+  );
+}
+
+const transformBlockFromFirestore = (data) => {
+  const isImage = data.type === "image" || data.type === 6;
+  let configJson = data.config_json;
+  if (isImage) {
+    if (configJson == null) configJson = DEFAULT_IMAGE_CONFIG;
+    else if (typeof configJson === "string") {
+      try {
+        configJson = JSON.parse(configJson);
+      } catch {
+        configJson = DEFAULT_IMAGE_CONFIG;
+      }
+    }
+  } else if (isQuizBlockType(data.type)) {
+    console.log("[transformBlockFromFirestore] READ quiz block", data.block_id, "config_json type", typeof configJson, "config_json null?", configJson == null, "preview", typeof configJson === "string" ? configJson.slice(0, 80) : configJson ? JSON.stringify(configJson).slice(0, 80) : "(none)");
+    // Quiz blocks: normalize config to object so web and mobile sync consistently
+    if (configJson != null && typeof configJson === "string") {
+      try {
+        configJson = JSON.parse(configJson);
+      } catch (e) {
+        console.warn("[transformBlockFromFirestore] READ quiz JSON parse failed", data.block_id, e.message);
+        configJson = {};
+      }
+    }
+    if (configJson != null && typeof configJson !== "object") configJson = {};
+    // Ensure quiz config has at least a question so UI never shows "undefined"
+    if (configJson && (configJson.question == null || configJson.question === "")) {
+      configJson = { ...configJson, question: configJson.question ?? "Question" };
+    }
+    console.log("[transformBlockFromFirestore] READ quiz block out", data.block_id, "configJson keys", configJson ? Object.keys(configJson) : [], "question", configJson?.question?.slice?.(0, 30));
+  }
+  return {
+    blockId: data.block_id,
+    type: data.type,
+    label: data.label || "",
+    required: data.required || false,
+    configJson,
+  };
+};
 
 const transformBlockToFirestore = (block) => {
   const result = {
@@ -1102,8 +1211,38 @@ const transformBlockToFirestore = (block) => {
     label: block.label || "",
     required: block.required || false,
   };
-  if (block.configJson !== undefined && block.configJson !== null) {
-    result.config_json = block.configJson;
+  const isImage = block.type === "image" || block.type === 6;
+  if (isImage) {
+    if (block.configJson !== undefined && block.configJson !== null) {
+      try {
+        result.config_json = typeof block.configJson === "string"
+          ? JSON.parse(block.configJson)
+          : block.configJson;
+        if (!result.config_json || typeof result.config_json !== "object")
+          result.config_json = DEFAULT_IMAGE_CONFIG;
+      } catch {
+        result.config_json = DEFAULT_IMAGE_CONFIG;
+      }
+    } else {
+      result.config_json = DEFAULT_IMAGE_CONFIG;
+    }
+  } else if (block.configJson !== undefined && block.configJson !== null) {
+    let config = block.configJson;
+    // Quiz blocks: always store as object so web and mobile sync consistently
+    if (isQuizBlockType(block.type)) {
+      console.log("[transformBlockToFirestore] WRITE quiz block", block.blockId, "input configJson type", typeof config, "length", typeof config === "string" ? config.length : "(object)");
+      if (typeof config === "string") {
+        try {
+          config = JSON.parse(config);
+        } catch (e) {
+          console.warn("[transformBlockToFirestore] WRITE quiz JSON parse failed", block.blockId, e.message);
+          config = {};
+        }
+      }
+      if (config == null || typeof config !== "object") config = {};
+      console.log("[transformBlockToFirestore] WRITE quiz block out", block.blockId, "config_json keys", Object.keys(config || {}), "question", config?.question?.slice?.(0, 30));
+    }
+    result.config_json = config;
   }
   return result;
 };
@@ -1114,6 +1253,7 @@ const transformValueFromFirestore = (data) => ({
   text: data.text,
   items: data.items,
   mediaIds: data.media_ids,
+  originalMediaIds: data.original_media_ids,
   correctAnswers: data.correct_answers,
 });
 
@@ -1125,6 +1265,7 @@ const transformValueToFirestore = (value) => {
   if (value.text !== undefined) result.text = value.text;
   if (value.items !== undefined) result.items = value.items;
   if (value.mediaIds !== undefined) result.media_ids = value.mediaIds;
+  if (value.originalMediaIds !== undefined) result.original_media_ids = value.originalMediaIds;
   if (value.correctAnswers !== undefined)
     result.correct_answers = value.correctAnswers;
   return result;

@@ -41,6 +41,7 @@ Returns generated cards only; **does not create** any cards in Firestore.
 ```
 
 - **cards:** Array of card payloads ready to be added. Each has `templateId`, `blocksSnapshot`, `values` (with TTS `mediaIds` if the template has an audio block), `mainBlockId`, `subBlockId`. Pass these as-is to the add endpoint when the user confirms.
+- **Quiz blocks:** If the template includes `quizSingleSelect` (9), `quizMultiSelect` (8), or `quizTextAnswer` (10), AI fills `question`, `options`, and correct answer(s). Those fields are written into that block’s `configJson` on `blocksSnapshot` (same shape as the card editor). The matching entry in `values` has empty `text`.
 - Duplicates (within batch or matching existing deck content) are omitted from `cards`.
 
 ### Behavior

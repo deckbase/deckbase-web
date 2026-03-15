@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -14,6 +14,7 @@ import {
   getMedia,
   updateCardReview,
 } from "@/utils/firestore";
+import { getCropAspectFromConfig } from "@/lib/image-block-config";
 
 const MS_MINUTE = 60 * 1000;
 const MS_HOUR = 60 * MS_MINUTE;
@@ -832,6 +833,88 @@ function SrsInfoBar({ card }) {
   );
 }
 
+function StudyAudioBlock({ value, mediaCache }) {
+  const [audioSrcByMediaId, setAudioSrcByMediaId] = useState({});
+  const [loadingMediaIds, setLoadingMediaIds] = useState(() => new Set());
+  const objectUrlsRef = useRef({});
+
+  useEffect(() => {
+    const mediaIds = value?.mediaIds ?? [];
+    const hasAllMedia = mediaIds.length > 0 && mediaIds.every((id) => mediaCache[id]?.downloadUrl);
+    if (!hasAllMedia) return;
+
+    let cancelled = false;
+    const prev = objectUrlsRef.current;
+    objectUrlsRef.current = {};
+    Object.values(prev).forEach((u) => URL.revokeObjectURL(u));
+
+    const load = async () => {
+      for (const mediaId of mediaIds) {
+        const media = mediaCache[mediaId];
+        if (!media?.downloadUrl || cancelled) continue;
+        setLoadingMediaIds((prev) => new Set(prev).add(mediaId));
+        try {
+          const res = await fetch("/api/proxy-media", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url: media.downloadUrl }),
+          });
+          if (!res.ok || cancelled) return;
+          const blob = await res.blob();
+          if (cancelled) return;
+          const objectUrl = URL.createObjectURL(blob);
+          objectUrlsRef.current[mediaId] = objectUrl;
+          setAudioSrcByMediaId((prev) => ({ ...prev, [mediaId]: objectUrl }));
+        } catch (err) {
+          console.warn("[StudyAudioBlock] preload failed", mediaId, err);
+        } finally {
+          if (!cancelled) {
+            setLoadingMediaIds((prev) => {
+              const next = new Set(prev);
+              next.delete(mediaId);
+              return next;
+            });
+          }
+        }
+      }
+    };
+    load();
+
+    return () => {
+      cancelled = true;
+      Object.values(objectUrlsRef.current).forEach((u) => URL.revokeObjectURL(u));
+      objectUrlsRef.current = {};
+    };
+  }, [
+    value?.mediaIds?.join(","),
+    (value?.mediaIds ?? []).map((id) => (mediaCache[id]?.downloadUrl ? "1" : "0")).join(","),
+  ]);
+
+  if (!value?.mediaIds?.length) return null;
+  return (
+    <div className="space-y-3">
+      {value.mediaIds.map((mediaId) => {
+        const media = mediaCache[mediaId];
+        if (!media?.downloadUrl) return null;
+        const src = audioSrcByMediaId[mediaId];
+        const isLoading = loadingMediaIds.has(mediaId);
+        return (
+          <div key={mediaId} className="flex items-center gap-2">
+            {isLoading && (
+              <span className="w-4 h-4 border-2 border-white/50 border-t-transparent rounded-full animate-spin flex-shrink-0" aria-hidden />
+            )}
+            <audio
+              src={src ?? undefined}
+              controls
+              className="flex-1 rounded-lg bg-white/5 h-10 min-w-0"
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function FlashcardContent({
   card,
   showAnswer,
@@ -927,45 +1010,36 @@ function FlashcardContent({
               layout === "vertical"
                 ? "flex flex-col gap-3"
                 : "flex gap-3 overflow-x-auto";
+            const imageNodes = value.mediaIds.map((mediaId) => {
+              const media = mediaCache[mediaId];
+              if (!media?.downloadUrl) return null;
+              return (
+                <div
+                  key={mediaId}
+                  className="relative w-full sm:w-72 flex-shrink-0 overflow-hidden rounded-xl"
+                  style={{ aspectRatio: getCropAspectFromConfig(config) }}
+                >
+                  <Image
+                    src={media.downloadUrl}
+                    alt=""
+                    fill
+                    className="object-cover rounded-xl"
+                  />
+                </div>
+              );
+            }).filter(Boolean);
             return (
-              <div key={block.blockId} className={containerClass}>
-                {value.mediaIds.map((mediaId) => {
-                  const media = mediaCache[mediaId];
-                  if (!media?.downloadUrl) return null;
-                  return (
-                    <div
-                      key={mediaId}
-                      className="relative w-full sm:w-72 flex-shrink-0 aspect-video"
-                    >
-                      <Image
-                        src={media.downloadUrl}
-                        alt=""
-                        fill
-                        className="object-cover rounded-lg"
-                      />
-                    </div>
-                  );
-                })}
+              <div key={block.blockId} className="flex justify-center">
+                <div className={containerClass}>
+                  {imageNodes}
+                </div>
               </div>
             );
           }
           case "audio": {
-            if (!value?.mediaIds?.length) return null;
             return (
-              <div key={block.blockId} className="space-y-3">
-                {value.mediaIds.map((mediaId) => {
-                  const media = mediaCache[mediaId];
-                  if (!media?.downloadUrl) return null;
-                  return (
-                    <audio
-                      key={mediaId}
-                      controls
-                      className="w-full rounded-lg bg-white/5"
-                    >
-                      <source src={media.downloadUrl} />
-                    </audio>
-                  );
-                })}
+              <div key={block.blockId}>
+                <StudyAudioBlock value={value} mediaCache={mediaCache} />
               </div>
             );
           }

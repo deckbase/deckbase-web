@@ -36,10 +36,7 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Op-based sync log (web + mobile)
-    match /users/{userId}/ops/{opId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
+    // Sync is state-based: users/{uid}/decks and users/{uid}/cards only (no ops collection).
 
     // Wizard (TCG decks, progress): wizard/{userId}/progress, wizard/{userId}/decks/...
     match /wizard/{userId}/{document=**} {

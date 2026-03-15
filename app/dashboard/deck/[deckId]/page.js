@@ -15,6 +15,8 @@ import {
   Search,
   Upload,
   FileSpreadsheet,
+  FileText,
+  Table2,
   Check,
   Play,
   ChevronRight,
@@ -24,9 +26,13 @@ import {
   Settings,
   Download,
   ChevronDown,
-  CircleDot,
+  Volume2,
+  Pause,
+  AlertCircle,
+  HelpCircle,
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRevenueCat } from "@/contexts/RevenueCatContext";
 import {
@@ -36,16 +42,25 @@ import {
   getCards,
   deleteCard,
   createCard,
+  updateCard,
   getTemplates,
+  getTemplate,
   createDefaultTemplates,
   uploadAudio,
+  uploadImage,
+  getMedia,
+  BlockTypeNames,
 } from "@/utils/firestore";
+import { getBlockValidationErrors } from "@/lib/block-validators";
+import { buildCardPrompt, buildImportQuizAudioPrompt } from "@/lib/card-ai-prompt";
 import {
   parseFile,
   SpreadsheetFileType,
   getFileTypeFromPath,
 } from "@/utils/spreadsheetParser";
+import { exportApkgToBlob } from "@/utils/apkgExport";
 import { parseAudioBlockConfig } from "@/lib/audio-block-config";
+import CardPreviewContent from "@/components/CardPreviewContent";
 import * as XLSX from "xlsx";
 
 // Import steps matching mobile
@@ -88,14 +103,22 @@ export default function DeckDetailPage() {
   // Step 3: Template & mapping
   const [templates, setTemplates] = useState([]);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
-  const [columnMappings, setColumnMappings] = useState([]); // [{columnIndex, blockId, columnName, blockLabel}]
+  const [columnMappings, setColumnMappings] = useState([]); // [{columnIndex, blockId, columnName, blockLabel, generateWithAI?}]
   const [pendingColumnIndex, setPendingColumnIndex] = useState(null); // For two-way selection
   const [pendingBlockId, setPendingBlockId] = useState(null); // For two-way selection
 
   // Step 4: Importing
   const [importing, setImporting] = useState(false);
+  const [importAIGenerating, setImportAIGenerating] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
   const [importedCount, setImportedCount] = useState(0);
+  const [importUseAILoading, setImportUseAILoading] = useState(false);
+  const [importUseAIError, setImportUseAIError] = useState(null);
+  const [importDevPromptCopied, setImportDevPromptCopied] = useState(false);
+  const [importAIBatchProgress, setImportAIBatchProgress] = useState(null); // { current, total } when batching
+  const [importAudioGenerating, setImportAudioGenerating] = useState(false); // true while calling ElevenLabs for current card
+  const [importAudioCompleted, setImportAudioCompleted] = useState(0);
+  const [importAudioFailed, setImportAudioFailed] = useState(0);
 
   // Add card with AI
   const [showAddWithAIModal, setShowAddWithAIModal] = useState(false);
@@ -109,7 +132,13 @@ export default function DeckDetailPage() {
   const [addWithAISuccess, setAddWithAISuccess] = useState(null);
   const [addWithAIGeneratedCards, setAddWithAIGeneratedCards] = useState([]);
   const [addWithAISelectedIndices, setAddWithAISelectedIndices] = useState(new Set());
+  const [addWithAIReferenceCardIds, setAddWithAIReferenceCardIds] = useState(new Set());
+  const [editingGeneratedCardIndex, setEditingGeneratedCardIndex] = useState(null);
   const addWithAIAddingToDeckRef = useRef(false);
+  const isDev = process.env.NODE_ENV === "development";
+  const [addWithAIPreviewLoading, setAddWithAIPreviewLoading] = useState(false);
+  const [showPromptModal, setShowPromptModal] = useState(false);
+  const [promptModalContent, setPromptModalContent] = useState(null);
 
   // Import from file (file → AI cards)
   const [showFileToAIModal, setShowFileToAIModal] = useState(false);
@@ -118,7 +147,41 @@ export default function DeckDetailPage() {
   const [fileToAIMaxCards, setFileToAIMaxCards] = useState(15);
   const [fileToAILoading, setFileToAILoading] = useState(false);
   const [fileToAIError, setFileToAIError] = useState(null);
+  const [fileToAIDragging, setFileToAIDragging] = useState(false);
+  const [fileToAISuccessResult, setFileToAISuccessResult] = useState(null); // { cards, _devPrompt } after successful run
+  const [fileToAIDevPromptCopied, setFileToAIDevPromptCopied] = useState(false);
+  const [fileToAIDevPromptOpen, setFileToAIDevPromptOpen] = useState(true);
+  const [fileToAIPreviewPrompt, setFileToAIPreviewPrompt] = useState(null); // { system, user } from Preview prompt (form view)
+  const [fileToAIPreviewLoading, setFileToAIPreviewLoading] = useState(false);
+  const [fileToAIPreviewPromptOpen, setFileToAIPreviewPromptOpen] = useState(false);
+  const [fileToAIPreviewUrl, setFileToAIPreviewUrl] = useState(null); // object URL for image preview
+  const [fileToAIPreviewCardIndex, setFileToAIPreviewCardIndex] = useState(null); // index of card to show in preview modal
   const fileToAIFileInputRef = useRef(null);
+  const fileToAIPreviewPromptBlockRef = useRef(null);
+
+  // Create/revoke image preview URL when file changes
+  useEffect(() => {
+    if (!fileToAIFile || !FILE_TO_AI_IMAGE_MIMES.includes((fileToAIFile.type || "").toLowerCase())) {
+      setFileToAIPreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
+      return;
+    }
+    const url = URL.createObjectURL(fileToAIFile);
+    setFileToAIPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [fileToAIFile]);
+
+  const FILE_TO_AI_ACCEPT_EXT = [".pdf", ".docx", ".png", ".jpg", ".jpeg", ".webp"];
+  const FILE_TO_AI_IMAGE_MIMES = ["image/png", "image/jpeg", "image/webp"];
+  const isFileToAIAccepted = (file) => {
+    if (!file) return false;
+    if (file.type && FILE_TO_AI_IMAGE_MIMES.includes(file.type.toLowerCase())) return true;
+    if (!file.name) return false;
+    const ext = file.name.toLowerCase().slice(file.name.lastIndexOf("."));
+    return FILE_TO_AI_ACCEPT_EXT.includes(ext);
+  };
 
   // Add card (normal): template vs blank
   const [showAddCardModal, setShowAddCardModal] = useState(false);
@@ -128,6 +191,86 @@ export default function DeckDetailPage() {
   // Export as dropdown
   const [showExportMenu, setShowExportMenu] = useState(false);
   const exportMenuRef = useRef(null);
+
+  // Card carousel: image/audio preview URLs (cardId -> { imageUrl?, audioUrl? })
+  const [cardMediaCache, setCardMediaCache] = useState({});
+  const [playingCardId, setPlayingCardId] = useState(null);
+  const deckAudioRef = useRef(null);
+  const deckAudioObjectUrlRef = useRef(null);
+
+  const handleDeckCardAudioClick = useCallback(async (e, cardId, audioUrl) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const audio = deckAudioRef.current;
+    console.log("[DeckCardAudio] click", { cardId, audioUrl: !!audioUrl, audioUrlLength: audioUrl?.length, hasAudioRef: !!audio, playingCardId });
+    if (!audio) {
+      console.warn("[DeckCardAudio] no audio ref");
+      return;
+    }
+    if (!audioUrl) {
+      console.warn("[DeckCardAudio] no audioUrl");
+      return;
+    }
+    if (playingCardId === cardId) {
+      console.log("[DeckCardAudio] pause");
+      audio.pause();
+      if (deckAudioObjectUrlRef.current) {
+        URL.revokeObjectURL(deckAudioObjectUrlRef.current);
+        deckAudioObjectUrlRef.current = null;
+      }
+      setPlayingCardId(null);
+      return;
+    }
+    if (deckAudioObjectUrlRef.current) {
+      URL.revokeObjectURL(deckAudioObjectUrlRef.current);
+      deckAudioObjectUrlRef.current = null;
+    }
+    try {
+      console.log("[DeckCardAudio] fetch proxy");
+      const res = await fetch("/api/proxy-media", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: audioUrl }),
+      });
+      if (!res.ok) {
+        console.warn("[DeckCardAudio] proxy failed", res.status, await res.text());
+        setPlayingCardId(null);
+        return;
+      }
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      deckAudioObjectUrlRef.current = objectUrl;
+      audio.src = objectUrl;
+      console.log("[DeckCardAudio] play start");
+      await audio.play();
+      console.log("[DeckCardAudio] play() resolved");
+      setPlayingCardId(cardId);
+    } catch (err) {
+      console.warn("[DeckCardAudio] play() failed", err?.name, err?.message, err);
+      if (deckAudioObjectUrlRef.current) {
+        URL.revokeObjectURL(deckAudioObjectUrlRef.current);
+        deckAudioObjectUrlRef.current = null;
+      }
+      setPlayingCardId(null);
+    }
+  }, [playingCardId]);
+
+  // Attach ended listener when audio element is in DOM (after loading finishes)
+  useEffect(() => {
+    if (loading) return;
+    const audio = deckAudioRef.current;
+    if (!audio) return;
+    const onEnded = () => {
+      console.log("[DeckCardAudio] ended");
+      if (deckAudioObjectUrlRef.current) {
+        URL.revokeObjectURL(deckAudioObjectUrlRef.current);
+        deckAudioObjectUrlRef.current = null;
+      }
+      setPlayingCardId(null);
+    };
+    audio.addEventListener("ended", onEnded);
+    return () => audio.removeEventListener("ended", onEnded);
+  }, [loading]);
 
   // Most-used template in this deck (when no explicit default is set)
   const mostUsedTemplateId = useMemo(() => {
@@ -159,6 +302,20 @@ export default function DeckDetailPage() {
       setAddWithAITemplateId(effectiveDefaultTemplateId);
     }
   }, [showAddWithAIModal, templates, addWithAITemplateId, effectiveDefaultTemplateId]);
+
+  useEffect(() => {
+    if (showAddWithAIModal && addWithAITemplateId && templates.length > 0) {
+      const selected = templates.find((t) => t.templateId === addWithAITemplateId);
+      if (selected) {
+        console.log("[add-with-ai] template selected (UI / cache)", {
+          templateId: selected.templateId,
+          name: selected.name,
+          blockCount: selected.blocks?.length,
+          blockTypes: (selected.blocks || []).map((b) => ({ id: b.blockId?.slice(0, 8), type: b.type, label: b.label })),
+        });
+      }
+    }
+  }, [showAddWithAIModal, addWithAITemplateId, templates]);
 
   useEffect(() => {
     if (showFileToAIModal && templates.length > 0 && !fileToAITemplateId && effectiveDefaultTemplateId) {
@@ -207,6 +364,48 @@ export default function DeckDetailPage() {
       loadTemplates();
     }
   }, [user]);
+
+  const isImageBlock = (b) => b?.type === "image" || b?.type === 6;
+  const isAudioBlockType = (b) => b?.type === "audio" || b?.type === 7 || b?.type === "7";
+
+  // Load first image/audio media URL per card for carousel preview (parallel fetches)
+  useEffect(() => {
+    if (!user || !cards.length) return;
+    let cancelled = false;
+    const load = async () => {
+      const cardsSlice = cards.slice(0, 50);
+      const needs = []; // { cardId, imageMediaId?, audioMediaId? }
+      for (const card of cardsSlice) {
+        const blocks = card.blocksSnapshot || [];
+        const values = card.values || [];
+        const imageBlock = blocks.find(isImageBlock);
+        const audioBlock = blocks.find(isAudioBlockType);
+        const imageMediaId = imageBlock ? (values.find((v) => v.blockId === imageBlock.blockId)?.mediaIds || [])[0] : null;
+        const audioMediaId = audioBlock ? (values.find((v) => v.blockId === audioBlock.blockId)?.mediaIds || [])[0] : null;
+        if (imageMediaId || audioMediaId) {
+          needs.push({ cardId: card.cardId, imageMediaId: imageMediaId || null, audioMediaId: audioMediaId || null });
+        }
+      }
+      const mediaIds = [...new Set(needs.flatMap((n) => [n.imageMediaId, n.audioMediaId].filter(Boolean)))];
+      const results = await Promise.all(
+        mediaIds.map((id) => getMedia(user.uid, id).then((m) => ({ id, url: m?.downloadUrl || null })).catch(() => ({ id, url: null })))
+      );
+      if (cancelled) return;
+      const urlByMediaId = Object.fromEntries(results.map((r) => [r.id, r.url]).filter(([, u]) => u));
+      const next = {};
+      for (const { cardId, imageMediaId, audioMediaId } of needs) {
+        const imageUrl = imageMediaId ? urlByMediaId[imageMediaId] : null;
+        const audioUrl = audioMediaId ? urlByMediaId[audioMediaId] : null;
+        if (imageUrl || audioUrl) next[cardId] = { ...(next[cardId] || {}), ...(imageUrl && { imageUrl }), ...(audioUrl && { audioUrl }) };
+      }
+      if (Object.keys(next).some((id) => next[id].audioUrl)) {
+        console.log("[DeckCardAudio] cache filled with audio", Object.entries(next).filter(([, v]) => v.audioUrl).map(([id, v]) => ({ cardId: id, audioUrlLen: v.audioUrl?.length })));
+      }
+      if (!cancelled) setCardMediaCache((prev) => ({ ...prev, ...next }));
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [user, cards]);
 
   const handleDeleteCard = async () => {
     if (!selectedCard) return;
@@ -260,6 +459,16 @@ export default function DeckDetailPage() {
   const processImportFile = async (file) => {
     try {
       const fileType = getFileTypeFromPath(file.name);
+      const isExcelOrApkg =
+        fileType === SpreadsheetFileType.apkg ||
+        fileType === SpreadsheetFileType.xlsx ||
+        fileType === SpreadsheetFileType.xls;
+      if (isProduction && !aiEntitled && isExcelOrApkg) {
+        alert("Pro subscription required to import Excel or Anki (.apkg) files.");
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+      }
+
       let data;
 
       if (fileType === SpreadsheetFileType.apkg) {
@@ -389,6 +598,10 @@ export default function DeckDetailPage() {
 
   const handleExportXLSX = () => {
     setShowExportMenu(false);
+    if (isProduction && !aiEntitled) {
+      alert("Pro subscription required to export as Excel (.xlsx).");
+      return;
+    }
     if (!cards.length) {
       alert("No cards to export.");
       return;
@@ -405,6 +618,59 @@ export default function DeckDetailPage() {
     const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
     const safeTitle = (deck?.title || "deck").replace(/[^\w\s-]/g, "").slice(0, 50);
     downloadBlob(blob, `${safeTitle}.xlsx`);
+  };
+
+  const [exportApkgLoading, setExportApkgLoading] = useState(false);
+  const handleExportAPKG = async () => {
+    setShowExportMenu(false);
+    if (isProduction && !aiEntitled) {
+      alert("Pro subscription required to export as Anki (.apkg).");
+      return;
+    }
+    if (!cards.length) {
+      alert("No cards to export.");
+      return;
+    }
+    if (!user?.uid) {
+      alert("You must be signed in to export.");
+      return;
+    }
+    setExportApkgLoading(true);
+    try {
+      console.log("[APKG Export] start", { cardsCount: cards.length, deckTitle: deck?.title });
+      const token = await user.getIdToken();
+      console.log("[APKG Export] token", token ? "present" : "missing");
+      const getMediaBytes = async (mediaId) => {
+        const headers = { "Content-Type": "application/json" };
+        if (token) headers.Authorization = `Bearer ${token}`;
+        const res = await fetch("/api/media/bytes", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ mediaId }),
+        });
+        if (!res.ok) {
+          console.warn("[APKG Export] getMediaBytes failed", { mediaId, status: res.status });
+          return null;
+        }
+        const buf = await res.arrayBuffer();
+        const bytes = new Uint8Array(buf);
+        console.log("[APKG Export] getMediaBytes ok", { mediaId, bytesLength: bytes.length });
+        return bytes;
+      };
+      const blob = await exportApkgToBlob({
+        deckName: deck?.title || "Deck",
+        cards,
+        getMediaBytes,
+      });
+      console.log("[APKG Export] done", { blobSize: blob?.size });
+      const safeTitle = (deck?.title || "deck").replace(/[^\w\s-]/g, "").slice(0, 50);
+      downloadBlob(blob, `${safeTitle}.apkg`);
+    } catch (err) {
+      console.error("APKG export failed", err);
+      alert(err?.message || "Export failed. Try again.");
+    } finally {
+      setExportApkgLoading(false);
+    }
   };
 
   // Template & Column mapping
@@ -433,6 +699,7 @@ export default function DeckDetailPage() {
       blockId,
       columnName,
       blockLabel: block.label,
+      generateWithAI: false,
     });
 
     setColumnMappings(filtered);
@@ -440,10 +707,31 @@ export default function DeckDetailPage() {
     setPendingBlockId(null);
   };
 
+  const setMappingGenerateWithAI = (blockId) => {
+    if (!selectedTemplate) return;
+    const block = selectedTemplate.blocks.find((b) => b.blockId === blockId);
+    if (!block || !isBlockEligibleForGenerateWithAI(block)) return;
+    const filtered = columnMappings.filter((m) => m.blockId !== blockId);
+    filtered.push({
+      columnIndex: -1,
+      blockId,
+      columnName: "(AI)",
+      blockLabel: block.label,
+      generateWithAI: true,
+    });
+    setColumnMappings(filtered);
+    setPendingBlockId(null);
+    setPendingColumnIndex(null);
+  };
+
   const removeMapping = (columnIndex) => {
     setColumnMappings(
       columnMappings.filter((m) => m.columnIndex !== columnIndex)
     );
+  };
+
+  const removeBlockMapping = (blockId) => {
+    setColumnMappings(columnMappings.filter((m) => m.blockId !== blockId));
   };
 
   const handleColumnClick = (columnIndex) => {
@@ -467,19 +755,24 @@ export default function DeckDetailPage() {
   const handleBlockClick = (blockId) => {
     const existingMapping = getMappingForBlock(blockId);
     if (existingMapping) {
-      // Already mapped - remove it
-      removeMapping(existingMapping.columnIndex);
+      removeBlockMapping(blockId);
       return;
     }
 
     if (pendingColumnIndex !== null) {
-      // Column was selected first - complete the mapping
       setMapping(pendingColumnIndex, blockId);
-    } else {
-      // Select this block, wait for column selection
-      setPendingBlockId(blockId);
-      setPendingColumnIndex(null);
+      return;
     }
+
+    // Tap selected block again to deselect
+    if (pendingBlockId === blockId) {
+      setPendingBlockId(null);
+      setPendingColumnIndex(null);
+      return;
+    }
+
+    setPendingBlockId(blockId);
+    setPendingColumnIndex(null);
   };
 
   const getMappingForColumn = (columnIndex) => {
@@ -488,6 +781,22 @@ export default function DeckDetailPage() {
 
   const getMappingForBlock = (blockId) => {
     return columnMappings.find((m) => m.blockId === blockId);
+  };
+
+  const isBlockEligibleForGenerateWithAI = (block) => {
+    const t = block?.type;
+    if (t == null) return false;
+    if (t === "audio" || t === 7 || t === "7") return true;
+    const tNum = typeof t === "string" && /^[0-9]+$/.test(t) ? parseInt(t, 10) : t;
+    if (tNum === 8 || tNum === 9 || tNum === 10) return true;
+    const tStr = String(t).toLowerCase();
+    if (
+      tStr === "quizsingleselect" ||
+      tStr === "quizmultiselect" ||
+      tStr === "quiztextanswer"
+    )
+      return true;
+    return false;
   };
 
   // Check if can proceed
@@ -524,63 +833,479 @@ export default function DeckDetailPage() {
   // Import cards
   const handleImport = async () => {
     if (!importData || !selectedTemplate || columnMappings.length === 0) return;
+    const hasAIMappings = columnMappings.some((m) => m.generateWithAI);
+    if (hasAIMappings && !aiEntitled) {
+      alert("Pro subscription required to use \"Generate with AI\" for template blocks.");
+      return;
+    }
 
     setImporting(true);
     setImportStep(ImportStep.importing);
     setImportProgress(0);
     setImportedCount(0);
+    setImportAIGenerating(false);
 
     try {
       const rows = getRowsToImport();
+      let aiCards = [];
+      // Unified progress: quiz batches + card creation (0..1)
+      let importTotalSteps = rows.length;
+      let importCompletedBeforeCards = 0;
+
+      if (hasAIMappings && rows.length > 0) {
+        const headers = (importData.headers || []).slice();
+        const tableRows = rows.map((r) =>
+          (Array.isArray(r) ? r : []).map((c) => String(c ?? "").trim())
+        );
+        const CHUNK_SIZE = 30;
+        const chunks = [];
+        for (let i = 0; i < tableRows.length; i += CHUNK_SIZE) {
+          chunks.push(tableRows.slice(i, i + CHUNK_SIZE));
+        }
+        // Claude generates quiz only. Audio "Use AI" uses row main text (TTS later).
+        const quizBlockIds = (columnMappings || [])
+          .filter((m) => m.generateWithAI)
+          .filter((m) => {
+            const b = selectedTemplate.blocks.find((bl) => bl.blockId === m.blockId);
+            return b && isQuizBlock(b);
+          })
+          .map((m) => m.blockId);
+        const allCards = [];
+        if (quizBlockIds.length > 0) {
+          importTotalSteps = chunks.length + rows.length;
+          setImportAIGenerating(true);
+          setImportAIBatchProgress({ current: 0, total: chunks.length });
+          const reqHeaders = { "Content-Type": "application/json" };
+          if (isProduction && user) {
+            const token = await user.getIdToken();
+            if (token) reqHeaders.Authorization = `Bearer ${token}`;
+          }
+          for (let c = 0; c < chunks.length; c++) {
+            setImportAIBatchProgress({ current: c + 1, total: chunks.length });
+            setImportProgress((c + 1) / importTotalSteps);
+            const chunkRows = chunks[c];
+            const textContent = [
+              headers.join("\t"),
+              ...chunkRows.map((r) => r.join("\t")),
+            ].join("\n").slice(0, 50000);
+            const res = await fetch("/api/cards/import-ai-blocks", {
+              method: "POST",
+              headers: reqHeaders,
+              body: JSON.stringify({
+                extractedContent: textContent,
+                deckId,
+                templateId: selectedTemplate.templateId,
+                uid: user.uid,
+                maxCards: chunkRows.length,
+                blockIds: quizBlockIds,
+              }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+              throw new Error(data.error || data.message || "AI generation failed");
+            }
+            const chunkCards = data.cards ?? [];
+            allCards.push(...chunkCards);
+          }
+          importCompletedBeforeCards = chunks.length;
+          setImportAIGenerating(false);
+          setImportAIBatchProgress(null);
+        }
+        aiCards = allCards;
+        console.log("[Import AI] import-ai-blocks batched", {
+          hasAIMappings,
+          rowsCount: rows.length,
+          chunks: chunks.length,
+          aiCardsCount: aiCards.length,
+          firstCardKeys: aiCards[0] ? Object.keys(aiCards[0]) : [],
+          firstCardBlocksSnapshotLength: aiCards[0]?.blocksSnapshot?.length ?? 0,
+        });
+        const aiMappingBlockIds = (columnMappings || [])
+          .filter((m) => m.generateWithAI)
+          .map((m) => m.blockId);
+        if (aiCards[0]?.blocksSnapshot && aiMappingBlockIds.length > 0) {
+          aiCards[0].blocksSnapshot.forEach((b) => {
+            if (aiMappingBlockIds.includes(b.blockId)) {
+              const cfg = b.configJson;
+              const preview =
+                typeof cfg === "string"
+                  ? cfg.slice(0, 120)
+                  : cfg
+                    ? JSON.stringify(cfg).slice(0, 120)
+                    : "(none)";
+              console.log("[Import AI] first card block", b.blockId, "configJson preview", preview);
+            }
+          });
+        }
+      }
+
       let imported = 0;
+      const templateBlocksSnapshot = selectedTemplate.blocks.map((block) => ({
+        blockId: block.blockId,
+        type: block.type,
+        label: block.label,
+        required: block.required,
+        configJson: block.configJson,
+      }));
 
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
 
-        // Build blocks snapshot from template
-        const blocksSnapshot = selectedTemplate.blocks.map((block) => ({
-          blockId: block.blockId,
-          type: block.type,
-          label: block.label,
-          required: block.required,
-          configJson: block.configJson,
-        }));
+        // For audio "Use AI": use row's main text (Claude does not generate audio; TTS uses this later).
+        const mainBlockId = selectedTemplate.mainBlockId;
+        const mainMapping = columnMappings.find((m) => m.blockId === mainBlockId);
+        const mainTextForRow =
+          mainMapping && mainMapping.columnIndex >= 0 && mainMapping.columnIndex < row.length
+            ? String(row[mainMapping.columnIndex] ?? "").trim()
+            : columnMappings
+                .filter((m) => m.columnIndex >= 0 && m.columnIndex < row.length)
+                .map((m) => String(row[m.columnIndex] ?? "").trim())
+                .find((t) => t) ?? "";
 
-        // Build values from mappings
         const values = [];
+        const importMedia = importData.media && typeof importData.media === "object" ? importData.media : {};
+        const hasImportMedia = Object.keys(importMedia).length > 0;
+
         for (const mapping of columnMappings) {
-          if (mapping.columnIndex < row.length) {
+          const block = selectedTemplate.blocks.find(
+            (b) => b.blockId === mapping.blockId
+          );
+          if (!block) continue;
+
+          let text = "";
+          if (mapping.generateWithAI) {
+            if (isAudioBlockType(block)) {
+              text = mainTextForRow;
+            } else {
+              const aiCard = aiCards[i];
+              if (aiCard?.values) {
+                const v = aiCard.values.find((x) => x.blockId === mapping.blockId);
+                text = (v?.text != null ? String(v.text) : "").trim();
+              }
+            }
+          } else if (mapping.columnIndex >= 0 && mapping.columnIndex < row.length) {
             const cellValue = row[mapping.columnIndex];
-            if (cellValue && cellValue.trim()) {
-              const block = selectedTemplate.blocks.find(
-                (b) => b.blockId === mapping.blockId
-              );
-              if (block) {
-                values.push({
-                  blockId: mapping.blockId,
-                  type: block.type,
-                  text: cellValue,
-                });
+            text = (cellValue != null ? String(cellValue) : "").trim();
+          }
+
+          let mediaIds = [];
+          const isAudioBlock = isAudioBlockType(block);
+          const isImageBlock = block?.type === "image" || block?.type === 6 || block?.type === "6";
+
+          if (hasImportMedia && (isAudioBlock || isImageBlock) && text) {
+            const audioRegex = /\[audio:\s*([^\]]+)\]/g;
+            const imageRegex = /\[image:\s*([^\]]+)\]/g;
+            if (isAudioBlock) {
+              const matches = [...text.matchAll(audioRegex)];
+              for (const m of matches) {
+                const filename = m[1].trim();
+                const bytes = importMedia[filename];
+                if (bytes && (bytes instanceof Uint8Array || ArrayBuffer.isView(bytes) || bytes instanceof ArrayBuffer)) {
+                  try {
+                    const blob = new Blob([bytes], { type: "audio/mpeg" });
+                    const file = new File([blob], filename || "audio.mp3", { type: "audio/mpeg" });
+                    const media = await uploadAudio(user.uid, file);
+                    mediaIds.push(media.mediaId);
+                  } catch (err) {
+                    console.warn("[Import] upload audio from APKG failed", filename, err?.message);
+                  }
+                }
+              }
+              if (mediaIds.length > 0) {
+                text = text.replace(audioRegex, "").trim().replace(/\s+/g, " ");
+              }
+            }
+            if (isImageBlock) {
+              const matches = [...text.matchAll(imageRegex)];
+              for (const m of matches) {
+                const filename = m[1].trim();
+                const bytes = importMedia[filename];
+                if (bytes && (bytes instanceof Uint8Array || ArrayBuffer.isView(bytes) || bytes instanceof ArrayBuffer)) {
+                  try {
+                    const ext = (filename.split(".").pop() || "jpg").toLowerCase();
+                    const mime = ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
+                    const blob = new Blob([bytes], { type: mime });
+                    const file = new File([blob], filename || "image.jpg", { type: mime });
+                    const media = await uploadImage(user.uid, file);
+                    mediaIds.push(media.mediaId);
+                  } catch (err) {
+                    console.warn("[Import] upload image from APKG failed", filename, err?.message);
+                  }
+                }
+              }
+              if (mediaIds.length > 0) {
+                text = text.replace(imageRegex, "").trim().replace(/\s+/g, " ");
               }
             }
           }
+
+          values.push({
+            blockId: mapping.blockId,
+            type: block.type,
+            text: text || "",
+            ...(mediaIds.length > 0 && { mediaIds }),
+          });
         }
 
-        // Skip rows with no values
-        if (values.length === 0) continue;
+        // Per-row blocksSnapshot: merge AI-generated block config (e.g. quiz question/options) for generateWithAI mappings
+        let rowBlocksSnapshot = templateBlocksSnapshot.map((b) => ({ ...b }));
+        if (hasAIMappings && aiCards[i]?.blocksSnapshot?.length) {
+          const aiSnap = aiCards[i].blocksSnapshot;
+          if (i === 0) {
+            const wantBlockIds = columnMappings
+              .filter((m) => m.generateWithAI)
+              .map((m) => m.blockId);
+            const gotBlockIds = aiSnap.map((b) => b.blockId);
+            const match = wantBlockIds.every((id) => gotBlockIds.includes(id));
+            console.log("[Import AI] row 0 merge", {
+              aiSnapLength: aiSnap.length,
+              aiSnapBlockIds: gotBlockIds,
+              generateWithAIBlockIds: wantBlockIds,
+              blockIdMatch: match,
+              templateBlockIds: templateBlocksSnapshot.map((b) => b.blockId),
+            });
+          }
+          rowBlocksSnapshot = rowBlocksSnapshot.map((templateBlock) => {
+            const aiMapping = columnMappings.find(
+              (m) => m.generateWithAI && m.blockId === templateBlock.blockId
+            );
+            if (!aiMapping) return templateBlock;
+            const aiBlock = aiSnap.find(
+              (ab) => ab.blockId === templateBlock.blockId
+            );
+            if (i === 0) {
+              let parsedConfig = null;
+              try {
+                parsedConfig =
+                  typeof aiBlock?.configJson === "string"
+                    ? JSON.parse(aiBlock.configJson)
+                    : aiBlock?.configJson;
+              } catch (_) {}
+              console.log("[Import AI] row 0 block", templateBlock.blockId, {
+                foundAiBlock: !!aiBlock,
+                hasConfigJson: !!aiBlock?.configJson,
+                configJsonType: typeof aiBlock?.configJson,
+                configJsonLength:
+                  typeof aiBlock?.configJson === "string"
+                    ? aiBlock.configJson.length
+                    : "(object)",
+                parsedKeys: parsedConfig ? Object.keys(parsedConfig) : [],
+                hasQuestion: !!(parsedConfig?.question),
+                optionsLength: Array.isArray(parsedConfig?.options)
+                  ? parsedConfig.options.length
+                  : 0,
+              });
+            }
+            if (!aiBlock?.configJson) return templateBlock;
+            // Explicit new block so quiz config is never lost (merge AI config for this row)
+            const mergedConfigJson =
+              typeof aiBlock.configJson === "string"
+                ? aiBlock.configJson
+                : JSON.stringify(aiBlock.configJson ?? {});
+            return {
+              blockId: templateBlock.blockId,
+              type: templateBlock.type,
+              label: templateBlock.label,
+              required: templateBlock.required,
+              configJson: mergedConfigJson,
+            };
+          });
+        }
 
-        await createCard(
+        const hasAnyText = values.some((v) => (v.text || "").trim());
+        const hasAIGeneratedQuizContent =
+          hasAIMappings &&
+          aiCards[i]?.blocksSnapshot?.length &&
+          columnMappings.some((m) => {
+            if (!m.generateWithAI) return false;
+            const snap = aiCards[i].blocksSnapshot.find(
+              (b) => b.blockId === m.blockId
+            );
+            const cfg = snap?.configJson;
+            if (cfg == null) return false;
+            try {
+              const parsed =
+                typeof cfg === "string" ? JSON.parse(cfg) : cfg;
+              return (
+                parsed &&
+                parsed.question != null &&
+                String(parsed.question).trim()
+              );
+            } catch {
+              return false;
+            }
+          });
+        if (!hasAnyText && !hasAIGeneratedQuizContent) {
+          if (i === 0 || hasAIMappings) {
+            console.log("[Import AI] skip row", i, {
+              hasAnyText,
+              hasAIGeneratedQuizContent,
+              hasAIMappings,
+              aiCardPresent: !!aiCards[i],
+              blocksSnapshotLength: aiCards[i]?.blocksSnapshot?.length ?? 0,
+            });
+          }
+          continue;
+        }
+
+        if (i === 0 && hasAIMappings) {
+          const isQuizType = (t) => {
+            if (t == null) return false;
+            if (t === "quizSingleSelect" || t === "quizMultiSelect" || t === "quizTextAnswer")
+              return true;
+            if (t === 8 || t === 9 || t === 10) return true;
+            if (typeof t === "string" && /^(8|9|10)$/.test(t)) return true;
+            return false;
+          };
+          const quizBlocks = rowBlocksSnapshot.filter((b) => isQuizType(b.type));
+          const quizPayloads = quizBlocks.map((b) => {
+            let cfg = null;
+            try {
+              cfg =
+                typeof b.configJson === "string"
+                  ? JSON.parse(b.configJson)
+                  : b.configJson;
+            } catch (_) {}
+            return {
+              blockId: b.blockId,
+              type: b.type,
+              configJsonIsString: typeof b.configJson === "string",
+              hasQuestion: !!(cfg?.question),
+              questionPreview: cfg?.question
+                ? String(cfg.question).slice(0, 50)
+                : "(none)",
+              optionsLength: Array.isArray(cfg?.options) ? cfg.options.length : 0,
+              correctAnswersLength: Array.isArray(cfg?.correctAnswers)
+                ? cfg.correctAnswers.length
+                : 0,
+            };
+          });
+          console.log("[Import AI] row 0 creating card (payload to createCard)", {
+            rowBlocksSnapshotLength: rowBlocksSnapshot.length,
+            quizBlocksCount: quizBlocks.length,
+            quizPayloads,
+          });
+          console.log("[Import AI] row 0 every block in rowBlocksSnapshot", {
+            blocks: rowBlocksSnapshot.map((b) => ({
+              blockId: b.blockId,
+              type: b.type,
+              typeOf: typeof b.type,
+              hasConfigJson: b.configJson != null,
+              configJsonType: typeof b.configJson,
+              configJsonLength:
+                typeof b.configJson === "string"
+                  ? b.configJson.length
+                  : b.configJson
+                    ? JSON.stringify(b.configJson).length
+                    : 0,
+            })),
+          });
+          const mergedQuizBlockId = columnMappings.find((m) => m.generateWithAI)?.blockId;
+          if (mergedQuizBlockId) {
+            const mergedBlock = rowBlocksSnapshot.find((b) => b.blockId === mergedQuizBlockId);
+            if (mergedBlock) {
+              let cfg = null;
+              try {
+                cfg =
+                  typeof mergedBlock.configJson === "string"
+                    ? JSON.parse(mergedBlock.configJson)
+                    : mergedBlock.configJson;
+              } catch (e) {
+                console.warn("[Import AI] QUIZ DEBUG: failed to parse merged block configJson", e);
+              }
+              console.log("[Import AI] row 0 merged quiz block (what we send to createCard)", {
+                blockId: mergedBlock.blockId,
+                type: mergedBlock.type,
+                configJsonParsed: cfg
+                  ? { question: cfg.question, optionsLength: cfg.options?.length, correctAnswers: cfg.correctAnswers }
+                  : null,
+                configJsonRawPreview:
+                  typeof mergedBlock.configJson === "string"
+                    ? mergedBlock.configJson.slice(0, 200)
+                    : "(object)",
+              });
+            } else {
+              console.warn(
+                "[Import AI] QUIZ DEBUG: mergedQuizBlockId",
+                mergedQuizBlockId,
+                "not found in rowBlocksSnapshot — merge may have failed"
+              );
+            }
+          }
+          const anyQuizEmpty = quizPayloads.some(
+            (p) => !p.hasQuestion || (p.optionsLength === 0 && p.correctAnswersLength === 0)
+          );
+          if (anyQuizEmpty) {
+            console.warn(
+              "[Import AI] QUIZ DEBUG: at least one quiz block has no question or no options/correctAnswers — quiz section may not render. Check quizPayloads above."
+            );
+          }
+        }
+
+        const created = await createCard(
           user.uid,
           deckId,
-          blocksSnapshot,
+          rowBlocksSnapshot,
           values,
           selectedTemplate.templateId,
           selectedTemplate.mainBlockId ?? null,
           selectedTemplate.subBlockId ?? null
         );
 
+        // If this row has audio "Use AI" with text, generate TTS (ElevenLabs) and update card
+        const audioMapping = (columnMappings || []).find((m) => {
+          if (!m.generateWithAI) return false;
+          const b = selectedTemplate.blocks.find((bl) => bl.blockId === m.blockId);
+          return b && isAudioBlockType(b);
+        });
+        if (audioMapping && mainTextForRow && created?.cardId) {
+          setImportAudioGenerating(true);
+          try {
+            const audioBlock = selectedTemplate.blocks.find((b) => b.blockId === audioMapping.blockId);
+            const { defaultVoiceId } = parseAudioBlockConfig(audioBlock?.configJson);
+            const ttsHeaders = { "Content-Type": "application/json" };
+            if (isProduction && user) {
+              const token = await user.getIdToken();
+              if (token) ttsHeaders.Authorization = `Bearer ${token}`;
+            }
+            const ttsRes = await fetch("/api/elevenlabs/text-to-speech", {
+              method: "POST",
+              headers: ttsHeaders,
+              body: JSON.stringify({
+                text: mainTextForRow,
+                ...(defaultVoiceId && { voice_id: defaultVoiceId }),
+              }),
+            });
+            if (ttsRes.ok) {
+              const blob = await ttsRes.blob();
+              const file = new File([blob], "import-tts.mp3", { type: "audio/mpeg" });
+              const media = await uploadAudio(user.uid, file);
+              const updatedValues = values.map((v) =>
+                v.blockId === audioMapping.blockId ? { ...v, mediaIds: [media.mediaId] } : v
+              );
+              await updateCard(
+                user.uid,
+                created.cardId,
+                deckId,
+                updatedValues,
+                rowBlocksSnapshot,
+                selectedTemplate.mainBlockId ?? null,
+                selectedTemplate.subBlockId ?? null
+              );
+              setImportAudioCompleted((c) => c + 1);
+            } else {
+              setImportAudioFailed((f) => f + 1);
+            }
+          } catch (ttsErr) {
+            console.warn("[Import] TTS failed for row", i + 1, ttsErr);
+            setImportAudioFailed((f) => f + 1);
+          } finally {
+            setImportAudioGenerating(false);
+          }
+        }
+
         imported++;
-        setImportProgress((i + 1) / rows.length);
+        setImportProgress((importCompletedBeforeCards + i + 1) / importTotalSteps);
         setImportedCount(imported);
       }
 
@@ -590,6 +1315,11 @@ export default function DeckDetailPage() {
       alert("Error importing cards: " + error.message);
     } finally {
       setImporting(false);
+      setImportAIGenerating(false);
+      setImportAIBatchProgress(null);
+      setImportAudioGenerating(false);
+      setImportAudioCompleted(0);
+      setImportAudioFailed(0);
     }
   };
 
@@ -603,8 +1333,101 @@ export default function DeckDetailPage() {
     setSelectedTemplate(null);
     setColumnMappings([]);
     setImporting(false);
+    setImportAIGenerating(false);
+    setImportAIBatchProgress(null);
+    setImportAudioGenerating(false);
+    setImportAudioCompleted(0);
+    setImportAudioFailed(0);
     setImportProgress(0);
     setImportedCount(0);
+    setImportUseAILoading(false);
+    setImportUseAIError(null);
+  };
+
+  const handleImportUseAIInstead = async () => {
+    if (!user || !deckId || !selectedTemplate || !importData) return;
+    if (!aiEntitled) {
+      setImportUseAIError("Pro subscription required to use AI.");
+      return;
+    }
+    setImportUseAIError(null);
+    setImportUseAILoading(true);
+    try {
+      const headers = (importData.headers || []).slice();
+      const rows = (importData.rows || []).map((r) =>
+        (Array.isArray(r) ? r : []).map((c) => String(c ?? "").trim())
+      );
+      const textContent = [
+        headers.join("\t"),
+        ...rows.map((r) => r.join("\t")),
+      ].join("\n").slice(0, 50000);
+      const reqHeaders = { "Content-Type": "application/json" };
+      if (isProduction && user) {
+        const token = await user.getIdToken();
+        if (token) reqHeaders.Authorization = `Bearer ${token}`;
+      }
+      const res = await fetch("/api/cards/file-to-ai", {
+        method: "POST",
+        headers: reqHeaders,
+        body: JSON.stringify({
+          extractedContent: textContent,
+          deckId,
+          templateId: selectedTemplate.templateId,
+          uid: user.uid,
+          maxCards: 30,
+          fileName: importData.fileName || "import.txt",
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || data.message || "AI generation failed");
+      }
+      const rawCards = data.cards ?? [];
+      const blocksSnapshotFallback = selectedTemplate.blocks.map((b) => ({
+        blockId: b.blockId,
+        type: b.type,
+        label: b.label || "",
+        required: b.required || false,
+        configJson: b.configJson,
+      }));
+      const generatedCards = rawCards.map((c) => {
+        if (c && Array.isArray(c.values) && c.blocksSnapshot) {
+          return {
+            templateId: c.templateId || selectedTemplate.templateId,
+            blocksSnapshot: c.blocksSnapshot,
+            values: (c.values || []).map((v) => ({
+              ...v,
+              ...(v.type === "audio" && (!v.mediaIds || !v.mediaIds.length) ? { mediaIds: [] } : {}),
+            })),
+          };
+        }
+        const values = Array.isArray(c) ? c : c?.values || [];
+        return {
+          blocksSnapshot: blocksSnapshotFallback,
+          values: (values || []).map((v) => ({
+            ...v,
+            ...(v.type === "audio" ? { mediaIds: [] } : {}),
+          })),
+          templateId: selectedTemplate.templateId,
+        };
+      });
+      setAddWithAIGeneratedCards(generatedCards);
+      setAddWithAISelectedIndices(new Set(generatedCards.map((_, i) => i)));
+      setEditingGeneratedCardIndex(null);
+      if (data._devPrompt) {
+        setAddWithAIDevPrompt(data._devPrompt);
+        setShowDevPrompt(true);
+        setPromptModalContent(data._devPrompt);
+        setShowPromptModal(true);
+      }
+      resetImport();
+      setShowAddWithAIModal(true);
+    } catch (err) {
+      console.error("Import Use AI instead:", err);
+      setImportUseAIError(err.message || "AI generation failed");
+    } finally {
+      setImportUseAILoading(false);
+    }
   };
 
   // Add card with AI: build context, call API 1–5 times, create cards, redirect
@@ -617,18 +1440,16 @@ export default function DeckDetailPage() {
     const activeDeckId = pathDeckId || deckId;
     if (!activeDeckId) return;
 
-    const template = templates.find((t) => t.templateId === addWithAITemplateId) || templates[0];
-    if (!template?.blocks?.length) {
-      setAddWithAIError("Select a template with at least one block.");
+    if (!addWithAITemplateId) {
+      setAddWithAIError("Select a template.");
       return;
     }
     const count = Math.min(5, Math.max(1, Number(addWithAICount) || 1));
     setAddWithAIError(null);
-      setAddWithAIDevPrompt(null);
-      setAddWithAISuccess(null);
-      setAddWithAIGenerating(true);
+    setAddWithAIDevPrompt(null);
+    setAddWithAISuccess(null);
+    setAddWithAIGenerating(true);
 
-    // Fetch this deck and only this deck's cards at request time — never use state (can be stale from another deck)
     let currentDeck = null;
     let deckCards = [];
     try {
@@ -641,18 +1462,156 @@ export default function DeckDetailPage() {
       setAddWithAIGenerating(false);
       return;
     }
+
+    const freshTemplate = await getTemplate(user.uid, addWithAITemplateId);
+    const cachedTemplate = templates.find((t) => t.templateId === addWithAITemplateId) || templates[0];
+    console.log("[add-with-ai] template sources", {
+      fresh: freshTemplate
+        ? { blockCount: freshTemplate.blocks?.length, blockTypes: (freshTemplate.blocks || []).map((b) => ({ id: b.blockId?.slice(0, 8), type: b.type, label: b.label })) }
+        : null,
+      cached: cachedTemplate
+        ? { blockCount: cachedTemplate.blocks?.length, blockTypes: (cachedTemplate.blocks || []).map((b) => ({ id: b.blockId?.slice(0, 8), type: b.type, label: b.label })) }
+        : null,
+      match: freshTemplate && cachedTemplate && freshTemplate.blocks?.length === cachedTemplate.blocks?.length,
+    });
+    let template = freshTemplate || cachedTemplate;
+    if (!template?.blocks?.length) {
+      setAddWithAIError("Select a template with at least one block.");
+      setAddWithAIGenerating(false);
+      return;
+    }
+    console.log("[add-with-ai] template used for request", {
+      source: freshTemplate ? "getTemplate" : "cache",
+      templateId: template.templateId,
+      name: template.name,
+      blockCount: template.blocks?.length,
+      blockTypes: (template.blocks || []).map((b) => ({ id: b.blockId?.slice(0, 8), type: b.type, label: b.label })),
+    });
+
+    deckCards = deckCards.filter((c) => c.deckId === activeDeckId);
     if (!currentDeck || currentDeck.isDeleted) {
       setAddWithAIError("This deck was not found.");
       setAddWithAIGenerating(false);
       return;
     }
-    // Ensure every card belongs to this deck (safety filter)
-    deckCards = deckCards.filter((c) => c.deckId === activeDeckId);
 
-    const exampleCards = deckCards.slice(0, 5).map((card) => {
+    const parseBlockConfig = (configJson) => {
+      if (configJson == null || configJson === "") return {};
+      if (typeof configJson === "string") {
+        try {
+          const x = JSON.parse(configJson);
+          return x && typeof x === "object" ? x : {};
+        } catch {
+          return {};
+        }
+      }
+      return typeof configJson === "object" ? configJson : {};
+    };
+    const isQuizBlockType = (type) =>
+      type === "quizSingleSelect" ||
+      type === "quizMultiSelect" ||
+      type === "quizTextAnswer" ||
+      type === 8 ||
+      type === 9 ||
+      type === 10;
+
+    // Include quiz blocks from deck cards if the selected template doesn't have them (so prompt matches deck usage)
+    const templateBlockIds = new Set((template.blocks || []).map((b) => b.blockId));
+    const addedQuizIds = new Set();
+    const extraQuizBlocks = [];
+    for (const card of deckCards) {
+      for (const b of card.blocksSnapshot || []) {
+        if (!isQuizBlockType(b.type)) continue;
+        if (templateBlockIds.has(b.blockId) || addedQuizIds.has(b.blockId)) continue;
+        addedQuizIds.add(b.blockId);
+        extraQuizBlocks.push({
+          blockId: b.blockId,
+          type: b.type,
+          label: b.label || "",
+          required: Boolean(b.required),
+          configJson: b.configJson,
+        });
+      }
+    }
+    if (extraQuizBlocks.length) {
+      console.log("[add-with-ai] merged quiz blocks from deck cards", {
+        extraCount: extraQuizBlocks.length,
+        extraTypes: extraQuizBlocks.map((b) => ({ type: b.type, label: b.label })),
+      });
+      template = {
+        ...template,
+        blocks: [...(template.blocks || []), ...extraQuizBlocks],
+      };
+      console.log("[add-with-ai] template after quiz merge", {
+        blockCount: template.blocks?.length,
+        blockTypes: (template.blocks || []).map((b) => ({ id: b.blockId?.slice(0, 8), type: b.type, label: b.label })),
+      });
+    }
+
+    const refIds = addWithAIReferenceCardIds;
+    const deckCardsForExamples =
+      refIds.size > 0
+        ? deckCards.filter((c) => refIds.has(c.cardId)).slice(0, 10)
+        : [];
+    const serializeQuizForExample = (config, blockType) => {
+      if (!config || typeof config !== "object") return "(empty)";
+      const q = config.question != null ? String(config.question).trim() : "";
+      const questionPart = q || "(no question)";
+      const opts = Array.isArray(config.options) ? config.options : [];
+      const optionsStr = opts.length ? opts.map((x) => String(x ?? "").trim()).filter(Boolean).join(" | ") : "";
+      if (isQuizBlockType(blockType) && (blockType === "quizTextAnswer" || blockType === 10)) {
+        const ans = config.correctAnswer != null ? String(config.correctAnswer).trim() : "";
+        return ans ? `Q: ${questionPart} | correctAnswer: ${ans}` : `Q: ${questionPart}`;
+      }
+      if (opts.length) {
+        const idx = config.correctAnswerIndex ?? config.correctIndex;
+        const indices = config.correctAnswerIndices ?? config.correctIndices;
+        const multi = Array.isArray(indices) && indices.length > 0;
+        if (multi) {
+          return `Q: ${questionPart} | options: ${optionsStr} | correctIndices: [${indices.join(",")}]`;
+        }
+        const i = typeof idx === "number" && idx >= 0 && idx < opts.length ? idx : 0;
+        return `Q: ${questionPart} | options: ${optionsStr} | correctIndex: ${i}`;
+      }
+      return questionPart || "(empty)";
+    };
+
+    const templateBlockIdList = (template.blocks || []).map((b) => b.blockId);
+    const templateBlockById = new Map((template.blocks || []).map((b) => [b.blockId, b]));
+    const mainBlockIdForExample = template.mainBlockId ?? template.blocks?.[0]?.blockId ?? null;
+    const subBlockIdForExample = template.subBlockId ?? template.blocks?.[1]?.blockId ?? null;
+    const exampleCards = deckCardsForExamples.map((card) => {
       const o = {};
-      (card.values || []).forEach((v) => {
-        if (v.text != null && String(v.text).trim()) o[v.blockId] = String(v.text).trim();
+      const getCardText = (blockId) => {
+        const v = (card.values || []).find((x) => x.blockId === blockId);
+        return v?.text != null ? String(v.text).trim() : "";
+      };
+      templateBlockIdList.forEach((blockId) => {
+        const v = (card.values || []).find((x) => x.blockId === blockId);
+        if (v?.text != null && String(v.text).trim()) {
+          o[blockId] = String(v.text).trim();
+        } else {
+          const b = (card.blocksSnapshot || []).find((x) => x.blockId === blockId);
+          const templateBlock = templateBlockById.get(blockId);
+          if (templateBlock && isQuizBlockType(templateBlock.type)) {
+            let quizDisplay = "";
+            if (b && isQuizBlockType(b.type)) {
+              const config = parseBlockConfig(b.configJson);
+              quizDisplay = serializeQuizForExample(config, b.type);
+            }
+            if (!quizDisplay || quizDisplay === "(empty)") {
+              const phrase = mainBlockIdForExample ? getCardText(mainBlockIdForExample) : "";
+              const meaning = subBlockIdForExample ? getCardText(subBlockIdForExample) : "";
+              o[blockId] = phrase || meaning
+                ? `Q: What does "${phrase || "..."}" mean? | options: ${meaning || "correct"} | correctIndex: 0`
+                : "Q: (question) | options: (option A) | (option B) | correctIndex: 0";
+            } else {
+              o[blockId] = quizDisplay;
+            }
+          } else {
+            o[blockId] = "(empty)";
+          }
+        }
       });
       return o;
     });
@@ -664,6 +1623,11 @@ export default function DeckDetailPage() {
             ...new Set(
               deckCards
                 .map((card) => {
+                  const mainBlk = (card.blocksSnapshot || []).find((x) => x.blockId === mainIdForAvoid);
+                  if (mainBlk && isQuizBlockType(mainBlk.type)) {
+                    const q = parseBlockConfig(mainBlk.configJson).question;
+                    return q != null && String(q).trim() ? String(q).trim() : null;
+                  }
                   const v = (card.values || []).find((x) => x.blockId === mainIdForAvoid);
                   const t = v?.text != null ? String(v.text).trim() : "";
                   return t || null;
@@ -672,10 +1636,20 @@ export default function DeckDetailPage() {
             ),
           ]
         : [];
+    console.log("[add-with-ai] examples & request", {
+      referenceCardIdsCount: refIds.size,
+      deckCardsForExamplesCount: deckCardsForExamples.length,
+      exampleCardsCount: exampleCards.length,
+      templateBlockIdsCount: templateBlockIdList.length,
+      firstExampleKeys: exampleCards[0] ? Object.keys(exampleCards[0]).length : 0,
+      avoidMainPhrasesCount: avoidMainPhrases.length,
+    });
     const templateBlocks = template.blocks.map((b) => ({
       blockId: b.blockId,
       type: b.type,
       label: b.label || "",
+      required: Boolean(b.required),
+      configJson: b.configJson,
     }));
     const mainBlock = template.mainBlockId ? template.blocks.find((b) => b.blockId === template.mainBlockId) : null;
     const subBlock = template.subBlockId ? template.blocks.find((b) => b.blockId === template.subBlockId) : null;
@@ -686,6 +1660,13 @@ export default function DeckDetailPage() {
       required: b.required || false,
       configJson: b.configJson,
     }));
+    console.log("[add-with-ai] sending to API", {
+      templateBlocksCount: templateBlocks.length,
+      templateBlockTypes: templateBlocks.map((b) => ({ id: b.blockId?.slice(0, 8), type: b.type, label: b.label })),
+      count,
+      mainBlockId: template.mainBlockId ?? null,
+      subBlockId: template.subBlockId ?? null,
+    });
     try {
       setAddWithAIProgress(count > 1 ? `Generating ${count} different cards...` : "Generating...");
       const headers = { "Content-Type": "application/json" };
@@ -701,6 +1682,8 @@ export default function DeckDetailPage() {
           deckDescription: currentDeck.description || "",
           templateBlocks,
           exampleCards,
+          exampleCardsLabel:
+            refIds.size > 0 ? "Reference cards (selected for style examples):" : "Example cards from this deck:",
           count,
           mainBlockId: template.mainBlockId ?? null,
           subBlockId: template.subBlockId ?? null,
@@ -713,19 +1696,34 @@ export default function DeckDetailPage() {
       if (!res.ok) {
         throw new Error(data.error || data.message || "Generation failed");
       }
+      const rawCards = data.cards ?? (data.values ? [{ values: data.values, blocksSnapshot }] : []);
+      console.log("[add-with-ai] API response", {
+        ok: res.ok,
+        cardsCount: rawCards?.length ?? 0,
+        firstCardValuesCount: rawCards[0]?.values?.length ?? rawCards[0]?.length ?? 0,
+        firstCardBlocksSnapshotCount: rawCards[0]?.blocksSnapshot?.length ?? 0,
+      });
       if (data._devPrompt) {
         setAddWithAIDevPrompt(data._devPrompt);
         setShowDevPrompt(true);
+        setPromptModalContent(data._devPrompt);
+        setShowPromptModal(true);
       }
-      const rawCards = data.cards ?? (data.values ? [data.values] : []);
-      const generatedCards = rawCards.map((values) => ({
-        blocksSnapshot,
-        values: (values || []).map((v) => ({
-          ...v,
-          ...(v.type === "audio" ? { mediaIds: [] } : {}),
-        })),
-        templateId: template.templateId,
-      }));
+      const generatedCards = rawCards.map((item) => {
+        const values = Array.isArray(item) ? item : item?.values ?? [];
+        const snap =
+          item && !Array.isArray(item) && Array.isArray(item.blocksSnapshot) && item.blocksSnapshot.length
+            ? item.blocksSnapshot
+            : blocksSnapshot;
+        return {
+          blocksSnapshot: snap,
+          values: (values || []).map((v) => ({
+            ...v,
+            ...(v.type === "audio" && (!v.mediaIds || !v.mediaIds.length) ? { mediaIds: [] } : {}),
+          })),
+          templateId: template.templateId,
+        };
+      });
       setAddWithAIProgress(null);
       setAddWithAIGeneratedCards(generatedCards);
       setAddWithAISelectedIndices(new Set(generatedCards.map((_, i) => i)));
@@ -746,6 +1744,211 @@ export default function DeckDetailPage() {
     setAddWithAISuccess(null);
     setAddWithAIGeneratedCards([]);
     setAddWithAISelectedIndices(new Set());
+    setAddWithAIReferenceCardIds(new Set());
+    setEditingGeneratedCardIndex(null);
+    setAddWithAIPreviewLoading(false);
+    setShowPromptModal(false);
+    setPromptModalContent(null);
+  };
+
+  // Build prompt client-side for preview (dev only). Uses same context as handleAddCardWithAI.
+  const handlePreviewAddWithAIPrompt = async () => {
+    if (!user || !isDev) return;
+    const pathDeckId = typeof window !== "undefined"
+      ? (window.location.pathname.match(/\/deck\/([^/]+)/)?.[1] ?? null)
+      : null;
+    const activeDeckId = pathDeckId || deckId;
+    if (!activeDeckId || !addWithAITemplateId) {
+      setAddWithAIError("Select a deck and template.");
+      return;
+    }
+    setAddWithAIError(null);
+    setAddWithAIPreviewLoading(true);
+    try {
+      let [currentDeck, deckCards] = await Promise.all([
+        getDeck(user.uid, activeDeckId),
+        getCards(user.uid, activeDeckId),
+      ]);
+      deckCards = (deckCards || []).filter((c) => c.deckId === activeDeckId);
+      const freshTemplate = await getTemplate(user.uid, addWithAITemplateId);
+      const cachedTemplate = templates.find((t) => t.templateId === addWithAITemplateId) || templates[0];
+      let template = freshTemplate || cachedTemplate;
+      if (!template?.blocks?.length) {
+        setAddWithAIError("Template has no blocks.");
+        setAddWithAIPreviewLoading(false);
+        return;
+      }
+      const isQuizBlockType = (type) =>
+        type === "quizSingleSelect" || type === "quizMultiSelect" || type === "quizTextAnswer" || type === 8 || type === 9 || type === 10;
+      const templateBlockIds = new Set((template.blocks || []).map((b) => b.blockId));
+      const addedQuizIds = new Set();
+      const extraQuizBlocks = [];
+      for (const card of deckCards) {
+        for (const b of card.blocksSnapshot || []) {
+          if (!isQuizBlockType(b.type)) continue;
+          if (templateBlockIds.has(b.blockId) || addedQuizIds.has(b.blockId)) continue;
+          addedQuizIds.add(b.blockId);
+          extraQuizBlocks.push({ blockId: b.blockId, type: b.type, label: b.label || "", required: Boolean(b.required), configJson: b.configJson });
+        }
+      }
+      if (extraQuizBlocks.length) {
+        template = { ...template, blocks: [...(template.blocks || []), ...extraQuizBlocks] };
+      }
+      const refIds = addWithAIReferenceCardIds;
+      const deckCardsForExamples = refIds.size > 0
+        ? deckCards.filter((c) => refIds.has(c.cardId)).slice(0, 10)
+        : [];
+      const templateBlockIdList = (template.blocks || []).map((b) => b.blockId);
+      const parseBlockConfig = (configJson) => {
+        if (configJson == null || configJson === "") return {};
+        if (typeof configJson === "string") {
+          try {
+            const x = JSON.parse(configJson);
+            return x && typeof x === "object" ? x : {};
+          } catch { return {}; }
+        }
+        return typeof configJson === "object" ? configJson : {};
+      };
+      const serializeQuizForExamplePreview = (config, blockType) => {
+        if (!config || typeof config !== "object") return "(empty)";
+        const q = config.question != null ? String(config.question).trim() : "";
+        const questionPart = q || "(no question)";
+        const opts = Array.isArray(config.options) ? config.options : [];
+        const optionsStr = opts.length ? opts.map((x) => String(x ?? "").trim()).filter(Boolean).join(" | ") : "";
+        if (blockType === "quizTextAnswer" || blockType === 10) {
+          const ans = config.correctAnswer != null ? String(config.correctAnswer).trim() : "";
+          return ans ? `Q: ${questionPart} | correctAnswer: ${ans}` : `Q: ${questionPart}`;
+        }
+        if (opts.length) {
+          const idx = config.correctAnswerIndex ?? config.correctIndex;
+          const indices = config.correctAnswerIndices ?? config.correctIndices;
+          const multi = Array.isArray(indices) && indices.length > 0;
+          if (multi) {
+            return `Q: ${questionPart} | options: ${optionsStr} | correctIndices: [${indices.join(",")}]`;
+          }
+          const i = typeof idx === "number" && idx >= 0 && idx < opts.length ? idx : 0;
+          return `Q: ${questionPart} | options: ${optionsStr} | correctIndex: ${i}`;
+        }
+        return questionPart || "(empty)";
+      };
+      const templateBlockByIdPreview = new Map((template.blocks || []).map((b) => [b.blockId, b]));
+      const mainBlockIdForExamplePreview = template.mainBlockId ?? template.blocks?.[0]?.blockId ?? null;
+      const subBlockIdForExamplePreview = template.subBlockId ?? template.blocks?.[1]?.blockId ?? null;
+      const exampleCards = deckCardsForExamples.map((card) => {
+        const o = {};
+        const getCardTextPreview = (bid) => {
+          const val = (card.values || []).find((x) => x.blockId === bid);
+          return val?.text != null ? String(val.text).trim() : "";
+        };
+        templateBlockIdList.forEach((blockId) => {
+          const v = (card.values || []).find((x) => x.blockId === blockId);
+          if (v?.text != null && String(v.text).trim()) {
+            o[blockId] = String(v.text).trim();
+          } else {
+            const b = (card.blocksSnapshot || []).find((x) => x.blockId === blockId);
+            const templateBlock = templateBlockByIdPreview.get(blockId);
+            if (templateBlock && isQuizBlockType(templateBlock.type)) {
+              let quizDisplay = "";
+              if (b && isQuizBlockType(b.type)) {
+                const config = parseBlockConfig(b.configJson);
+                quizDisplay = serializeQuizForExamplePreview(config, b.type);
+              }
+              if (!quizDisplay || quizDisplay === "(empty)") {
+                const phrase = mainBlockIdForExamplePreview ? getCardTextPreview(mainBlockIdForExamplePreview) : "";
+                const meaning = subBlockIdForExamplePreview ? getCardTextPreview(subBlockIdForExamplePreview) : "";
+                o[blockId] = phrase || meaning
+                  ? `Q: What does "${phrase || "..."}" mean? | options: ${meaning || "correct"} | correctIndex: 0`
+                  : "Q: (question) | options: (option A) | (option B) | correctIndex: 0";
+              } else {
+                o[blockId] = quizDisplay;
+              }
+            } else {
+              o[blockId] = "(empty)";
+            }
+          }
+        });
+        return o;
+      });
+      const mainIdForAvoid = template.mainBlockId ?? template.blocks?.[0]?.blockId ?? null;
+      const avoidMainPhrases = mainIdForAvoid && deckCards.length > 0
+        ? [...new Set(deckCards.map((card) => {
+            const mainBlk = (card.blocksSnapshot || []).find((x) => x.blockId === mainIdForAvoid);
+            if (mainBlk && isQuizBlockType(mainBlk.type)) {
+              const q = parseBlockConfig(mainBlk.configJson).question;
+              return q != null && String(q).trim() ? String(q).trim() : null;
+            }
+            const v = (card.values || []).find((x) => x.blockId === mainIdForAvoid);
+            return (v?.text != null ? String(v.text).trim() : "") || null;
+          }).filter(Boolean))]
+        : [];
+      const templateBlocksForApi = template.blocks.map((b) => ({
+        blockId: b.blockId,
+        type: b.type,
+        label: b.label || "",
+        required: Boolean(b.required),
+        configJson: b.configJson,
+      }));
+      const normalizeBlockType = (t) => {
+        if (t == null) return "text";
+        if (typeof t === "number" && BlockTypeNames[t] != null) return BlockTypeNames[t];
+        if (typeof t === "string" && /^\d+$/.test(t)) return BlockTypeNames[parseInt(t, 10)] ?? t;
+        return String(t);
+      };
+      const promptBlocks = templateBlocksForApi.map((b) => ({
+        blockId: b.blockId,
+        type: normalizeBlockType(b.type),
+        label: b.label || "",
+      }));
+      const mainBlock = template.mainBlockId ? template.blocks.find((b) => b.blockId === template.mainBlockId) : null;
+      const subBlock = template.subBlockId ? template.blocks.find((b) => b.blockId === template.subBlockId) : null;
+      const count = Math.min(5, Math.max(1, Number(addWithAICount) || 1));
+      const exampleCardsLabel = refIds.size > 0
+        ? "Reference cards (selected for style examples):"
+        : "Example cards from this deck:";
+      const { system, user: userMsg } = buildCardPrompt({
+        deckTitle: (currentDeck && currentDeck.title) || "",
+        deckDescription: (currentDeck && currentDeck.description) || "",
+        templateBlocks: promptBlocks,
+        exampleCards,
+        count,
+        mainBlockId: template.mainBlockId ?? null,
+        subBlockId: template.subBlockId ?? null,
+        mainBlockLabel: mainBlock?.label ?? null,
+        subBlockLabel: subBlock?.label ?? null,
+        avoidMainPhrases,
+        exampleCardsLabel,
+      });
+      setAddWithAIDevPrompt({ system, user: userMsg });
+      setShowDevPrompt(true);
+      setPromptModalContent({ system, user: userMsg });
+      setShowPromptModal(true);
+    } catch (err) {
+      console.error("Preview prompt:", err);
+      setAddWithAIError(err.message || "Preview failed");
+    } finally {
+      setAddWithAIPreviewLoading(false);
+    }
+  };
+
+  const handleCopyPromptModal = () => {
+    if (!promptModalContent) return;
+    const text = `System:\n\n${promptModalContent.system}\n\nUser:\n\n${promptModalContent.user}`;
+    navigator.clipboard.writeText(text).then(() => { /* copied */ });
+  };
+
+  const updateGeneratedCardValue = (cardIndex, valueIndex, text) => {
+    setAddWithAIGeneratedCards((prev) => {
+      const next = prev.map((card, ci) => {
+        if (ci !== cardIndex) return card;
+        return {
+          ...card,
+          values: (card.values || []).map((v, vi) =>
+            vi === valueIndex ? { ...v, text: text ?? "" } : v
+          ),
+        };
+      });
+      return next;
+    });
   };
 
   const handleFileToAISubmit = async () => {
@@ -757,53 +1960,78 @@ export default function DeckDetailPage() {
     }
     setFileToAIError(null);
     setFileToAILoading(true);
+    console.log("[file-to-ai] submit start", { fileName: fileToAIFile.name, templateId: fileToAITemplateId, deckId, maxCards: fileToAIMaxCards });
     try {
+      const headers = {};
+      if (isProduction && user) {
+        const token = await user.getIdToken();
+        if (token) headers.Authorization = `Bearer ${token}`;
+      }
       const formData = new FormData();
       formData.append("file", fileToAIFile);
       formData.append("deckId", deckId);
       formData.append("templateId", template.templateId);
       formData.append("uid", user.uid);
       formData.append("maxCards", String(fileToAIMaxCards));
-      const headers = {};
-      if (isProduction && user) {
-        const token = await user.getIdToken();
-        if (token) headers.Authorization = `Bearer ${token}`;
-      }
       const res = await fetch("/api/cards/file-to-ai", {
         method: "POST",
         headers,
         body: formData,
       });
       const data = await res.json().catch(() => ({}));
+      console.log("[file-to-ai] response", { ok: res.ok, cardsCount: data.cards?.length, hasDevPrompt: !!data._devPrompt, error: data.error });
       if (!res.ok) {
         throw new Error(data.error || data.message || "Import failed");
       }
       const rawCards = data.cards ?? [];
-      const blocksSnapshot = template.blocks.map((b) => ({
+      console.log("[file-to-ai] rawCards", { length: rawCards.length, first: rawCards[0] ? { keys: Object.keys(rawCards[0]), valuesLen: rawCards[0].values?.length, blocksSnapshotLen: rawCards[0].blocksSnapshot?.length } : null });
+      const blocksSnapshotFallback = template.blocks.map((b) => ({
         blockId: b.blockId,
         type: b.type,
         label: b.label || "",
         required: b.required || false,
         configJson: b.configJson,
       }));
-      const generatedCards = rawCards.map((values) => ({
-        blocksSnapshot,
-        values: (values || []).map((v) => ({
-          ...v,
-          ...(v.type === "audio" ? { mediaIds: [] } : {}),
-        })),
-        templateId: template.templateId,
-      }));
+      const generatedCards = rawCards.map((c) => {
+        if (c && Array.isArray(c.values) && c.blocksSnapshot) {
+          return {
+            templateId: c.templateId || template.templateId,
+            blocksSnapshot: c.blocksSnapshot,
+            values: c.values.map((v) => ({
+              ...v,
+              ...(v.type === "audio" && (!v.mediaIds || !v.mediaIds.length)
+                ? { mediaIds: [] }
+                : {}),
+            })),
+          };
+        }
+        const values = Array.isArray(c) ? c : c?.values || [];
+        return {
+          blocksSnapshot: blocksSnapshotFallback,
+          values: values.map((v) => ({
+            ...v,
+            ...(v.type === "audio" ? { mediaIds: [] } : {}),
+          })),
+          templateId: template.templateId,
+        };
+      });
+      console.log("[file-to-ai] generatedCards", { length: generatedCards.length, first: generatedCards[0] ? { templateId: generatedCards[0].templateId, valuesLen: generatedCards[0].values?.length, blocksSnapshotLen: generatedCards[0].blocksSnapshot?.length } : null });
+      setFileToAISuccessResult({
+        cards: generatedCards,
+        _devPrompt: data._devPrompt || null,
+      });
+      setFileToAIDevPromptOpen(!!data._devPrompt);
+      setAddWithAITemplateId(template.templateId);
+      setAddWithAIGeneratedCards(generatedCards);
+      setAddWithAISelectedIndices(new Set(generatedCards.map((_, i) => i)));
+      setEditingGeneratedCardIndex(null);
       if (data._devPrompt) {
         setAddWithAIDevPrompt(data._devPrompt);
         setShowDevPrompt(true);
+        setPromptModalContent(data._devPrompt);
       }
-      setAddWithAIGeneratedCards(generatedCards);
-      setAddWithAISelectedIndices(new Set(generatedCards.map((_, i) => i)));
-      setShowFileToAIModal(false);
       setFileToAIFile(null);
       if (fileToAIFileInputRef.current) fileToAIFileInputRef.current.value = "";
-      setShowAddWithAIModal(true);
     } catch (err) {
       console.error("File to AI:", err);
       setFileToAIError(err.message || "Import failed");
@@ -816,8 +2044,144 @@ export default function DeckDetailPage() {
     setShowFileToAIModal(false);
     setFileToAIFile(null);
     setFileToAIError(null);
+    setFileToAIDragging(false);
+    setFileToAISuccessResult(null);
+    setFileToAIDevPromptOpen(true);
+    setFileToAIPreviewPrompt(null);
+    setFileToAIPreviewCardIndex(null);
     if (fileToAIFileInputRef.current) fileToAIFileInputRef.current.value = "";
   };
+
+  const handleFileToAIPreviewPrompt = async () => {
+    if (!user || !deckId || !fileToAIFile || !fileToAITemplateId) return;
+    const template = templates.find((t) => t.templateId === fileToAITemplateId) || templates[0];
+    if (!template?.blocks?.length) {
+      setFileToAIError("Select a template with at least one block.");
+      return;
+    }
+    setFileToAIError(null);
+    setFileToAIPreviewLoading(true);
+    setFileToAIPreviewPrompt(null);
+    console.log("[file-to-ai preview] start", { fileName: fileToAIFile.name, type: fileToAIFile.type, templateId: fileToAITemplateId, deckId });
+    try {
+      const headers = {};
+      if (isProduction && user) {
+        const token = await user.getIdToken();
+        if (token) headers.Authorization = `Bearer ${token}`;
+      }
+      const formData = new FormData();
+      formData.append("file", fileToAIFile);
+      formData.append("deckId", deckId);
+      formData.append("templateId", template.templateId);
+      formData.append("uid", user.uid);
+      formData.append("maxCards", String(fileToAIMaxCards));
+      formData.append("preview", "true");
+      const res = await fetch("/api/cards/file-to-ai", {
+        method: "POST",
+        headers,
+        body: formData,
+      });
+      const data = await res.json().catch(() => ({}));
+      console.log("[file-to-ai preview] response", { status: res.status, ok: res.ok, hasDevPrompt: !!data._devPrompt, error: data.error });
+      if (!res.ok) {
+        throw new Error(data.error || data.message || "Preview failed");
+      }
+      if (data._devPrompt) {
+        setFileToAIPreviewPrompt(data._devPrompt);
+        setFileToAIPreviewPromptOpen(true);
+        setPromptModalContent(data._devPrompt);
+        setShowPromptModal(true);
+        console.log("[file-to-ai preview] prompt set", { systemLen: data._devPrompt.system?.length, userLen: data._devPrompt.user?.length });
+      } else {
+        setFileToAIError("Preview did not return a prompt. Check server is running with NODE_ENV=development.");
+      }
+    } catch (err) {
+      console.error("File to AI preview:", err);
+      setFileToAIError(err.message || "Preview failed");
+    } finally {
+      setFileToAIPreviewLoading(false);
+    }
+  };
+
+  const handleFileToAIAddToDeck = () => {
+    if (!fileToAISuccessResult?.cards?.length) return;
+    setShowFileToAIModal(false);
+    setFileToAISuccessResult(null);
+    setShowAddWithAIModal(true);
+  };
+
+  const handleFileToAIDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!fileToAILoading) setFileToAIDragging(true);
+  };
+
+  const handleFileToAIDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setFileToAIDragging(false);
+  };
+
+  const handleFileToAIDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setFileToAIDragging(false);
+    if (fileToAILoading) return;
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    if (!isFileToAIAccepted(file)) {
+      setFileToAIError(
+        "Use PDF, DOCX, or image (PNG, JPEG, WebP). For CSV/Excel/Anki use Import from table."
+      );
+      return;
+    }
+    setFileToAIError(null);
+    setFileToAIFile(file);
+    if (fileToAIFileInputRef.current) fileToAIFileInputRef.current.value = "";
+  };
+
+  // Clear prompt preview when file or template changes (form view)
+  useEffect(() => {
+    setFileToAIPreviewPrompt(null);
+    setFileToAIPreviewPromptOpen(false);
+  }, [fileToAIFile, fileToAITemplateId]);
+
+  // Scroll prompt block into view when preview loads
+  useEffect(() => {
+    if (!fileToAIPreviewPrompt) return;
+    const t = setTimeout(() => {
+      fileToAIPreviewPromptBlockRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
+    return () => clearTimeout(t);
+  }, [fileToAIPreviewPrompt]);
+
+  // Paste image into Generate from doc/img (when modal is open)
+  useEffect(() => {
+    if (!showFileToAIModal || fileToAILoading) return;
+    const onPaste = (e) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type && item.type.startsWith("image/")) {
+          e.preventDefault();
+          const blob = item.getAsFile();
+          if (!blob) return;
+          const ext = item.type === "image/png" ? "png" : item.type === "image/webp" ? "webp" : "jpg";
+          const file = blob.name ? blob : new File([blob], `pasted-image.${ext}`, { type: item.type });
+          if (!isFileToAIAccepted(file)) {
+            setFileToAIError("Use PNG, JPEG, or WebP for paste.");
+            return;
+          }
+          setFileToAIError(null);
+          setFileToAIFile(file);
+          if (fileToAIFileInputRef.current) fileToAIFileInputRef.current.value = "";
+          return;
+        }
+      }
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  }, [showFileToAIModal, fileToAILoading]);
 
   const handleCopyPrompt = () => {
     if (!addWithAIDevPrompt) return;
@@ -825,9 +2189,35 @@ export default function DeckDetailPage() {
     navigator.clipboard.writeText(text).catch(() => {});
   };
 
-  const getGeneratedCardPreview = (values) => {
+  const getGeneratedCardPreview = (card) => {
+    const values = card?.values ?? card;
+    const blocks = card?.blocksSnapshot;
     const first = (values || []).find((v) => v.text != null && String(v.text).trim());
-    return first ? String(first.text).trim().substring(0, 80) : "Empty card";
+    if (first) return String(first.text).trim().substring(0, 80);
+    if (blocks?.length) {
+      for (const b of blocks) {
+        const t = b.type;
+        const isQ =
+          t === "quizSingleSelect" ||
+          t === "quizMultiSelect" ||
+          t === "quizTextAnswer" ||
+          t === 8 ||
+          t === 9 ||
+          t === 10;
+        if (!isQ) continue;
+        let cfg = b.configJson;
+        if (typeof cfg === "string") {
+          try {
+            cfg = JSON.parse(cfg || "{}");
+          } catch {
+            cfg = {};
+          }
+        }
+        const q = cfg?.question;
+        if (q != null && String(q).trim()) return String(q).trim().substring(0, 80);
+      }
+    }
+    return "Empty card";
   };
 
   const handleAddSelectedCardsToDeck = async () => {
@@ -844,15 +2234,49 @@ export default function DeckDetailPage() {
 
     const isAudioBlock = (b) => b.type === "audio" || b.type === 7 || b.type === "7";
 
+    const parseCfg = (configJson) => {
+      if (configJson == null || configJson === "") return {};
+      if (typeof configJson === "string") {
+        try {
+          const x = JSON.parse(configJson);
+          return x && typeof x === "object" ? x : {};
+        } catch {
+          return {};
+        }
+      }
+      return typeof configJson === "object" ? configJson : {};
+    };
+    const isQuizT = (type) =>
+      type === "quizSingleSelect" ||
+      type === "quizMultiSelect" ||
+      type === "quizTextAnswer" ||
+      type === 8 ||
+      type === 9 ||
+      type === 10;
     const getContentKey = (item) => {
       const templateForCard = templates.find((t) => t.templateId === item.templateId);
       const mainId = templateForCard?.mainBlockId ?? null;
       const subId = templateForCard?.subBlockId ?? null;
       const values = item.values || [];
-      const mainVal = mainId ? values.find((v) => v.blockId === mainId) : null;
-      const subVal = subId ? values.find((v) => v.blockId === subId) : null;
-      const mainText = (mainVal?.text != null ? String(mainVal.text).trim() : "") || "";
-      const subText = (subVal?.text != null ? String(subVal.text).trim() : "") || "";
+      const snap = item.blocksSnapshot || [];
+      let mainText = "";
+      let subText = "";
+      if (mainId) {
+        const mb = snap.find((b) => b.blockId === mainId);
+        if (mb && isQuizT(mb.type)) mainText = String(parseCfg(mb.configJson).question || "").trim();
+        else {
+          const mainVal = values.find((v) => v.blockId === mainId);
+          mainText = (mainVal?.text != null ? String(mainVal.text).trim() : "") || "";
+        }
+      }
+      if (subId) {
+        const sb = snap.find((b) => b.blockId === subId);
+        if (sb && isQuizT(sb.type)) subText = String(parseCfg(sb.configJson).question || "").trim();
+        else {
+          const subVal = values.find((v) => v.blockId === subId);
+          subText = (subVal?.text != null ? String(subVal.text).trim() : "") || "";
+        }
+      }
       return `${mainText}\n${subText}`;
     };
 
@@ -882,8 +2306,29 @@ export default function DeckDetailPage() {
           const mainBlockId = templateForCard?.mainBlockId || null;
           let mainText = "";
           if (mainBlockId) {
-            const mainVal = list.find((x) => x.blockId === mainBlockId);
-            mainText = (mainVal?.text != null ? String(mainVal.text) : "").trim();
+            const mb = item.blocksSnapshot?.find((b) => b.blockId === mainBlockId);
+            if (
+              mb &&
+              (mb.type === "quizSingleSelect" ||
+                mb.type === "quizMultiSelect" ||
+                mb.type === "quizTextAnswer" ||
+                mb.type === 8 ||
+                mb.type === 9 ||
+                mb.type === 10)
+            ) {
+              let cfg = mb.configJson;
+              if (typeof cfg === "string") {
+                try {
+                  cfg = JSON.parse(cfg || "{}");
+                } catch {
+                  cfg = {};
+                }
+              }
+              mainText = String(cfg?.question || "").trim();
+            } else {
+              const mainVal = list.find((x) => x.blockId === mainBlockId);
+              mainText = (mainVal?.text != null ? String(mainVal.text) : "").trim();
+            }
           }
           if (!mainText) {
             const firstWithText = list.find((x) => String(x?.text || "").trim());
@@ -1017,6 +2462,36 @@ export default function DeckDetailPage() {
   const cardHasQuiz = (card) =>
     (card.blocksSnapshot || []).some((b) => isQuizBlock(b));
 
+  // Card incomplete (validation errors) for carousel warning icon
+  const normalizeBlockTypeForValidation = (type) => {
+    if (type == null) return type;
+    const num = typeof type === "number" ? type : /^\d+$/.test(String(type)) ? Number(type) : NaN;
+    if (!Number.isNaN(num) && BlockTypeNames[num] != null) return BlockTypeNames[num];
+    return type;
+  };
+  const resolveBlockTypeForValidation = (block) => normalizeBlockTypeForValidation(block?.type);
+  const getBlockConfigForValidation = (block) => {
+    const raw = block?.configJson ?? block?.config_json;
+    if (raw == null) return null;
+    if (typeof raw === "object") return raw;
+    try {
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === "object" ? parsed : null;
+    } catch {
+      return null;
+    }
+  };
+  const isCardIncomplete = (card) => {
+    const blocks = card?.blocksSnapshot || [];
+    if (blocks.length === 0) return false;
+    const valuesObj = Object.fromEntries((card.values || []).map((v) => [v.blockId, v]));
+    const result = getBlockValidationErrors(blocks, valuesObj, {
+      resolveBlockType: resolveBlockTypeForValidation,
+      getBlockConfig: getBlockConfigForValidation,
+    });
+    return !result.valid;
+  };
+
   // Filter cards by search
   const filteredCards = cards.filter((card) => {
     if (!searchQuery) return true;
@@ -1038,6 +2513,7 @@ export default function DeckDetailPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
+      <audio ref={deckAudioRef} className="hidden" />
       {/* Header */}
       <div className="mb-8">
         <Link
@@ -1103,10 +2579,11 @@ export default function DeckDetailPage() {
             </Link>
             <button
               onClick={() => setShowImportModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-amber-600/90 hover:bg-amber-500 text-white rounded-lg transition-colors font-medium"
+              title="CSV, Excel, or Anki — map columns to your template (AI for quiz/audio)"
             >
-              <Upload className="w-5 h-5" />
-              <span className="hidden sm:inline">Import</span>
+              <Table2 className="w-5 h-5" />
+              <span className="hidden sm:inline">Import from table</span>
             </button>
             <div className="relative" ref={exportMenuRef}>
               <button
@@ -1133,10 +2610,22 @@ export default function DeckDetailPage() {
                   <button
                     type="button"
                     onClick={handleExportXLSX}
-                    className="flex items-center gap-2 w-full px-4 py-2 text-left text-white hover:bg-white/10 text-sm"
+                    disabled={isProduction && !aiEntitled}
+                    title={isProduction && !aiEntitled ? "Pro subscription required" : undefined}
+                    className="flex items-center gap-2 w-full px-4 py-2 text-left text-white hover:bg-white/10 text-sm disabled:opacity-50"
                   >
                     <FileSpreadsheet className="w-4 h-4" />
                     XLSX
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleExportAPKG}
+                    disabled={exportApkgLoading || (isProduction && !aiEntitled)}
+                    title={isProduction && !aiEntitled ? "Pro subscription required" : undefined}
+                    className="flex items-center gap-2 w-full px-4 py-2 text-left text-white hover:bg-white/10 text-sm disabled:opacity-50"
+                  >
+                    <FileSpreadsheet className="w-4 h-4" />
+                    {exportApkgLoading ? "Exporting…" : "Anki (.apkg)"}
                   </button>
                 </div>
               )}
@@ -1148,42 +2637,57 @@ export default function DeckDetailPage() {
                 title="Upgrade to Pro to use AI"
               >
                 <Sparkles className="w-5 h-5" />
-                Add Card with AI (Pro)
+                Create card with AI (Pro)
               </Link>
             ) : (
               <button
                 type="button"
                 disabled={cards.length === 0}
                 title={cards.length === 0 ? "Add at least one card manually so AI can use them as examples" : undefined}
-                onClick={() => {
+                onClick={async () => {
                   setAddWithAIError(null);
                   setAddWithAIDevPrompt(null);
                   setAddWithAISuccess(null);
                   setAddWithAIGeneratedCards([]);
                   setAddWithAISelectedIndices(new Set());
-                  setAddWithAITemplateId(effectiveDefaultTemplateId || templates[0]?.templateId || "");
+                  let list = templates;
+                  if (user) {
+                    try {
+                      list = await getTemplates(user.uid);
+                      setTemplates(list);
+                    } catch {
+                      /* keep cached templates */
+                    }
+                  }
+                  setAddWithAITemplateId(
+                    effectiveDefaultTemplateId || list[0]?.templateId || "",
+                  );
                   setShowAddWithAIModal(true);
                 }}
                 className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition-colors font-medium disabled:opacity-50 disabled:pointer-events-none"
               >
                 <Sparkles className="w-5 h-5" />
-                Add Card with AI
+                Create card with AI
               </button>
             )}
             <button
               type="button"
               disabled={!aiEntitled}
-              title={!aiEntitled ? "Pro required for AI features" : "Import PDF, Word, or Excel and generate cards with AI"}
+              title={
+                !aiEntitled
+                  ? "Pro required for AI features"
+                  : "Upload a document or image — AI builds draft cards (PDF, Word, or image)"
+              }
               onClick={() => {
                 setFileToAIError(null);
                 setFileToAIFile(null);
                 setFileToAITemplateId(effectiveDefaultTemplateId || templates[0]?.templateId || "");
                 setShowFileToAIModal(true);
               }}
-              className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors font-medium disabled:opacity-50 disabled:pointer-events-none"
+              className="flex items-center gap-2 px-4 py-2 bg-amber-600/90 hover:bg-amber-500 text-white rounded-lg transition-colors font-medium disabled:opacity-50 disabled:pointer-events-none"
             >
-              <FileSpreadsheet className="w-5 h-5" />
-              Import from file
+              <FileText className="w-5 h-5" />
+              Generate from doc/img
             </button>
             <button
               type="button"
@@ -1230,10 +2734,10 @@ export default function DeckDetailPage() {
             <div className="flex items-center justify-center gap-3 flex-wrap">
               <button
                 onClick={() => setShowImportModal(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600/90 hover:bg-amber-500 text-white rounded-lg transition-colors font-medium"
               >
-                <Upload className="w-5 h-5" />
-                Import Cards
+                <Table2 className="w-5 h-5" />
+                Import from table
               </button>
               {aiEntitled && (
                 <button
@@ -1244,10 +2748,10 @@ export default function DeckDetailPage() {
                     setFileToAITemplateId(effectiveDefaultTemplateId || templates[0]?.templateId || "");
                     setShowFileToAIModal(true);
                   }}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600/90 hover:bg-amber-500 text-white rounded-lg transition-colors font-medium"
                 >
-                  <FileSpreadsheet className="w-5 h-5" />
-                  Import from file (AI)
+                  <FileText className="w-5 h-5" />
+                  Generate from doc/img
                 </button>
               )}
               <button
@@ -1277,31 +2781,75 @@ export default function DeckDetailPage() {
                 href={`/dashboard/deck/${deckId}/card/${card.cardId}`}
                 className="block p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-colors"
               >
-                <div className="flex items-start gap-2">
-                  <div className="flex-1 min-w-0">
+                <div className="flex gap-3 items-stretch min-h-[3rem]">
+                  <div className="flex-1 min-w-0 flex flex-col justify-center">
                     {(() => {
                       const preview = getCardPreview(card);
+                      const incomplete = isCardIncomplete(card);
+                      const hasQuiz = cardHasQuiz(card);
                       return (
                         <>
-                          <p className="text-white font-medium line-clamp-2">
-                            {preview.main}
+                          <p className="text-white font-medium flex items-center gap-1.5">
+                            {incomplete && (
+                              <AlertCircle
+                                className="w-4 h-4 shrink-0 text-amber-400"
+                                aria-hidden
+                                title="Card has validation errors"
+                              />
+                            )}
+                            {hasQuiz && !incomplete && (
+                              <HelpCircle
+                                className="w-4 h-4 shrink-0 text-white/50"
+                                aria-hidden
+                                title="Card has quiz"
+                              />
+                            )}
+                            <span className="min-w-0 line-clamp-2">{preview.main}</span>
                           </p>
                           {preview.sub && (
                             <p className="text-white/50 text-sm line-clamp-2 mt-1">
                               {preview.sub}
                             </p>
                           )}
+                          <p className="text-white/30 text-xs mt-2">
+                            {new Date(card.createdAt).toLocaleDateString()}
+                          </p>
                         </>
                       );
                     })()}
                   </div>
-                  {cardHasQuiz(card) && (
-                    <CircleDot className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" title="Quiz" />
-                  )}
+                  <div className="flex gap-2 shrink-0 items-stretch">
+                    {cardMediaCache[card.cardId]?.imageUrl && (
+                      <div className="relative w-16 min-w-[4rem] min-h-[3rem] rounded-lg overflow-hidden bg-white/5 flex-shrink-0">
+                        <Image
+                          src={cardMediaCache[card.cardId].imageUrl}
+                          alt=""
+                          fill
+                          className="object-cover"
+                          sizes="64px"
+                        />
+                      </div>
+                    )}
+                    {cardMediaCache[card.cardId]?.audioUrl && (
+                      <div className="flex items-center gap-2 shrink-0 self-center">
+                        <button
+                          type="button"
+                          onClick={(e) => handleDeckCardAudioClick(e, card.cardId, cardMediaCache[card.cardId].audioUrl)}
+                          className={`flex items-center justify-center w-10 h-10 rounded-lg flex-shrink-0 transition-colors ${
+                            playingCardId === card.cardId ? "bg-accent text-white" : "bg-accent/20 text-accent hover:bg-accent/30"
+                          }`}
+                          title={playingCardId === card.cardId ? "Pause" : "Play audio"}
+                        >
+                          {playingCardId === card.cardId ? (
+                            <Pause className="w-5 h-5" />
+                          ) : (
+                            <Volume2 className="w-5 h-5" />
+                          )}
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <p className="text-white/30 text-xs mt-2">
-                  {new Date(card.createdAt).toLocaleDateString()}
-                </p>
               </Link>
 
               {/* Action Menu */}
@@ -1485,7 +3033,7 @@ export default function DeckDetailPage() {
                     ? "Select cards to add"
                     : addWithAISuccess
                       ? "Cards added"
-                      : "Add Card with AI"}
+                      : "Create card with AI"}
                 </h2>
                 <button
                   type="button"
@@ -1505,55 +3053,135 @@ export default function DeckDetailPage() {
                     </div>
                   )}
                   <p className="text-white/70 text-sm mb-3">
-                    Select which cards to add to the deck, or cancel to discard all.
+                    Select which cards to add, edit any card’s content, then add selected to the deck.
                   </p>
-                  <div className="mb-4 max-h-48 overflow-y-auto space-y-2 rounded-lg border border-white/10 p-2">
+                  <div className="mb-2 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setAddWithAISelectedIndices(new Set(addWithAIGeneratedCards.map((_, i) => i)))
+                      }
+                      className="text-xs text-white/60 hover:text-white underline"
+                    >
+                      Select all
+                    </button>
+                    <span className="text-white/40">|</span>
+                    <button
+                      type="button"
+                      onClick={() => setAddWithAISelectedIndices(new Set())}
+                      className="text-xs text-white/60 hover:text-white underline"
+                    >
+                      Deselect all
+                    </button>
+                  </div>
+                  <div className="mb-4 max-h-64 overflow-y-auto space-y-1 rounded-lg border border-white/10 p-2">
                     {addWithAIGeneratedCards.map((card, i) => (
-                      <label
-                        key={i}
-                        className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={addWithAISelectedIndices.has(i)}
-                          onChange={() => {
-                            setAddWithAISelectedIndices((prev) => {
-                              const next = new Set(prev);
-                              if (next.has(i)) next.delete(i);
-                              else next.add(i);
-                              return next;
-                            });
-                          }}
-                          className="rounded border-white/30 bg-white/5 text-amber-500 focus:ring-amber-500"
-                        />
-                        <span className="text-white/90 text-sm truncate flex-1">
-                          {getGeneratedCardPreview(card.values)}
-                        </span>
-                      </label>
+                      <div key={i} className="rounded-lg border border-white/5 overflow-hidden">
+                        <label
+                          className="flex items-center gap-3 p-2 hover:bg-white/5 cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={addWithAISelectedIndices.has(i)}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              setAddWithAISelectedIndices((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(i)) next.delete(i);
+                                else next.add(i);
+                                return next;
+                              });
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="rounded border-white/30 bg-white/5 text-amber-500 focus:ring-amber-500"
+                          />
+                          <span className="text-white/90 text-sm truncate flex-1">
+                            {getGeneratedCardPreview(card)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setEditingGeneratedCardIndex((prev) => (prev === i ? null : i));
+                            }}
+                            className="shrink-0 px-2 py-1 text-xs text-amber-400 hover:text-amber-300 hover:bg-white/5 rounded"
+                          >
+                            {editingGeneratedCardIndex === i ? "Done" : "Edit"}
+                          </button>
+                        </label>
+                        {editingGeneratedCardIndex === i && (
+                          <div className="border-t border-white/10 bg-black/20 p-3 space-y-2">
+                            {(card.values || []).map((v, vi) => {
+                              const block = (card.blocksSnapshot || []).find(
+                                (b) => b.blockId === v.blockId
+                              );
+                              const label = block?.label || v.blockId?.slice(0, 8) || `Field ${vi + 1}`;
+                              const isLong =
+                                v.type === "hiddenText" ||
+                                v.type === "example" ||
+                                v.type === "text";
+                              const isQuiz =
+                                v.type === "quizSingleSelect" ||
+                                v.type === "quizMultiSelect" ||
+                                v.type === "quizTextAnswer" ||
+                                v.type === 8 ||
+                                v.type === 9 ||
+                                v.type === 10;
+                              if (isQuiz) return null;
+                              return (
+                                <div key={vi}>
+                                  <label className="text-white/60 text-xs block mb-0.5">
+                                    {label}
+                                  </label>
+                                  {isLong ? (
+                                    <textarea
+                                      value={v.text ?? ""}
+                                      onChange={(e) =>
+                                        updateGeneratedCardValue(i, vi, e.target.value)
+                                      }
+                                      rows={2}
+                                      className="w-full px-2 py-1.5 text-sm text-white bg-white/5 border border-white/10 rounded focus:outline-none focus:border-amber-500/50 resize-y"
+                                    />
+                                  ) : (
+                                    <input
+                                      type="text"
+                                      value={v.text ?? ""}
+                                      onChange={(e) =>
+                                        updateGeneratedCardValue(i, vi, e.target.value)
+                                      }
+                                      className="w-full px-2 py-1.5 text-sm text-white bg-white/5 border border-white/10 rounded focus:outline-none focus:border-amber-500/50"
+                                    />
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
                     ))}
                   </div>
-                  {addWithAIDevPrompt && (
-                    <div className="mb-4 border border-white/10 rounded-lg overflow-hidden">
-                      <div className="flex items-center justify-between px-3 py-2 bg-white/5">
+                  {isDev && addWithAIDevPrompt && (
+                    <div className="mb-4 border border-amber-500/30 rounded-lg overflow-hidden bg-black/20">
+                      <div className="flex items-center justify-between px-3 py-2 bg-amber-500/10">
                         <button
                           type="button"
                           onClick={() => setShowDevPrompt((p) => !p)}
-                          className="text-left text-white/60 text-xs font-medium hover:bg-white/5 flex items-center gap-2"
+                          className="text-left text-amber-400/90 text-xs font-medium hover:bg-white/5 flex items-center gap-2"
                         >
-                          Request prompt (dev only)
+                          Request prompt
                           <span className="text-white/40">{showDevPrompt ? "▼" : "▶"}</span>
                         </button>
                         <button
                           type="button"
                           onClick={handleCopyPrompt}
-                          className="flex items-center gap-1 px-2 py-1 text-xs text-white/70 hover:bg-white/10 rounded"
+                          className="flex items-center gap-1 px-2 py-1 text-xs text-amber-400/90 hover:bg-white/10 rounded"
                         >
                           <Copy className="w-3.5 h-3.5" />
                           Copy prompt
                         </button>
                       </div>
                       {showDevPrompt && (
-                        <div className="p-3 bg-black/30 text-white/80 text-xs font-mono whitespace-pre-wrap max-h-60 overflow-y-auto border-t border-white/10">
+                        <div className="p-4 bg-black/40 text-white/90 font-mono text-base whitespace-pre-wrap min-h-[28rem] max-h-[min(56rem,90vh)] overflow-y-auto border-t border-white/10 leading-relaxed">
                           <div className="mb-2 text-amber-400/80">System:</div>
                           <div className="mb-3">{addWithAIDevPrompt.system}</div>
                           <div className="mb-2 text-amber-400/80">User:</div>
@@ -1593,28 +3221,28 @@ export default function DeckDetailPage() {
                       <> ({addWithAISuccess.skippedDuplicates} duplicate{addWithAISuccess.skippedDuplicates === 1 ? "" : "s"} skipped)</>
                     )}
                   </p>
-                  {addWithAIDevPrompt && (
-                    <div className="mb-4 border border-white/10 rounded-lg overflow-hidden">
-                      <div className="flex items-center justify-between px-3 py-2 bg-white/5">
+                  {isDev && addWithAIDevPrompt && (
+                    <div className="mb-4 border border-amber-500/30 rounded-lg overflow-hidden bg-black/20">
+                      <div className="flex items-center justify-between px-3 py-2 bg-amber-500/10">
                         <button
                           type="button"
                           onClick={() => setShowDevPrompt((p) => !p)}
-                          className="text-left text-white/60 text-xs font-medium hover:bg-white/5 flex items-center gap-2"
+                          className="text-left text-amber-400/90 text-xs font-medium hover:bg-white/5 flex items-center gap-2"
                         >
-                          Request prompt (dev only)
+                          Request prompt
                           <span className="text-white/40">{showDevPrompt ? "▼" : "▶"}</span>
                         </button>
                         <button
                           type="button"
                           onClick={handleCopyPrompt}
-                          className="flex items-center gap-1 px-2 py-1 text-xs text-white/70 hover:bg-white/10 rounded"
+                          className="flex items-center gap-1 px-2 py-1 text-xs text-amber-400/90 hover:bg-white/10 rounded"
                         >
                           <Copy className="w-3.5 h-3.5" />
                           Copy prompt
                         </button>
                       </div>
                       {showDevPrompt && (
-                        <div className="p-3 bg-black/30 text-white/80 text-xs font-mono whitespace-pre-wrap max-h-60 overflow-y-auto border-t border-white/10">
+                        <div className="p-4 bg-black/40 text-white/90 font-mono text-base whitespace-pre-wrap min-h-[28rem] max-h-[min(56rem,90vh)] overflow-y-auto border-t border-white/10 leading-relaxed">
                           <div className="mb-2 text-amber-400/80">System:</div>
                           <div className="mb-3">{addWithAIDevPrompt.system}</div>
                           <div className="mb-2 text-amber-400/80">User:</div>
@@ -1683,6 +3311,30 @@ export default function DeckDetailPage() {
                         ))}
                       </select>
                     </div>
+                    {addWithAITemplateId && (() => {
+                      const selectedTemplate = templates.find((t) => t.templateId === addWithAITemplateId);
+                      const blocks = selectedTemplate?.blocks || [];
+                      if (blocks.length === 0) return null;
+                      const blockTypeLabel = (type) => {
+                        const names = { header1: "Header 1", header2: "Header 2", header3: "Header 3", text: "Text", quote: "Quote", hiddenText: "Hidden", image: "Image", audio: "Audio", quizSingleSelect: "Quiz (single)", quizMultiSelect: "Quiz (multi)", quizTextAnswer: "Quiz (text)", divider: "Divider", space: "Space" };
+                        return names[type] || (typeof type === "number" ? ["Header 1", "Header 2", "Header 3", "Text", "Quote", "Hidden", "Image", "Audio", "Quiz (multi)", "Quiz (single)", "Quiz (text)", "Divider", "Space"][type] : type);
+                      };
+                      return (
+                        <div>
+                          <span className="text-white/50 text-xs">Template format</span>
+                          <div className="mt-1 flex flex-wrap gap-1.5">
+                            {blocks.map((b) => (
+                              <span
+                                key={b.blockId}
+                                className="inline-flex items-center rounded-md bg-white/10 px-2 py-0.5 text-xs text-white/80"
+                              >
+                                {b.label && String(b.label).trim() ? b.label : blockTypeLabel(b.type)}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
                     <div>
                       <label className="text-white/70 text-sm block mb-1">Number of cards</label>
                       <select
@@ -1698,6 +3350,49 @@ export default function DeckDetailPage() {
                         ))}
                       </select>
                     </div>
+                    {cards.length > 0 && (
+                      <div>
+                        <label className="text-white/70 text-sm block mb-1">
+                          Reference cards (optional)
+                        </label>
+                        <p className="text-white/50 text-xs mb-2">
+                          Select cards to use as style examples.
+                        </p>
+                        <div className="max-h-40 overflow-y-auto rounded-lg border border-white/10 bg-white/5 p-2 space-y-1">
+                          {cards.slice(0, 20).map((card) => {
+                            const preview = getCardPreview(card);
+                            const label = [preview.main, preview.sub].filter(Boolean).join(" — ") || "Empty card";
+                            const checked = addWithAIReferenceCardIds.has(card.cardId);
+                            return (
+                              <label
+                                key={card.cardId}
+                                className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-white/5 cursor-pointer text-sm text-white/90"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={() => {
+                                    setAddWithAIReferenceCardIds((prev) => {
+                                      const next = new Set(prev);
+                                      if (next.has(card.cardId)) next.delete(card.cardId);
+                                      else next.add(card.cardId);
+                                      return next;
+                                    });
+                                  }}
+                                  className="rounded border-white/30 bg-white/5 text-amber-500 focus:ring-amber-500"
+                                />
+                                <span className="truncate flex-1" title={label}>
+                                  {label}
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                        {cards.length > 20 && (
+                          <p className="text-white/40 text-xs mt-1">Showing first 20 cards</p>
+                        )}
+                      </div>
+                    )}
                   </div>
                   {addWithAIProgress && (
                     <p className="text-amber-400/90 text-sm mb-4">{addWithAIProgress}</p>
@@ -1705,28 +3400,40 @@ export default function DeckDetailPage() {
                   {addWithAIError && (
                     <p className="text-red-400 text-sm mb-4">{addWithAIError}</p>
                   )}
-                  {addWithAIDevPrompt && !addWithAISuccess && (
-                    <div className="mb-4 border border-white/10 rounded-lg overflow-hidden">
-                      <div className="flex items-center justify-between px-3 py-2 bg-white/5">
+                  {isDev && (
+                    <div className="mb-4 flex flex-wrap gap-2 items-center">
+                      <button
+                        type="button"
+                        onClick={handlePreviewAddWithAIPrompt}
+                        disabled={addWithAIGenerating || addWithAIPreviewLoading || !addWithAITemplateId}
+                        className="px-3 py-1.5 text-xs bg-white/10 hover:bg-white/20 text-white/80 rounded-lg border border-white/10 disabled:opacity-50 disabled:pointer-events-none"
+                      >
+                        {addWithAIPreviewLoading ? "Building preview…" : "Preview prompt"}
+                      </button>
+                    </div>
+                  )}
+                  {isDev && addWithAIDevPrompt && !addWithAISuccess && (
+                    <div className="mb-4 border border-amber-500/30 rounded-lg overflow-hidden bg-black/20">
+                      <div className="flex items-center justify-between px-3 py-2 bg-amber-500/10">
                         <button
                           type="button"
                           onClick={() => setShowDevPrompt((p) => !p)}
-                          className="text-left text-white/60 text-xs font-medium hover:bg-white/5 flex items-center gap-2"
+                          className="text-left text-amber-400/90 text-xs font-medium hover:bg-white/5 flex items-center gap-2"
                         >
-                          Request prompt (dev only)
+                          Request prompt
                           <span className="text-white/40">{showDevPrompt ? "▼" : "▶"}</span>
                         </button>
                         <button
                           type="button"
                           onClick={handleCopyPrompt}
-                          className="flex items-center gap-1 px-2 py-1 text-xs text-white/70 hover:bg-white/10 rounded"
+                          className="flex items-center gap-1 px-2 py-1 text-xs text-amber-400/90 hover:bg-white/10 rounded"
                         >
                           <Copy className="w-3.5 h-3.5" />
                           Copy prompt
                         </button>
                       </div>
                       {showDevPrompt && (
-                        <div className="p-3 bg-black/30 text-white/80 text-xs font-mono whitespace-pre-wrap max-h-60 overflow-y-auto border-t border-white/10">
+                        <div className="p-4 bg-black/40 text-white/90 font-mono text-base whitespace-pre-wrap min-h-[28rem] max-h-[min(56rem,90vh)] overflow-y-auto border-t border-white/10 leading-relaxed">
                           <div className="mb-2 text-amber-400/80">System:</div>
                           <div className="mb-3">{addWithAIDevPrompt.system}</div>
                           <div className="mb-2 text-amber-400/80">User:</div>
@@ -1774,15 +3481,15 @@ export default function DeckDetailPage() {
         )}
       </AnimatePresence>
 
-      {/* Import from file (File → AI cards) Modal */}
+      {/* Generate from doc/img modal */}
       <AnimatePresence>
         {showFileToAIModal && deck && (
           <Modal onClose={() => !fileToAILoading && closeFileToAIModal()}>
-            <div className="flex flex-col max-h-[85vh]">
+            <div className="flex flex-col max-h-[85vh] min-h-0 overflow-y-auto">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                  <FileSpreadsheet className="w-5 h-5 text-white/70" />
-                  Import from file
+                  <FileText className="w-5 h-5 text-amber-400" />
+                  Generate from doc/img
                 </h2>
                 <button
                   type="button"
@@ -1792,98 +3499,634 @@ export default function DeckDetailPage() {
                   <X className="w-5 h-5 text-white/50" />
                 </button>
               </div>
-              <p className="text-white/60 text-sm mb-4">
-                Upload a PDF, Word, or Excel file. AI will map the content to your template and generate cards.
-              </p>
-              <div className="space-y-3 mb-4">
-                <div>
-                  <label className="text-white/70 text-sm block mb-1">File (PDF, DOCX, XLSX)</label>
-                  <input
-                    ref={fileToAIFileInputRef}
-                    type="file"
-                    accept=".pdf,.docx,.xlsx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                    onChange={(e) => setFileToAIFile(e.target.files?.[0] ?? null)}
-                    className="w-full text-white/80 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-white/10 file:text-white file:cursor-pointer"
-                  />
-                  {fileToAIFile && (
-                    <p className="text-white/50 text-xs mt-1">{fileToAIFile.name}</p>
+
+              {fileToAILoading ? (
+                <div className="py-12 text-center">
+                  <div className="w-16 h-16 mx-auto mb-4 relative">
+                    <div className="absolute inset-0 rounded-full border-4 border-white/10" />
+                    <div className="absolute inset-0 rounded-full border-4 border-amber-500 border-t-transparent animate-spin" />
+                  </div>
+                  <p className="text-white text-lg mb-2">Generating cards from file...</p>
+                  <p className="text-white/50 text-sm">This may take a moment.</p>
+                </div>
+              ) : fileToAISuccessResult ? (
+                <>
+                  {addWithAISuccess && (
+                    <div className="mb-4 p-3 rounded-lg bg-green-500/10 border border-green-500/30 text-green-400/90 text-sm">
+                      {addWithAISuccess.count} {addWithAISuccess.count === 1 ? "card has" : "cards have"} been added to this deck.
+                      {addWithAISuccess.skippedDuplicates > 0 && (
+                        <span className="block mt-1 text-white/70">
+                          ({addWithAISuccess.skippedDuplicates} duplicate{addWithAISuccess.skippedDuplicates === 1 ? "" : "s"} skipped)
+                        </span>
+                      )}
+                    </div>
                   )}
-                </div>
-                <div>
-                  <label className="text-white/70 text-sm block mb-1">Template</label>
-                  <select
-                    value={fileToAITemplateId}
-                    onChange={(e) => setFileToAITemplateId(e.target.value)}
-                    disabled={fileToAILoading}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-amber-500/50"
-                  >
-                    {templates.map((t) => (
-                      <option key={t.templateId} value={t.templateId}>
-                        {t.name} ({t.blocks?.length ?? 0} blocks)
-                      </option>
+                  <p className="text-white/70 text-sm mb-3">
+                    Generated {addWithAIGeneratedCards.length} cards. Select which to add, then add selected to the deck.
+                  </p>
+                  <div className="mb-2 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setAddWithAISelectedIndices(new Set(addWithAIGeneratedCards.map((_, i) => i)))
+                      }
+                      className="text-xs text-white/60 hover:text-white underline"
+                    >
+                      Select all
+                    </button>
+                    <span className="text-white/40">|</span>
+                    <button
+                      type="button"
+                      onClick={() => setAddWithAISelectedIndices(new Set())}
+                      className="text-xs text-white/60 hover:text-white underline"
+                    >
+                      Deselect all
+                    </button>
+                  </div>
+                  <div className="mb-4 max-h-64 overflow-y-auto space-y-1 rounded-lg border border-white/10 p-2">
+                    {addWithAIGeneratedCards.map((card, i) => (
+                      <div key={i} className="rounded-lg border border-white/5 overflow-hidden">
+                        <label className="flex items-center gap-3 p-2 hover:bg-white/5 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={addWithAISelectedIndices.has(i)}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              setAddWithAISelectedIndices((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(i)) next.delete(i);
+                                else next.add(i);
+                                return next;
+                              });
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="rounded border-white/30 bg-white/5 text-amber-500 focus:ring-amber-500"
+                          />
+                          <span className="text-white/90 text-sm truncate flex-1">
+                            {getGeneratedCardPreview(card)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setFileToAIPreviewCardIndex(i);
+                            }}
+                            className="shrink-0 px-2 py-1 text-xs text-white/70 hover:text-amber-400 hover:bg-white/5 rounded flex items-center gap-1"
+                            title="Preview card"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            Preview
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setEditingGeneratedCardIndex((prev) => (prev === i ? null : i));
+                            }}
+                            className="shrink-0 px-2 py-1 text-xs text-amber-400 hover:text-amber-300 hover:bg-white/5 rounded"
+                          >
+                            {editingGeneratedCardIndex === i ? "Done" : "Edit"}
+                          </button>
+                        </label>
+                        {editingGeneratedCardIndex === i && (
+                          <div className="border-t border-white/10 bg-black/20 p-3 space-y-2">
+                            {(card.values || []).map((v, vi) => {
+                              const block = (card.blocksSnapshot || []).find((b) => b.blockId === v.blockId);
+                              const label = block?.label || v.blockId?.slice(0, 8) || `Field ${vi + 1}`;
+                              const blockType = block?.type;
+                              const isQuizType =
+                                blockType === "quizSingleSelect" ||
+                                blockType === "quizMultiSelect" ||
+                                blockType === "quizTextAnswer" ||
+                                blockType === 8 ||
+                                blockType === 9 ||
+                                blockType === 10 ||
+                                (typeof blockType === "string" && /^([89]|10)$/.test(blockType));
+                              if (isQuizType && block) {
+                                const parseCfg = (cfg) => {
+                                  if (cfg == null) return {};
+                                  if (typeof cfg === "string") {
+                                    try {
+                                      return JSON.parse(cfg || "{}");
+                                    } catch {
+                                      return {};
+                                    }
+                                  }
+                                  return typeof cfg === "object" ? cfg : {};
+                                };
+                                const cfg = parseCfg(block.configJson);
+                                const question = String(cfg.question ?? "").trim() || "";
+                                const options = Array.isArray(cfg.options)
+                                  ? cfg.options.map((x) => String(x ?? "").trim())
+                                  : [];
+                                const optionsText = options.join("\n");
+                                const correctAnswers = Array.isArray(cfg.correctAnswers)
+                                  ? cfg.correctAnswers
+                                  : cfg.correctAnswer != null
+                                    ? [String(cfg.correctAnswer)]
+                                    : options.length ? [options[cfg.correctAnswerIndex ?? 0]] : [];
+                                const correctAnswer = correctAnswers[0] ?? "";
+                                const correctAnswersText = correctAnswers.join(", ");
+                                const isMulti = blockType === "quizMultiSelect" || blockType === 8 || blockType === "8";
+                                const isTextAnswer = blockType === "quizTextAnswer" || blockType === 10 || blockType === "10";
+                                const blockIdx = (card.blocksSnapshot || []).findIndex((b) => b.blockId === block.blockId);
+                                return (
+                                  <div key={vi} className="space-y-2 rounded-lg border border-white/10 p-2 bg-white/5">
+                                    <label className="text-amber-400/90 text-xs font-medium block">{label} (quiz)</label>
+                                    <div>
+                                      <label className="text-white/50 text-xs block mb-0.5">Question</label>
+                                      <input
+                                        type="text"
+                                        value={question}
+                                        onChange={(e) => {
+                                          const q = e.target.value;
+                                          setAddWithAIGeneratedCards((prev) => {
+                                            if (i < 0 || i >= prev.length || blockIdx < 0) return prev;
+                                            const next = prev.map((c, ci) => {
+                                              if (ci !== i || !c.blocksSnapshot?.[blockIdx]) return c;
+                                              const cfg2 = parseCfg(c.blocksSnapshot[blockIdx].configJson);
+                                              const newCfg = { ...cfg2, question: q };
+                                              const snap = [...c.blocksSnapshot];
+                                              snap[blockIdx] = { ...snap[blockIdx], configJson: JSON.stringify(newCfg) };
+                                              return { ...c, blocksSnapshot: snap };
+                                            });
+                                            return next;
+                                          });
+                                        }}
+                                        placeholder="Question"
+                                        className="w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded text-white text-sm"
+                                      />
+                                    </div>
+                                    {!isTextAnswer && (
+                                      <div>
+                                        <label className="text-white/50 text-xs block mb-0.5">Options (one per line)</label>
+                                        <textarea
+                                          value={optionsText}
+                                          onChange={(e) => {
+                                            const lines = e.target.value.split("\n").map((s) => s.trim()).filter(Boolean);
+                                            const opts = lines.length ? lines : ["Option A", "Option B"];
+                                            setAddWithAIGeneratedCards((prev) => {
+                                              if (i < 0 || i >= prev.length || blockIdx < 0) return prev;
+                                              const next = prev.map((c, ci) => {
+                                                if (ci !== i || !c.blocksSnapshot?.[blockIdx]) return c;
+                                                const cfg2 = parseCfg(c.blocksSnapshot[blockIdx].configJson);
+                                                const prevCorrect = Array.isArray(cfg2.correctAnswers) ? cfg2.correctAnswers : [];
+                                                const kept = prevCorrect.filter((a) => opts.includes(a));
+                                                const correctAnswers = kept.length ? kept : (opts[0] ? [opts[0]] : []);
+                                                const correctAnswerIndex = opts.indexOf(correctAnswers[0]);
+                                                const newCfg = {
+                                                  ...cfg2,
+                                                  options: opts,
+                                                  correctAnswerIndex: correctAnswerIndex >= 0 ? correctAnswerIndex : 0,
+                                                  correctAnswers,
+                                                  correctAnswerIndices: correctAnswers.map((a) => opts.indexOf(a)).filter((idx) => idx >= 0),
+                                                };
+                                                const snap = [...c.blocksSnapshot];
+                                                snap[blockIdx] = { ...snap[blockIdx], configJson: JSON.stringify(newCfg) };
+                                                return { ...c, blocksSnapshot: snap };
+                                              });
+                                              return next;
+                                            });
+                                          }}
+                                          rows={3}
+                                          placeholder="Option A\nOption B"
+                                          className="w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded text-white text-sm min-h-[4rem]"
+                                        />
+                                      </div>
+                                    )}
+                                    <div>
+                                      <label className="text-white/50 text-xs block mb-0.5">
+                                        {isTextAnswer ? "Correct answer" : isMulti ? "Correct answers (comma-separated)" : "Correct answer"}
+                                      </label>
+                                      <input
+                                        type="text"
+                                        value={isTextAnswer ? correctAnswer : correctAnswersText}
+                                        onChange={(e) => {
+                                          const raw = e.target.value.trim();
+                                          const answers = isTextAnswer ? [raw] : raw.split(",").map((s) => s.trim()).filter(Boolean);
+                                          setAddWithAIGeneratedCards((prev) => {
+                                            if (i < 0 || i >= prev.length || blockIdx < 0) return prev;
+                                            const next = prev.map((c, ci) => {
+                                              if (ci !== i || !c.blocksSnapshot?.[blockIdx]) return c;
+                                              const cfg2 = parseCfg(c.blocksSnapshot[blockIdx].configJson);
+                                              const opts = Array.isArray(cfg2.options) ? cfg2.options : [];
+                                              let newCfg;
+                                              if (isTextAnswer) {
+                                                newCfg = { ...cfg2, correctAnswer: raw };
+                                              } else {
+                                                const indices = answers.map((a) => opts.indexOf(a)).filter((idx) => idx >= 0);
+                                                if (indices.length === 0 && opts.length) indices.push(0);
+                                                newCfg = {
+                                                  ...cfg2,
+                                                  correctAnswers: answers.length ? answers : (opts[0] ? [opts[0]] : []),
+                                                  correctAnswerIndex: indices[0] ?? 0,
+                                                  correctAnswerIndices: indices,
+                                                };
+                                              }
+                                              const snap = [...c.blocksSnapshot];
+                                              snap[blockIdx] = { ...snap[blockIdx], configJson: JSON.stringify(newCfg) };
+                                              return { ...c, blocksSnapshot: snap };
+                                            });
+                                            return next;
+                                          });
+                                        }}
+                                        placeholder={isTextAnswer ? "Answer" : "A, B"}
+                                        className="w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded text-white text-sm"
+                                      />
+                                    </div>
+                                  </div>
+                                );
+                              }
+                              const isLong =
+                                v.type === "hiddenText" ||
+                                v.type === "example" ||
+                                (v.type === "quizSingleSelect" || v.type === "quizMultiSelect" || v.type === "quizTextAnswer");
+                              return (
+                                <div key={vi}>
+                                  <label className="text-white/60 text-xs block mb-0.5">{label}</label>
+                                  {isLong ? (
+                                    <textarea
+                                      value={typeof v.text === "string" ? v.text : ""}
+                                      onChange={(e) => {
+                                        const text = e.target.value;
+                                        setAddWithAIGeneratedCards((prev) => {
+                                          if (i < 0 || i >= prev.length) return prev;
+                                          const next = [...prev];
+                                          const c = next[i];
+                                          if (!c?.values) return next;
+                                          next[i] = {
+                                            ...c,
+                                            values: c.values.map((val, vIdx) =>
+                                              vIdx === vi ? { ...val, text } : val
+                                            ),
+                                          };
+                                          return next;
+                                        });
+                                      }}
+                                      className="w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded text-white text-sm min-h-[4rem]"
+                                      rows={3}
+                                    />
+                                  ) : (
+                                    <input
+                                      type="text"
+                                      value={typeof v.text === "string" ? v.text : ""}
+                                      onChange={(e) => {
+                                        const text = e.target.value;
+                                        setAddWithAIGeneratedCards((prev) => {
+                                          if (i < 0 || i >= prev.length) return prev;
+                                          const next = [...prev];
+                                          const c = next[i];
+                                          if (!c?.values) return next;
+                                          next[i] = {
+                                            ...c,
+                                            values: c.values.map((val, vIdx) =>
+                                              vIdx === vi ? { ...val, text } : val
+                                            ),
+                                          };
+                                          return next;
+                                        });
+                                      }}
+                                      className="w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded text-white text-sm"
+                                    />
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
                     ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-white/70 text-sm block mb-1">Max cards to generate</label>
-                  <select
-                    value={fileToAIMaxCards}
-                    onChange={(e) => setFileToAIMaxCards(Number(e.target.value))}
-                    disabled={fileToAILoading}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-amber-500/50"
-                  >
-                    {[5, 10, 15, 20, 30].map((n) => (
-                      <option key={n} value={n}>
-                        Up to {n} cards
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              {fileToAIError && (
-                <p className="text-red-400 text-sm mb-4">{fileToAIError}</p>
-              )}
-              <div className="flex gap-2 justify-end">
-                <button
-                  type="button"
-                  onClick={closeFileToAIModal}
-                  disabled={fileToAILoading}
-                  className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleFileToAISubmit}
-                  disabled={fileToAILoading || !fileToAIFile || !fileToAITemplateId}
-                  className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none"
-                >
-                  {fileToAILoading ? (
-                    <>
-                      <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-                      Extracting & generating…
-                    </>
-                  ) : (
-                    <>
+                  </div>
+                  {addWithAIProgress && (
+                    <div className="mb-4 flex items-center gap-2 text-amber-400/90 text-sm">
+                      <span className="animate-spin rounded-full h-4 w-4 border-2 border-amber-400/50 border-t-amber-400" />
+                      <span>{addWithAIProgress}</span>
+                    </div>
+                  )}
+                  <div className="flex gap-2 justify-end">
+                    <button
+                      type="button"
+                      onClick={closeFileToAIModal}
+                      disabled={!!addWithAIProgress}
+                      className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      Done
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAddSelectedCardsToDeck}
+                      disabled={addWithAISelectedIndices.size === 0 || !!addWithAIProgress}
+                      className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+                    >
                       <Sparkles className="w-4 h-4" />
-                      Generate cards from file
-                    </>
+                      Add selected ({addWithAISelectedIndices.size}) to deck
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-white/60 text-sm mb-4">
+                    From document or image — AI drafts cards for your template. PDF, Word, or image only. For CSV/Excel/Anki use Import from table.
+                  </p>
+                  <div className="space-y-3 mb-4">
+                    <div>
+                      <label className="text-white/70 text-sm block mb-1">
+                        File (PDF, DOCX, or image)
+                      </label>
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onDragOver={handleFileToAIDragOver}
+                        onDragLeave={handleFileToAIDragLeave}
+                        onDrop={handleFileToAIDrop}
+                        onClick={() => fileToAIFileInputRef.current?.click()}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") fileToAIFileInputRef.current?.click();
+                        }}
+                        className={`flex flex-col items-center justify-center py-6 border-2 border-dashed rounded-xl cursor-pointer transition-all ${
+                          fileToAIDragging
+                            ? "border-amber-500 bg-amber-500/10"
+                            : "border-white/20 hover:border-amber-500/50 hover:bg-white/5"
+                        } ${fileToAILoading ? "pointer-events-none opacity-60" : ""}`}
+                      >
+                        <input
+                          ref={fileToAIFileInputRef}
+                          type="file"
+                          accept=".pdf,.docx,.png,.jpg,.jpeg,.webp,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg,image/webp"
+                          onChange={(e) => {
+                            setFileToAIFile(e.target.files?.[0] ?? null);
+                            setFileToAIError(null);
+                          }}
+                          className="hidden"
+                        />
+                        {fileToAIFile ? (
+                          <>
+                            {fileToAIPreviewUrl ? (
+                              <img
+                                src={fileToAIPreviewUrl}
+                                alt="Preview"
+                                className="max-h-40 max-w-full rounded-lg object-contain border border-white/10 mb-2"
+                              />
+                            ) : (
+                              <FileSpreadsheet className="w-10 h-10 text-amber-400/80 mb-2" />
+                            )}
+                            <span className="text-white/90 text-sm font-medium truncate max-w-full px-2">
+                              {fileToAIFile.name}
+                            </span>
+                            <span className="text-white/50 text-xs mt-0.5">
+                              Click or drop another file to replace · Or paste image (Ctrl/Cmd+V)
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <Upload className={`w-10 h-10 mb-2 ${fileToAIDragging ? "text-amber-400" : "text-white/40"}`} />
+                            <span className={`text-sm ${fileToAIDragging ? "text-amber-400" : "text-white/70"}`}>
+                              {fileToAIDragging ? "Drop file here" : "Drag & drop or click to choose"}
+                            </span>
+                            <span className="text-white/45 text-xs mt-1">
+                              Or paste an image (Ctrl/Cmd+V)
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-white/70 text-sm block mb-1">Template</label>
+                      <select
+                        value={fileToAITemplateId}
+                        onChange={(e) => setFileToAITemplateId(e.target.value)}
+                        disabled={fileToAILoading}
+                        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-amber-500/50"
+                      >
+                        {templates.map((t) => (
+                          <option key={t.templateId} value={t.templateId}>
+                            {t.name} ({t.blocks?.length ?? 0} blocks)
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    {fileToAITemplateId && (() => {
+                      const selectedTemplate = templates.find((t) => t.templateId === fileToAITemplateId);
+                      const blocks = selectedTemplate?.blocks || [];
+                      if (blocks.length === 0) return null;
+                      const blockTypeLabel = (type) => {
+                        const names = { header1: "Header 1", header2: "Header 2", header3: "Header 3", text: "Text", quote: "Quote", hiddenText: "Hidden", image: "Image", audio: "Audio", quizSingleSelect: "Quiz (single)", quizMultiSelect: "Quiz (multi)", quizTextAnswer: "Quiz (text)", divider: "Divider", space: "Space" };
+                        return names[type] || (typeof type === "number" ? ["Header 1", "Header 2", "Header 3", "Text", "Quote", "Hidden", "Image", "Audio", "Quiz (multi)", "Quiz (single)", "Quiz (text)", "Divider", "Space"][type] : type);
+                      };
+                      return (
+                        <div>
+                          <span className="text-white/50 text-xs">Template format</span>
+                          <div className="mt-1 flex flex-wrap gap-1.5">
+                            {blocks.map((b) => (
+                              <span
+                                key={b.blockId}
+                                className="inline-flex items-center rounded-md bg-white/10 px-2 py-0.5 text-xs text-white/80"
+                              >
+                                {b.label && String(b.label).trim() ? b.label : blockTypeLabel(b.type)}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                    <div>
+                      <label className="text-white/70 text-sm block mb-1">Max cards to generate</label>
+                      <select
+                        value={fileToAIMaxCards}
+                        onChange={(e) => setFileToAIMaxCards(Number(e.target.value))}
+                        disabled={fileToAILoading}
+                        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-amber-500/50"
+                      >
+                        {[5, 10, 15, 20, 30].map((n) => (
+                          <option key={n} value={n}>
+                            Up to {n} cards
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  {fileToAIError && (
+                    <p className="text-red-400 text-sm mb-4">{fileToAIError}</p>
                   )}
+                  {isDev && (
+                    <div className="mb-4 flex flex-wrap gap-2 items-center">
+                      <button
+                        type="button"
+                        onClick={handleFileToAIPreviewPrompt}
+                        disabled={fileToAILoading || fileToAIPreviewLoading || !fileToAIFile || !fileToAITemplateId}
+                        className="px-3 py-1.5 text-xs bg-white/10 hover:bg-white/20 text-white/80 rounded-lg border border-white/10 disabled:opacity-50 disabled:pointer-events-none"
+                      >
+                        {fileToAIPreviewLoading ? "Building preview…" : "Preview prompt"}
+                      </button>
+                    </div>
+                  )}
+                  {fileToAIPreviewPrompt && (
+                    <div
+                      ref={fileToAIPreviewPromptBlockRef}
+                      className="mb-4 border border-amber-500/30 rounded-lg overflow-hidden bg-black/20"
+                    >
+                      <div className="flex items-center justify-between px-3 py-2 bg-amber-500/10">
+                        <button
+                          type="button"
+                          onClick={() => setFileToAIPreviewPromptOpen((p) => !p)}
+                          className="text-left text-amber-400/90 text-xs font-medium hover:bg-white/5 flex items-center gap-2"
+                        >
+                          Request prompt
+                          <span className="text-white/40">{fileToAIPreviewPromptOpen ? "▼" : "▶"}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const text = `System:\n\n${fileToAIPreviewPrompt.system}\n\nUser:\n\n${fileToAIPreviewPrompt.user}`;
+                            navigator.clipboard.writeText(text).then(
+                              () => { setFileToAIDevPromptCopied(true); setTimeout(() => setFileToAIDevPromptCopied(false), 2000); },
+                              () => {}
+                            );
+                          }}
+                          className="flex items-center gap-1 px-2 py-1 text-xs text-amber-400/90 hover:bg-white/10 rounded"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                          {fileToAIDevPromptCopied ? "Copied!" : "Copy prompt"}
+                        </button>
+                      </div>
+                      {fileToAIPreviewPromptOpen && (
+                        <div className="p-4 bg-black/40 text-white/90 font-mono text-base whitespace-pre-wrap min-h-[28rem] max-h-[min(56rem,90vh)] overflow-y-auto border-t border-white/10 leading-relaxed">
+                          <div className="mb-2 text-amber-400/80">System:</div>
+                          <div className="mb-3">{fileToAIPreviewPrompt.system}</div>
+                          <div className="mb-2 text-amber-400/80">User:</div>
+                          <div>{fileToAIPreviewPrompt.user}</div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <div className="flex gap-2 justify-end">
+                    <button
+                      type="button"
+                      onClick={closeFileToAIModal}
+                      disabled={fileToAILoading}
+                      className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleFileToAISubmit}
+                      disabled={fileToAILoading || !fileToAIFile || !fileToAITemplateId}
+                      className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                    >
+                      {fileToAILoading ? (
+                        <>
+                          <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                          Extracting & generating…
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4" />
+                          Generate cards from file
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </Modal>
+        )}
+      </AnimatePresence>
+
+      {/* Card preview modal (Generate from doc/img — generated card preview) */}
+      <AnimatePresence>
+        {fileToAIPreviewCardIndex != null && addWithAIGeneratedCards[fileToAIPreviewCardIndex] && (
+          <Modal onClose={() => setFileToAIPreviewCardIndex(null)}>
+            <div className="flex flex-col max-h-[85vh] min-h-0">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <Eye className="w-5 h-5 text-amber-400" />
+                  Card preview
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setFileToAIPreviewCardIndex(null)}
+                  className="p-1 hover:bg-white/10 rounded transition-colors"
+                >
+                  <X className="w-5 h-5 text-white/50" />
                 </button>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-white/[0.04] p-5 overflow-y-auto flex-1 min-h-0">
+                <CardPreviewContent
+                  blocks={addWithAIGeneratedCards[fileToAIPreviewCardIndex].blocksSnapshot || []}
+                  getValue={(blockId) => {
+                    const card = addWithAIGeneratedCards[fileToAIPreviewCardIndex];
+                    const v = (card.values || []).find((val) => val.blockId === blockId);
+                    return v ?? { blockId, text: "" };
+                  }}
+                  mediaCache={{}}
+                  className="text-white"
+                />
               </div>
             </div>
           </Modal>
         )}
       </AnimatePresence>
 
-      {/* Import Modal */}
+      {/* Request prompt modal (dev) — full prompt in a separate large modal; render after Generate from doc/img so it shows on top */}
+      {isDev && (
+        <AnimatePresence>
+          {showPromptModal && promptModalContent && (
+            <Modal onClose={() => { setShowPromptModal(false); setPromptModalContent(null); }} large>
+              <div className="flex flex-col flex-1 min-h-0">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold text-white">Request prompt</h2>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleCopyPromptModal}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-white/80 hover:bg-white/10 rounded-lg transition-colors"
+                    >
+                      <Copy className="w-4 h-4" />
+                      Copy
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setShowPromptModal(false); setPromptModalContent(null); }}
+                      className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
+                    >
+                      <X className="w-5 h-5 text-white/50" />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex-1 min-h-0 overflow-y-auto rounded-lg bg-black/40 border border-white/10 p-4 text-white/90 font-mono text-sm whitespace-pre-wrap leading-relaxed">
+                  <div className="mb-4">
+                    <div className="text-amber-400/90 text-xs font-semibold uppercase tracking-wider mb-1">System</div>
+                    <div>{promptModalContent.system}</div>
+                  </div>
+                  <div>
+                    <div className="text-amber-400/90 text-xs font-semibold uppercase tracking-wider mb-1">User</div>
+                    <div>{promptModalContent.user}</div>
+                  </div>
+                </div>
+              </div>
+            </Modal>
+          )}
+        </AnimatePresence>
+      )}
+
+      {/* Import from table modal (rows → columns → cards) */}
       <AnimatePresence>
         {showImportModal && (
           <Modal onClose={resetImport} wide>
             <div className="max-h-[80vh] overflow-hidden flex flex-col">
               {/* Header */}
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-white">Import Cards</h2>
+                <div>
+                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                    <Table2 className="w-5 h-5 text-amber-400" />
+                    Import from table
+                  </h2>
+                  <p className="text-white/45 text-sm mt-1">
+                    Map columns to your template — AI can generate quiz and audio per row
+                  </p>
+                </div>
                 <button
                   onClick={resetImport}
                   className="p-1 hover:bg-white/10 rounded transition-colors"
@@ -2105,42 +4348,235 @@ export default function DeckDetailPage() {
                             : "Click a column or template block to start mapping"}
                         </p>
 
-                        {/* Template Blocks - Clickable */}
+                        {/* Template Blocks - Clickable + Generate with AI (quiz/audio only) */}
                         <div className="mb-4 p-3 bg-white/5 rounded-lg">
                           <h4 className="text-white/70 text-sm mb-2">
                             Template Blocks:
                           </h4>
-                          <div className="flex flex-wrap gap-2">
+                          <p className="text-white/45 text-xs mb-2">
+                            Click a block then a column to map. Use "AI" only for <strong className="text-white/60">quiz or audio</strong> blocks — AI generates that block per row from the table context.
+                          </p>
+                          <div className="flex flex-wrap gap-2 items-center">
                             {selectedTemplate.blocks.map((block) => {
-                              const isMapped = getMappingForBlock(
-                                block.blockId
-                              );
-                              const isPending =
-                                pendingBlockId === block.blockId;
+                              const mapping = getMappingForBlock(block.blockId);
+                              const isMapped = !!mapping;
+                              const isAI = mapping?.generateWithAI;
+                              const isPending = pendingBlockId === block.blockId;
+                              const canUseAI = isBlockEligibleForGenerateWithAI(block);
                               return (
-                                <button
+                                <div
                                   key={block.blockId}
-                                  onClick={() =>
-                                    handleBlockClick(block.blockId)
-                                  }
-                                  className={`text-xs px-3 py-1.5 rounded transition-all ${
-                                    isMapped
-                                      ? "bg-accent/20 text-accent hover:bg-accent/30"
-                                      : isPending
-                                      ? "bg-yellow-500/20 text-yellow-400 ring-2 ring-yellow-500/50"
-                                      : pendingColumnIndex !== null
-                                      ? "bg-white/10 text-white hover:bg-white/20 ring-1 ring-white/30"
-                                      : "bg-white/10 text-white/50 hover:bg-white/20 hover:text-white"
-                                  }`}
+                                  className="flex items-center gap-1"
                                 >
-                                  {block.label}
-                                  {isMapped && " ✓"}
-                                  {isPending && " ←"}
-                                </button>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleBlockClick(block.blockId)
+                                    }
+                                    className={`text-xs px-3 py-1.5 rounded transition-all ${
+                                      isMapped
+                                        ? isAI
+                                          ? "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30"
+                                          : "bg-accent/20 text-accent hover:bg-accent/30"
+                                        : isPending
+                                        ? "bg-yellow-500/20 text-yellow-400 ring-2 ring-yellow-500/50"
+                                        : pendingColumnIndex !== null
+                                        ? "bg-white/10 text-white hover:bg-white/20 ring-1 ring-white/30"
+                                        : "bg-white/10 text-white/50 hover:bg-white/20 hover:text-white"
+                                    }`}
+                                  >
+                                    {block.label}
+                                    {isMapped && (isAI ? " (AI) ✓" : " ✓")}
+                                    {isPending && " ←"}
+                                  </button>
+                                </div>
                               );
                             })}
                           </div>
                         </div>
+
+                        {/* Dev only: Quiz = prompt preview; Audio = request JSON preview */}
+                        {importStep === ImportStep.mapColumns &&
+                          columnMappings.some((m) => m.generateWithAI) &&
+                          process.env.NODE_ENV === "development" &&
+                          importData &&
+                          selectedTemplate && (() => {
+                            const rows = getRowsToImport();
+                            const headers = (importData.headers || []).slice();
+                            const tableRows = rows.map((r) =>
+                              (Array.isArray(r) ? r : []).map((c) => String(c ?? "").trim())
+                            );
+                            const CHUNK_SIZE = 30;
+                            const batchCount = Math.ceil(tableRows.length / CHUNK_SIZE);
+                            const firstChunkRows = tableRows.slice(0, CHUNK_SIZE);
+                            const textContent = [
+                              headers.join("\t"),
+                              ...firstChunkRows.map((r) => r.join("\t")),
+                            ].join("\n").slice(0, 50000);
+                            const aiBlockIdsSet = new Set(
+                              (columnMappings || []).filter((m) => m.generateWithAI).map((m) => m.blockId)
+                            );
+                            const allAiBlocks = (selectedTemplate.blocks || [])
+                              .filter((b) => aiBlockIdsSet.has(b.blockId))
+                              .map((b) => ({ blockId: b.blockId, type: b.type, label: b.label ?? "" }));
+                            const quizOnlyBlocks = allAiBlocks.filter((b) => isQuizBlock(b));
+                            const audioOnlyBlocks = allAiBlocks.filter((b) => isAudioBlockType(b));
+                            const batchNote = batchCount > 1 ? ` (batch 1 of ${batchCount})` : "";
+
+                            const renderQuizPromptPreview = (system, user, onCopy, batchLabel) => (
+                              <div className="mt-2 space-y-2">
+                                {batchCount > 1 && batchLabel && (
+                                  <p className="text-[10px] text-amber-200/70">{batchLabel}</p>
+                                )}
+                                <div className="flex items-center justify-end gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={onCopy}
+                                    className="inline-flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium rounded bg-amber-500/20 text-amber-200 hover:bg-amber-500/30 transition-colors"
+                                  >
+                                    <Copy className="w-3 h-3 shrink-0" />
+                                    {importDevPromptCopied ? "Copied!" : "Copy prompt"}
+                                  </button>
+                                </div>
+                                <div>
+                                  <p className="text-[10px] font-medium text-amber-200/80 mb-1">System</p>
+                                  <pre className="text-[10px] text-white/70 overflow-auto max-h-48 p-2 rounded bg-black/20 whitespace-pre-wrap break-words">
+                                    {system}
+                                  </pre>
+                                </div>
+                                <div>
+                                  <p className="text-[10px] font-medium text-amber-200/80 mb-1">User</p>
+                                  <pre className="text-[10px] text-white/70 overflow-auto max-h-48 p-2 rounded bg-black/20 whitespace-pre-wrap break-words">
+                                    {user}
+                                  </pre>
+                                </div>
+                              </div>
+                            );
+
+                            return (
+                              <div className="mb-3 space-y-2">
+                                {quizOnlyBlocks.length > 0 && (
+                                  <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+                                    <details className="group">
+                                      <summary className="text-xs font-medium text-amber-200/90 cursor-pointer list-none flex items-center gap-1">
+                                        <span className="group-open:inline hidden">▼</span>
+                                        <span className="group-open:hidden inline">▶</span>
+                                        Dev: Import AI — Quiz (prompt){batchNote}
+                                      </summary>
+                                      {(() => {
+                                        const { system, user } = buildImportQuizAudioPrompt({
+                                          extractedContent: textContent,
+                                          templateBlocks: quizOnlyBlocks,
+                                          maxCards: firstChunkRows.length,
+                                          deckTitle: deck?.title ?? "",
+                                        });
+                                        return renderQuizPromptPreview(
+                                          system,
+                                          user,
+                                          () => {
+                                            navigator.clipboard.writeText(`=== System ===\n${system}\n\n=== User ===\n${user}`).then(
+                                              () => { setImportDevPromptCopied(true); setTimeout(() => setImportDevPromptCopied(false), 2000); },
+                                              () => {}
+                                            );
+                                          },
+                                          batchCount > 1 ? `Import will call the AI API ${batchCount} times (up to ${CHUNK_SIZE} rows per batch). Preview shows batch 1.` : null
+                                        );
+                                      })()}
+                                    </details>
+                                  </div>
+                                )}
+                                {audioOnlyBlocks.length > 0 && (
+                                  <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+                                    <details className="group">
+                                      <summary className="text-xs font-medium text-amber-200/90 cursor-pointer list-none flex items-center gap-1">
+                                        <span className="group-open:inline hidden">▼</span>
+                                        <span className="group-open:hidden inline">▶</span>
+                                        Dev: Import AI — Audio (request JSON){batchNote}
+                                      </summary>
+                                      <div className="mt-2 space-y-2">
+                                        {batchCount > 1 && (
+                                          <p className="text-[10px] text-amber-200/70">
+                                            Import will call the API {batchCount} times to get audio text; ElevenLabs TTS runs per card later (no prompt). Preview shows batch 1.
+                                          </p>
+                                        )}
+                                        <div className="flex items-center justify-end gap-2">
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              const audioBlockIds = audioOnlyBlocks.map((b) => b.blockId);
+                                              const requestBody = {
+                                                extractedContent: textContent.length > 2000 ? textContent.slice(0, 2000) + "\n\n… (truncated)" : textContent,
+                                                deckId,
+                                                templateId: selectedTemplate.templateId,
+                                                uid: user?.uid ?? "(current user)",
+                                                maxCards: firstChunkRows.length,
+                                                blockIds: audioBlockIds,
+                                              };
+                                              navigator.clipboard.writeText(JSON.stringify(requestBody, null, 2)).then(
+                                                () => { setImportDevPromptCopied(true); setTimeout(() => setImportDevPromptCopied(false), 2000); },
+                                                () => {}
+                                              );
+                                            }}
+                                            className="inline-flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium rounded bg-amber-500/20 text-amber-200 hover:bg-amber-500/30 transition-colors"
+                                          >
+                                            <Copy className="w-3 h-3 shrink-0" />
+                                            {importDevPromptCopied ? "Copied!" : "Copy JSON"}
+                                          </button>
+                                        </div>
+                                        <p className="text-[10px] font-medium text-amber-200/80 mb-1">POST /api/cards/import-ai-blocks (audio blockIds only)</p>
+                                        <pre className="text-[10px] text-white/70 overflow-auto max-h-64 p-2 rounded bg-black/20 whitespace-pre-wrap break-words">
+                                          {JSON.stringify({
+                                            extractedContent: textContent.length > 2000 ? textContent.slice(0, 2000) + "\n\n… (truncated for preview)" : textContent,
+                                            deckId,
+                                            templateId: selectedTemplate.templateId,
+                                            uid: user?.uid ?? "(current user)",
+                                            maxCards: firstChunkRows.length,
+                                            blockIds: audioOnlyBlocks.map((b) => b.blockId),
+                                          }, null, 2)}
+                                        </pre>
+                                      </div>
+                                    </details>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+
+                        {/* Use AI - above table, when a quiz/audio block is selected */}
+                        {importStep === ImportStep.mapColumns &&
+                          selectedTemplate &&
+                          aiEntitled &&
+                          pendingBlockId &&
+                          (() => {
+                            const pendingBlock = selectedTemplate.blocks.find(
+                              (b) => b.blockId === pendingBlockId
+                            );
+                            const canUseAI =
+                              pendingBlock &&
+                              isBlockEligibleForGenerateWithAI(pendingBlock);
+                            const mapping = getMappingForBlock(pendingBlockId);
+                            const isAI = mapping?.generateWithAI;
+                            if (!canUseAI) return null;
+                            return (
+                              <div className="mb-3 flex justify-center">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setMappingGenerateWithAI(pendingBlockId)
+                                  }
+                                  title="Generate this block with AI per row (quiz/audio only)"
+                                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                                    isAI
+                                      ? "bg-amber-500 text-amber-50 hover:bg-amber-400"
+                                      : "bg-amber-600/80 hover:bg-amber-600 text-white border border-amber-500/30"
+                                  }`}
+                                >
+                                  <Sparkles className="w-4 h-4 shrink-0" />
+                                  Use AI
+                                </button>
+                              </div>
+                            );
+                          })()}
 
                         {/* Data Preview Table with Clickable Headers */}
                         <div className="rounded-md overflow-auto max-h-[250px] border border-white/[0.08]">
@@ -2249,14 +4685,14 @@ export default function DeckDetailPage() {
                         {/* Mappings Summary */}
                         {columnMappings.length > 0 && (
                           <div className="flex flex-wrap gap-2 mt-4">
-                            {columnMappings.map((m) => (
+                            {columnMappings.map((m, idx) => (
                               <span
-                                key={m.columnIndex}
+                                key={m.blockId ?? `mapping-${idx}`}
                                 className="inline-flex items-center gap-1 px-2 py-1 bg-accent/20 text-accent text-sm rounded"
                               >
                                 {m.columnName} → {m.blockLabel}
                                 <button
-                                  onClick={() => removeMapping(m.columnIndex)}
+                                  onClick={() => removeBlockMapping(m.blockId)}
                                   className="hover:text-white"
                                 >
                                   <X className="w-3 h-3" />
@@ -2286,13 +4722,55 @@ export default function DeckDetailPage() {
                             }}
                           />
                         </div>
-                        <p className="text-white text-lg mb-2">
-                          Importing cards...
-                        </p>
-                        <p className="text-white/50">
-                          {importedCount} of {getSelectedRowCount()} cards
-                          imported
-                        </p>
+                        {importAIGenerating ? (
+                          <>
+                            <p className="text-white text-lg mb-2">
+                              Generating quiz/audio with AI...
+                            </p>
+                            {importAIBatchProgress ? (
+                              <>
+                                <p className="text-white/80 mb-2">
+                                  Batch {importAIBatchProgress.current} of {importAIBatchProgress.total}
+                                </p>
+                                <div className="w-48 h-2 mx-auto rounded-full bg-white/10 overflow-hidden">
+                                  <div
+                                    className="h-full bg-amber-500 transition-all duration-300"
+                                    style={{
+                                      width: `${(importAIBatchProgress.current / importAIBatchProgress.total) * 100}%`,
+                                    }}
+                                  />
+                                </div>
+                              </>
+                            ) : (
+                              <p className="text-white/50">
+                                Mapping your table to the template. This may take a moment.
+                              </p>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-white text-lg mb-2">
+                              Importing cards...
+                            </p>
+                            <p className="text-white/50">
+                              {importedCount} of {getSelectedRowCount()} cards
+                              imported
+                            </p>
+                            {importAudioGenerating && (
+                              <p className="text-amber-400/90 text-sm mt-2">
+                                Generating audio...
+                              </p>
+                            )}
+                            {(importAudioCompleted > 0 || importAudioFailed > 0) && (
+                              <p className="text-white/60 text-sm mt-2">
+                                Audio: {importAudioCompleted} completed
+                                {importAudioFailed > 0 && (
+                                  <span className="text-red-400/90">, {importAudioFailed} failed</span>
+                                )}
+                              </p>
+                            )}
+                          </>
+                        )}
                       </>
                     ) : (
                       <>
@@ -2304,6 +4782,14 @@ export default function DeckDetailPage() {
                         </p>
                         <p className="text-white/50 mb-6">
                           Successfully imported {importedCount} cards
+                          {(importAudioCompleted > 0 || importAudioFailed > 0) && (
+                            <span className="block mt-1 text-white/60">
+                              Audio: {importAudioCompleted} completed
+                              {importAudioFailed > 0 && (
+                                <span className="text-red-400/90">, {importAudioFailed} failed</span>
+                              )}
+                            </span>
+                          )}
                         </p>
                         <button
                           onClick={resetImport}
@@ -2320,33 +4806,39 @@ export default function DeckDetailPage() {
               {/* Footer Navigation */}
               {importStep !== ImportStep.loadFile &&
                 importStep !== ImportStep.importing && (
-                  <div className="flex items-center justify-between mt-6 pt-4 border-t border-white/10">
-                    <button
-                      onClick={previousStep}
-                      className="flex items-center gap-1 px-4 py-2 text-white/70 hover:text-white transition-colors"
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                      Back
-                    </button>
-                    {importStep === ImportStep.mapColumns ? (
-                      <button
-                        onClick={handleImport}
-                        disabled={!canProceedToNextStep()}
-                        className="flex items-center gap-2 px-6 py-2 bg-accent hover:bg-accent/90 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <Upload className="w-4 h-4" />
-                        Import {getSelectedRowCount()} Cards
-                      </button>
-                    ) : (
-                      <button
-                        onClick={nextStep}
-                        disabled={!canProceedToNextStep()}
-                        className="flex items-center gap-1 px-4 py-2 bg-accent hover:bg-accent/90 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Continue
-                        <ChevronRight className="w-4 h-4" />
-                      </button>
+                  <div className="mt-6 pt-4 border-t border-white/10">
+                    {importStep === ImportStep.mapColumns && importUseAIError && (
+                      <p className="text-red-400 text-sm mb-3">{importUseAIError}</p>
                     )}
+                    <div className="flex items-center justify-between">
+                      <button
+                        onClick={previousStep}
+                        disabled={importUseAILoading}
+                        className="flex items-center gap-1 px-4 py-2 text-white/70 hover:text-white transition-colors disabled:opacity-50"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                        Back
+                      </button>
+                      {importStep === ImportStep.mapColumns ? (
+                        <button
+                          onClick={handleImport}
+                          disabled={!canProceedToNextStep() || importUseAILoading}
+                          className="flex items-center gap-2 px-6 py-2 bg-accent hover:bg-accent/90 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <Upload className="w-4 h-4" />
+                          Import {getSelectedRowCount()} Cards
+                        </button>
+                      ) : (
+                        <button
+                          onClick={nextStep}
+                          disabled={!canProceedToNextStep()}
+                          className="flex items-center gap-1 px-4 py-2 bg-accent hover:bg-accent/90 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Continue
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
             </div>
@@ -2366,7 +4858,8 @@ export default function DeckDetailPage() {
 }
 
 // Modal Component
-function Modal({ children, onClose, wide = false }) {
+function Modal({ children, onClose, wide = false, large = false }) {
+  const sizeClass = large ? "w-full max-w-4xl max-h-[90vh] flex flex-col" : wide ? "w-full max-w-2xl" : "w-full max-w-md";
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -2380,9 +4873,7 @@ function Modal({ children, onClose, wide = false }) {
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.95, opacity: 0 }}
         onClick={(e) => e.stopPropagation()}
-        className={`bg-zinc-900 border border-white/10 rounded-2xl p-6 ${
-          wide ? "w-full max-w-2xl" : "w-full max-w-md"
-        }`}
+        className={`bg-zinc-900 border border-white/10 rounded-2xl p-6 ${sizeClass}`}
       >
         {children}
       </motion.div>

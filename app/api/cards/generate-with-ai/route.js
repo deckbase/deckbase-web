@@ -1,36 +1,41 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { buildCardPrompt } from "@/lib/card-ai-prompt";
+import { parseGeneratedCard } from "@/lib/ai-card-parse";
 import { BlockTypeNames } from "@/utils/firestore";
 import { getAdminAuth } from "@/utils/firebase-admin";
 import { isProOrVip } from "@/lib/revenuecat-server";
+import { checkAIGenerationLimit, incrementAIGenerations } from "@/lib/usage-limits";
 
 function normalizeBlockType(type) {
   if (type == null) return "text";
   if (typeof type === "number" && BlockTypeNames[type] != null) return BlockTypeNames[type];
+  if (typeof type === "string" && /^\d+$/.test(type)) {
+    const n = parseInt(type, 10);
+    if (BlockTypeNames[n] != null) return BlockTypeNames[n];
+  }
   return String(type);
+}
+
+function templateBlocksToFull(templateBlocks) {
+  return templateBlocks.map((b) => ({
+    blockId: b.blockId,
+    type: b.type,
+    label: b.label || "",
+    required: Boolean(b.required),
+    configJson: b.configJson,
+  }));
 }
 
 /**
  * POST /api/cards/generate-with-ai
- * Body: { deckTitle, deckDescription?, templateBlocks, exampleCards, count?: 1-5 }
- * Returns: { cards: [{ values }] } or (count=1) { values } for backward compat; also cards array when count>1
+ * Body: { deckTitle, deckDescription?, templateBlocks (include blockId,type,label + optional configJson), ... }
+ * Returns: { cards: [{ values, blocksSnapshot }], values? (first card values, compat) }
  */
-function parseCardFromParsed(parsed, templateBlocks, normalizeBlockType) {
-  const values = [];
-  for (const block of templateBlocks) {
-    const type = normalizeBlockType(block.type);
-    if (!["header1", "header2", "header3", "text", "example", "hiddenText", "audio"].includes(type))
-      continue;
-    const text = parsed[block.blockId] != null ? String(parsed[block.blockId]).trim() : "";
-    values.push({ blockId: block.blockId, type, text: text || "" });
-  }
-  return values;
-}
-
 export async function POST(request) {
   try {
     const isProduction = process.env.NODE_ENV === "production";
+    let requestUid = null;
 
     if (isProduction) {
       const auth = getAdminAuth();
@@ -42,17 +47,16 @@ export async function POST(request) {
           { status: 401 }
         );
       }
-      let uid;
       try {
         const decoded = await auth.verifyIdToken(idToken);
-        uid = decoded.uid;
+        requestUid = decoded.uid;
       } catch {
         return NextResponse.json(
           { error: "Invalid or expired token" },
           { status: 401 }
         );
       }
-      const entitled = await isProOrVip(uid);
+      const entitled = await isProOrVip(requestUid);
       if (!entitled) {
         return NextResponse.json(
           { error: "Active subscription required to use AI features" },
@@ -76,6 +80,17 @@ export async function POST(request) {
       return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
     }
 
+    const count = Math.min(5, Math.max(1, Number(body.count) || 1));
+    if (isProduction && requestUid) {
+      const limitCheck = await checkAIGenerationLimit(requestUid);
+      if (!limitCheck.allowed || limitCheck.used + count > limitCheck.limit) {
+        return NextResponse.json(
+          { error: limitCheck.message || "Monthly AI generation limit reached" },
+          { status: 403 }
+        );
+      }
+    }
+
     const deckTitle = typeof body.deckTitle === "string" ? body.deckTitle.trim() : "";
     if (!deckTitle) {
       return NextResponse.json(
@@ -87,7 +102,6 @@ export async function POST(request) {
       typeof body.deckDescription === "string" ? body.deckDescription.trim() : "";
     const templateBlocks = Array.isArray(body.templateBlocks) ? body.templateBlocks : [];
     const exampleCards = Array.isArray(body.exampleCards) ? body.exampleCards : [];
-    const count = Math.min(5, Math.max(1, Number(body.count) || 1));
     const mainBlockId = body.mainBlockId ?? null;
     const subBlockId = body.subBlockId ?? null;
     const mainBlockLabel = typeof body.mainBlockLabel === "string" ? body.mainBlockLabel.trim() : null;
@@ -95,6 +109,10 @@ export async function POST(request) {
     const avoidMainPhrases = Array.isArray(body.avoidMainPhrases)
       ? body.avoidMainPhrases.map((s) => (s != null ? String(s).trim() : "")).filter(Boolean)
       : [];
+    const exampleCardsLabel =
+      typeof body.exampleCardsLabel === "string" && body.exampleCardsLabel.trim()
+        ? body.exampleCardsLabel.trim()
+        : "Example cards from this deck:";
 
     if (templateBlocks.length === 0) {
       return NextResponse.json(
@@ -103,10 +121,33 @@ export async function POST(request) {
       );
     }
 
+    const blockSummary = templateBlocks.map((b) => ({
+      blockId: String(b.blockId).slice(0, 8),
+      type: b.type,
+      typeOf: typeof b.type,
+      label: (b.label || "").slice(0, 20),
+    }));
+    console.log("[generate-with-ai] request", {
+      deckTitle: deckTitle?.slice(0, 40),
+      templateBlocksCount: templateBlocks.length,
+      blocks: blockSummary,
+      exampleCardsCount: exampleCards.length,
+      count,
+      mainBlockId: mainBlockId ?? null,
+      subBlockId: subBlockId ?? null,
+    });
+
+    const promptBlocks = templateBlocks.map((b) => ({
+      blockId: b.blockId,
+      type: normalizeBlockType(b.type),
+      label: b.label || "",
+    }));
+    console.log("[generate-with-ai] promptBlocks (normalized types)", promptBlocks.map((b) => ({ id: b.blockId?.slice(0, 8), type: b.type, label: (b.label || "").slice(0, 20) })));
+
     const { system, user } = buildCardPrompt({
       deckTitle,
       deckDescription,
-      templateBlocks,
+      templateBlocks: promptBlocks,
       exampleCards,
       count,
       mainBlockId,
@@ -114,12 +155,30 @@ export async function POST(request) {
       mainBlockLabel,
       subBlockLabel,
       avoidMainPhrases,
+      exampleCardsLabel,
     });
+
+    const templateFull = templateBlocksToFull(templateBlocks);
+    const hasQuiz = templateFull.some((b) => {
+      const t = normalizeBlockType(b.type);
+      return (
+        t === "quizSingleSelect" ||
+        t === "quizMultiSelect" ||
+        t === "quizTextAnswer"
+      );
+    });
+    console.log("[generate-with-ai] prompt", {
+      hasQuiz,
+      maxTokens: count > 1 ? (hasQuiz ? 4096 : 2048) : hasQuiz ? 2048 : 1024,
+      systemIncludesQuiz: (system || "").includes("quiz") || (system || "").includes("object"),
+    });
+    const maxTokens =
+      count > 1 ? (hasQuiz ? 4096 : 2048) : hasQuiz ? 2048 : 1024;
 
     const anthropic = new Anthropic({ apiKey });
     const msg = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: count > 1 ? 2048 : 1024,
+      max_tokens: maxTokens,
       system,
       messages: [{ role: "user", content: user }],
     });
@@ -138,20 +197,46 @@ export async function POST(request) {
       );
     }
 
+    const expectedIds = templateFull.map((b) => b.blockId);
+    const firstObj = Array.isArray(parsed) && parsed[0] && typeof parsed[0] === "object" ? parsed[0] : parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    const parsedKeys = Object.keys(firstObj);
+    console.log("[generate-with-ai] AI response", {
+      parsedKeysCount: parsedKeys.length,
+      expectedBlockIdsCount: expectedIds.length,
+      missingKeys: expectedIds.filter((id) => firstObj[id] == null),
+    });
+
     const cards = [];
     if (count > 1) {
       const arr = Array.isArray(parsed) ? parsed : [parsed];
       for (let i = 0; i < count && i < arr.length; i++) {
         const item = arr[i] && typeof arr[i] === "object" ? arr[i] : {};
-        cards.push(parseCardFromParsed(item, templateBlocks, normalizeBlockType));
+        cards.push(parseGeneratedCard(item, templateFull, normalizeBlockType));
       }
     } else {
-      const values = parseCardFromParsed(parsed, templateBlocks, normalizeBlockType);
-      cards.push(values);
+      const item =
+        Array.isArray(parsed) && parsed[0] && typeof parsed[0] === "object"
+          ? parsed[0]
+          : parsed && typeof parsed === "object" && !Array.isArray(parsed)
+            ? parsed
+            : {};
+      cards.push(parseGeneratedCard(item, templateFull, normalizeBlockType));
+    }
+
+    console.log("[generate-with-ai] parsed cards", {
+      cardsCount: cards.length,
+      firstCardValuesCount: cards[0]?.values?.length ?? 0,
+      firstCardBlocksSnapshotCount: cards[0]?.blocksSnapshot?.length ?? 0,
+    });
+
+    if (requestUid && cards.length > 0) {
+      incrementAIGenerations(requestUid, cards.length).catch((err) =>
+        console.warn("[generate-with-ai] usage increment failed", err?.message)
+      );
     }
 
     const payload = { cards };
-    if (count === 1) payload.values = cards[0];
+    if (count === 1) payload.values = cards[0].values;
     if (process.env.NODE_ENV === "development") {
       payload._devPrompt = { system, user };
     }

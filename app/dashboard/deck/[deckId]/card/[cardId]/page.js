@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef, Fragment } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -17,6 +17,7 @@ import {
   Upload,
   Sparkles,
   Volume2,
+  Pencil,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -30,6 +31,7 @@ import {
   uploadImage,
   uploadAudio,
   getMedia,
+  deleteMedia,
   getTemplate,
   BlockTypeNames,
 } from "@/utils/firestore";
@@ -38,6 +40,9 @@ import { BLOCK_TYPES, TEXT_BLOCK_TYPES } from "@/components/blocks/blockTypes";
 import { ELEVENLABS_VOICES, ELEVENLABS_SAMPLE_PHRASE } from "@/lib/elevenlabs-voices";
 import { parseAudioBlockConfig } from "@/lib/audio-block-config";
 import { getBlockValidationErrors as getBlockValidationErrorsFromValidators } from "@/lib/block-validators";
+import { getCropAspectFromConfig, getCropStateFromConfig, CROP_ASPECT_OPTIONS, DEFAULT_CROP_ASPECT } from "@/lib/image-block-config";
+import CardPreviewContent from "@/components/CardPreviewContent";
+import ImageCropModal from "@/components/ImageCropModal";
 
 const safeJsonParse = (value) => {
   if (!value || typeof value !== "string") return null;
@@ -48,22 +53,37 @@ const safeJsonParse = (value) => {
   }
 };
 
-// Get block config object; template/card may store configJson as string or object (Firestore)
+// Get block config object; template/card may store configJson or config_json (Firestore), as string or object
 const getBlockConfig = (block) => {
-  const raw = block?.configJson;
+  const raw = block?.configJson ?? block?.config_json;
   if (raw == null) return null;
-  if (typeof raw === "object") return raw;
-  return safeJsonParse(raw);
+  return typeof raw === "object" ? raw : safeJsonParse(raw);
 };
 
-// Normalize block type so edit (Firestore/template numeric) and create (string) use same UI
-const normalizeBlockType = (type) =>
-  typeof type === "number" && BlockTypeNames[type] != null
-    ? BlockTypeNames[type]
-    : type;
+// Normalize block type: Firestore/template can return number (0-12) or string ("8", "11") — convert to name for UI and validators
+const normalizeBlockType = (type) => {
+  if (type == null) return type;
+  const num = typeof type === "number" ? type : /^\d+$/.test(String(type)) ? Number(type) : NaN;
+  if (!Number.isNaN(num) && BlockTypeNames[num] != null) return BlockTypeNames[num];
+  return type;
+};
 
 const normalizeBlocks = (blocks) =>
   (blocks || []).map((b) => ({ ...b, type: normalizeBlockType(b.type) }));
+
+const isImageBlock = (b) => {
+  const t = b?.type;
+  return t === "image" || t === 6 || (typeof t === "string" && t === "6");
+};
+
+function ensureImageBlockConfig(blocks) {
+  if (!blocks?.length) return blocks;
+  return blocks.map((b) => {
+    if (!isImageBlock(b)) return b;
+    if (b.configJson != null || b.config_json != null) return b;
+    return { ...b, configJson: JSON.stringify({ cropAspect: DEFAULT_CROP_ASPECT }) };
+  });
+}
 
 const normalizeValue = (v) =>
   v && typeof v.type === "number" && BlockTypeNames[v.type] != null
@@ -76,6 +96,20 @@ const DEFAULT_BLOCKS = [
   { blockId: "back", type: "text", label: "Back", required: true },
   { blockId: "audio", type: "audio", label: "Audio", required: false },
 ];
+
+function getDefaultValuesForBlocks(blocks) {
+  const v = {};
+  (blocks || DEFAULT_BLOCKS).forEach((block) => {
+    const type = typeof block.type === "number" && BlockTypeNames[block.type] != null ? BlockTypeNames[block.type] : block.type;
+    v[block.blockId] = {
+      blockId: block.blockId,
+      type: block.type,
+      text: "",
+      mediaIds: type === "image" || type === "audio" ? [] : undefined,
+    };
+  });
+  return v;
+}
 
 const isProduction = process.env.NODE_ENV === "production";
 
@@ -94,7 +128,7 @@ export default function CardEditorPage() {
 
   const [deck, setDeck] = useState(null);
   const [blocks, setBlocks] = useState(DEFAULT_BLOCKS);
-  const [values, setValues] = useState({});
+  const [values, setValues] = useState(() => getDefaultValuesForBlocks(DEFAULT_BLOCKS));
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showBlockPicker, setShowBlockPicker] = useState(false);
@@ -103,6 +137,46 @@ export default function CardEditorPage() {
   const [subBlockId, setSubBlockId] = useState(null);
   const [generatingAudioBlockId, setGeneratingAudioBlockId] = useState(null);
   const [playingSampleVoiceId, setPlayingSampleVoiceId] = useState(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [imageCropPending, setImageCropPending] = useState(null);
+  const [imageUploadProgress, setImageUploadProgress] = useState(null);
+  const [imageEditLoading, setImageEditLoading] = useState(null);
+
+  const valuesRef = useRef(values);
+  const blocksRef = useRef(blocks);
+  const saveDebounceRef = useRef(null);
+  useEffect(() => {
+    valuesRef.current = values;
+    blocksRef.current = blocks;
+  }, [values, blocks]);
+
+  const DEBOUNCE_MS = 800;
+  const scheduleTextAutoSave = useCallback(() => {
+    if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
+    saveDebounceRef.current = setTimeout(async () => {
+      saveDebounceRef.current = null;
+      const v = valuesRef.current;
+      const b = blocksRef.current;
+      const imageBlocksInRef = (b || []).filter((x) => isImageBlock(x));
+      if (imageBlocksInRef.length) {
+        console.log("[RATIO] debounce saving — blocksRef image blocks", imageBlocksInRef.map((x) => ({ blockId: x.blockId, configJson: x.configJson })));
+      }
+      setSaving(true);
+      try {
+        await persistCard(b, v, { redirect: false });
+      } catch (err) {
+        console.error("Auto-save after text edit:", err);
+      } finally {
+        setSaving(false);
+      }
+    }, DEBOUNCE_MS);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
+    };
+  }, []);
 
   // Fetch deck and card data
   useEffect(() => {
@@ -121,7 +195,9 @@ export default function CardEditorPage() {
       if (!isNewCard) {
         const cardData = await getCard(user.uid, cardId);
         if (cardData && !cardData.isDeleted) {
-          setBlocks(normalizeBlocks(cardData.blocksSnapshot) || DEFAULT_BLOCKS);
+          const normalized = normalizeBlocks(cardData.blocksSnapshot) || DEFAULT_BLOCKS;
+          const withImageConfig = ensureImageBlockConfig(normalized);
+          setBlocks(withImageConfig);
 
           // Convert values array to object keyed by blockId (normalize type for consistency)
           const valuesObj = {};
@@ -141,14 +217,15 @@ export default function CardEditorPage() {
             setSubBlockId(cardData.subBlockId ?? null);
           }
 
-          // Fetch media for image blocks
+          // Fetch media for image/audio blocks (display + original so Edit image can load original)
           for (const value of cardData.values || []) {
-            if (value.mediaIds && value.mediaIds.length > 0) {
-              for (const mediaId of value.mediaIds) {
-                const media = await getMedia(user.uid, mediaId);
-                if (media) {
-                  setMediaCache((prev) => ({ ...prev, [mediaId]: media }));
-                }
+            const mediaIds = value.mediaIds || [];
+            const originalMediaIds = value.originalMediaIds || [];
+            const idsToFetch = [...new Set([...mediaIds, ...originalMediaIds])].filter(Boolean);
+            for (const mediaId of idsToFetch) {
+              const media = await getMedia(user.uid, mediaId);
+              if (media) {
+                setMediaCache((prev) => ({ ...prev, [mediaId]: media }));
               }
             }
           }
@@ -162,7 +239,8 @@ export default function CardEditorPage() {
           const template = await getTemplate(user.uid, templateIdFromUrl);
           if (template?.blocks?.length) {
             const templateBlocks = normalizeBlocks(template.blocks);
-            setBlocks(templateBlocks);
+            const withImageConfig = ensureImageBlockConfig(templateBlocks);
+            setBlocks(withImageConfig);
             setMainBlockId(template.mainBlockId || templateBlocks[0]?.blockId || null);
             setSubBlockId(template.subBlockId || templateBlocks[1]?.blockId || null);
             const initialValues = {};
@@ -213,7 +291,7 @@ export default function CardEditorPage() {
     fetchData();
   }, [user, deckId, cardId, isNewCard, templateIdFromUrl, router]);
 
-  // Update a block's value
+  // Update a block's value (debounced auto-save is scheduled on each change)
   const updateBlockValue = (blockId, text) => {
     setValues((prev) => ({
       ...prev,
@@ -224,27 +302,48 @@ export default function CardEditorPage() {
         text,
       },
     }));
+    scheduleTextAutoSave();
   };
 
-  // Update a block's configJson (for quiz/space blocks)
+  // Update a block's configJson (quiz, space, image crop aspect, etc.); debounced auto-save scheduled
   const updateBlockConfig = (blockId, config) => {
-    setBlocks((prev) =>
-      prev.map((b) =>
+    const cropAspect = config?.cropAspect ?? config?.crop_aspect;
+    if (cropAspect != null) {
+      const str = JSON.stringify(config);
+      console.log("[RATIO] updateBlockConfig", { blockId, cropAspect, configJsonLength: str.length, configJson: str });
+    }
+    setBlocks((prev) => {
+      const next = prev.map((b) =>
         b.blockId === blockId
           ? { ...b, configJson: JSON.stringify(config) }
           : b
-      )
-    );
+      );
+      // Save ratio to card immediately so it's not lost (debounce may use stale ref)
+      if (cropAspect != null && !isNewCard) {
+        setSaving(true);
+        persistCard(next, valuesRef.current, { redirect: false }).catch((err) => console.error("[RATIO] immediate save failed", err)).finally(() => setSaving(false));
+      }
+      return next;
+    });
+    scheduleTextAutoSave();
   };
 
   // Add a new block
   const addBlock = (type) => {
     const newBlockId = uuidv4();
     let configJson;
-    if (type === "quizSingleSelect" || type === "quizMultiSelect") {
+    if (type === "quizSingleSelect") {
       configJson = JSON.stringify({
         question: "",
         options: ["", ""],
+        correctAnswerIndex: -1,
+        correctAnswers: [],
+      });
+    } else if (type === "quizMultiSelect") {
+      configJson = JSON.stringify({
+        question: "",
+        options: ["", ""],
+        correctAnswerIndices: [],
         correctAnswers: [],
       });
     } else if (type === "quizTextAnswer") {
@@ -256,6 +355,8 @@ export default function CardEditorPage() {
       });
     } else if (type === "space") {
       configJson = JSON.stringify({ height: 32 });
+    } else if (type === "image") {
+      configJson = JSON.stringify({ cropAspect: 1 });
     }
 
     const newBlock = {
@@ -306,44 +407,330 @@ export default function CardEditorPage() {
   const [draggedBlockIndex, setDraggedBlockIndex] = useState(null);
   const [dragOverBlockIndex, setDragOverBlockIndex] = useState(null);
 
-  // Handle image upload
-  const handleImageUpload = async (blockId, files) => {
-    if (!files || files.length === 0) return;
+  const dragScrollIntervalRef = useRef(null);
+  const dragScrollHandlerRef = useRef(null);
+  useEffect(() => {
+    const EDGE_ZONE = 100;
+    const SCROLL_SPEED = 10;
+    dragScrollHandlerRef.current = (e) => {
+      if (typeof window === "undefined") return;
+      const y = e.clientY;
+      const topZone = EDGE_ZONE;
+      const bottomZone = window.innerHeight - EDGE_ZONE;
+      if (y < topZone) {
+        if (dragScrollIntervalRef.current) clearInterval(dragScrollIntervalRef.current);
+        dragScrollIntervalRef.current = setInterval(() => window.scrollBy({ top: -SCROLL_SPEED, behavior: "auto" }), 16);
+      } else if (y > bottomZone) {
+        if (dragScrollIntervalRef.current) clearInterval(dragScrollIntervalRef.current);
+        dragScrollIntervalRef.current = setInterval(() => window.scrollBy({ top: SCROLL_SPEED, behavior: "auto" }), 16);
+      } else {
+        if (dragScrollIntervalRef.current) {
+          clearInterval(dragScrollIntervalRef.current);
+          dragScrollIntervalRef.current = null;
+        }
+      }
+    };
+    return () => {
+      if (dragScrollIntervalRef.current) clearInterval(dragScrollIntervalRef.current);
+    };
+  }, []);
 
-    for (const file of files) {
+  const clearDragScroll = useCallback(() => {
+    if (dragScrollIntervalRef.current) {
+      clearInterval(dragScrollIntervalRef.current);
+      dragScrollIntervalRef.current = null;
+    }
+    if (dragScrollHandlerRef.current && typeof document !== "undefined") {
+      document.removeEventListener("dragover", dragScrollHandlerRef.current);
+    }
+  }, []);
+
+  const setupDragScroll = useCallback(() => {
+    if (dragScrollHandlerRef.current && typeof document !== "undefined") {
+      document.addEventListener("dragover", dragScrollHandlerRef.current, { passive: true });
+    }
+  }, []);
+
+  // Handle image upload (with progress). Used after crop or for non-cropped files. Auto-saves when done.
+  const handleImageUpload = async (blockId, files) => {
+    const fileList = files?.length != null ? Array.from(files) : files ? [files] : [];
+    if (fileList.length === 0) return;
+
+    let nextValues = { ...values };
+    for (const file of fileList) {
       try {
-        const media = await uploadImage(user.uid, file);
+        setImageUploadProgress({ blockId, progress: 0 });
+        const media = await uploadImage(user.uid, file, {
+          onProgress: (percent) => setImageUploadProgress((p) => (p?.blockId === blockId ? { ...p, progress: percent } : p)),
+        });
 
         setMediaCache((prev) => ({ ...prev, [media.mediaId]: media }));
-
-        setValues((prev) => {
-          const currentValue = prev[blockId] || { blockId, type: "image" };
-          const currentMediaIds = currentValue.mediaIds || [];
-          return {
-            ...prev,
-            [blockId]: {
-              ...currentValue,
-              mediaIds: [...currentMediaIds, media.mediaId],
-            },
-          };
-        });
+        const currentValue = nextValues[blockId] || { blockId, type: "image" };
+        const currentMediaIds = currentValue.mediaIds || [];
+        nextValues = {
+          ...nextValues,
+          [blockId]: {
+            ...currentValue,
+            mediaIds: [...currentMediaIds, media.mediaId],
+          },
+        };
+        setValues(nextValues);
       } catch (error) {
         console.error("Error uploading image:", error);
+      } finally {
+        setImageUploadProgress((p) => (p?.blockId === blockId ? null : p));
       }
+    }
+
+    setSaving(true);
+    try {
+      await persistCard(blocks, nextValues, { redirect: false });
+    } catch (err) {
+      console.error("Auto-save after image upload:", err);
+    } finally {
+      setSaving(false);
     }
   };
 
-  // Remove image from block
-  const removeImage = (blockId, mediaId) => {
-    setValues((prev) => {
-      const currentValue = prev[blockId];
-      if (!currentValue?.mediaIds) return prev;
+  // User selected image file(s): open crop modal with the original file (never a cropped image). Crop aspect from block config.
+  // Only allow ratio change when adding the first image; second+ use block aspect.
+  const handleImageFileSelect = (blockId, files) => {
+    if (!files?.length) return;
+    const arr = Array.from(files);
+    const first = arr[0]; // original file; crop modal always uses original
+    const imageSrc = URL.createObjectURL(first);
+    const block = blocks.find((b) => b.blockId === blockId);
+    const config = getBlockConfig(block);
+    const defaultAspect = getCropAspectFromConfig(config);
+    const cropState = getCropStateFromConfig(config);
+    const existingCount = values[blockId]?.mediaIds?.length ?? 0;
+    const allowRatioChange = existingCount === 0;
+    setImageCropPending({ blockId, files: arr, imageSrc, defaultAspect, initialCrop: cropState?.crop, initialZoom: cropState?.zoom, allowRatioChange });
+  };
 
+  // Edit existing image: load original (uncropped) when available, otherwise the display image so re-crop always works.
+  const handleEditImage = useCallback(async (blockId, mediaId) => {
+    const currentValue = values[blockId];
+    const mediaIds = currentValue?.mediaIds || [];
+    const originalMediaIds = currentValue?.originalMediaIds || [];
+    const index = mediaIds.indexOf(mediaId);
+    const originalMediaId = index >= 0 ? originalMediaIds[index] : null;
+    const mediaIdToLoad = (originalMediaId && originalMediaId !== mediaId) ? originalMediaId : mediaId;
+    let media = mediaCache[mediaIdToLoad];
+    if (!media?.downloadUrl) {
+      try {
+        media = await getMedia(user.uid, mediaIdToLoad);
+        if (media) setMediaCache((prev) => ({ ...prev, [mediaIdToLoad]: media }));
+      } catch (e) {
+        console.warn("[TRACE] handleEditImage: fetch media failed", mediaIdToLoad, e);
+      }
+    }
+    if (!media?.downloadUrl) {
+      console.warn("[TRACE] handleEditImage: no media in cache", { mediaIdToLoad, cacheKeys: Object.keys(mediaCache) });
+      window.alert("Could not load image for editing. Try refreshing the page.");
+      return;
+    }
+    setImageEditLoading(mediaId);
+    try {
+      const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(media.downloadUrl)}`;
+      const res = await fetch(proxyUrl);
+      if (!res.ok) throw new Error(res.statusText || "Failed to load image");
+      const blob = await res.blob();
+      const imageSrc = URL.createObjectURL(blob);
+      const block = blocks.find((b) => b.blockId === blockId);
+      const config = getBlockConfig(block);
+      const defaultAspect = getCropAspectFromConfig(config);
+      const cropState = getCropStateFromConfig(config);
+      const allowRatioChange = mediaIds.length <= 1;
+      console.log("[RATIO] handleEditImage opening crop modal", { blockId, mediaId, defaultAspect, allowRatioChange });
+      setImageCropPending({ blockId, imageSrc, defaultAspect, mediaIdToReplace: mediaId, initialCrop: cropState?.crop, initialZoom: cropState?.zoom, allowRatioChange });
+    } catch (err) {
+      console.error("[TRACE] handleEditImage failed", err);
+      window.alert("Could not load image for editing. Please try again.");
+    } finally {
+      setImageEditLoading(null);
+    }
+  }, [mediaCache, blocks, values, user]);
+
+  const handleCropComplete = async (blob, aspectUsedInModal, cropState) => {
+    if (!imageCropPending) return;
+    const { blockId, files, imageSrc, mediaIdToReplace } = imageCropPending;
+    console.log("[RATIO] handleCropComplete", { blockId, mediaIdToReplace, aspectUsedInModal });
+    URL.revokeObjectURL(imageSrc);
+
+    const mergeCropConfig = (prev) => {
+      const base = typeof prev === "string" ? safeJsonParse(prev) || {} : prev || {};
+      const next = { ...base };
+      if (aspectUsedInModal != null) next.cropAspect = aspectUsedInModal;
+      if (cropState?.crop && typeof cropState.crop.x === "number" && typeof cropState.crop.y === "number") {
+        next.cropX = cropState.crop.x;
+        next.cropY = cropState.crop.y;
+      }
+      if (typeof cropState?.zoom === "number" && cropState.zoom >= 1 && cropState.zoom <= 3) next.cropZoom = cropState.zoom;
+      return JSON.stringify(next);
+    };
+
+    if (mediaIdToReplace != null) {
+      setImageCropPending(null);
+      const oldMedia = mediaCache[mediaIdToReplace];
+      const oldStoragePath = oldMedia?.storagePath ?? null;
+      const croppedFile = new File([blob], "image.png", { type: blob.type || "image/png" });
+      try {
+        setImageUploadProgress({ blockId, progress: 0 });
+        const media = await uploadImage(user.uid, croppedFile, {
+          onProgress: (percent) => setImageUploadProgress((p) => (p?.blockId === blockId ? { ...p, progress: percent } : p)),
+        });
+        setMediaCache((prev) => ({ ...prev, [media.mediaId]: media }));
+        const currentValue = values[blockId];
+        const mediaIds = (currentValue?.mediaIds || []).map((id) => (id === mediaIdToReplace ? media.mediaId : id));
+        const originalMediaIds = currentValue?.originalMediaIds || [];
+
+        const nextBlocks =
+          (aspectUsedInModal != null || cropState)
+            ? blocks.map((b) => (b.blockId === blockId ? { ...b, configJson: mergeCropConfig(b.configJson) } : b))
+            : blocks;
+        const nextValues = { ...values, [blockId]: { ...currentValue, mediaIds, originalMediaIds } };
+        if (aspectUsedInModal != null || cropState) {
+          console.log("[RATIO] handleCropComplete saving aspect/crop to block", { blockId, aspectUsedInModal, cropState: !!cropState });
+          setBlocks(nextBlocks);
+        }
+        setValues(nextValues);
+
+        const pathToDelete = oldStoragePath ?? (await getMedia(user.uid, mediaIdToReplace))?.storagePath ?? null;
+        try {
+          await deleteMedia(user.uid, mediaIdToReplace, pathToDelete);
+        } catch (e) {
+          console.warn("Could not delete old crop after replace", e);
+        }
+        setMediaCache((prev) => {
+          const next = { ...prev };
+          delete next[mediaIdToReplace];
+          return next;
+        });
+
+        setSaving(true);
+        try {
+          await persistCard((aspectUsedInModal != null || cropState) ? nextBlocks : blocks, nextValues, { redirect: false });
+        } catch (err) {
+          console.error("Auto-save after image edit:", err);
+        } finally {
+          setSaving(false);
+        }
+      } finally {
+        setImageUploadProgress((p) => (p?.blockId === blockId ? null : p));
+      }
+      return;
+    }
+
+    const croppedFile = new File([blob], "image.png", { type: blob.type || "image/png" });
+    const originalFile = files?.[0];
+    setImageCropPending(null);
+    console.log("[RATIO] handleCropComplete first-add flow", { blockId, aspectUsedInModal });
+
+    if (originalFile) {
+      let nextValues = { ...values };
+      const currentValue = nextValues[blockId] || { blockId, type: "image" };
+      let mediaIds = currentValue.mediaIds || [];
+      let originalMediaIds = currentValue.originalMediaIds || [];
+
+      const nextBlocks =
+        aspectUsedInModal != null || cropState
+          ? blocks.map((b) => (b.blockId === blockId ? { ...b, configJson: mergeCropConfig(b.configJson) } : b))
+          : blocks;
+      if (aspectUsedInModal != null || cropState) {
+        console.log("[RATIO] handleCropComplete first-add saving aspect/crop to block", { blockId, aspectUsedInModal, cropState: !!cropState });
+        setBlocks(nextBlocks);
+      }
+
+      try {
+        setImageUploadProgress({ blockId, progress: 0 });
+        const originalMedia = await uploadImage(user.uid, originalFile, {
+          onProgress: (p) => setImageUploadProgress((prev) => (prev?.blockId === blockId ? { ...prev, progress: Math.min(50, p / 2) } : prev)),
+        });
+        setMediaCache((prev) => ({ ...prev, [originalMedia.mediaId]: originalMedia }));
+
+        setImageUploadProgress({ blockId, progress: 50 });
+        const displayMedia = await uploadImage(user.uid, croppedFile, {
+          onProgress: (p) => setImageUploadProgress((prev) => (prev?.blockId === blockId ? { ...prev, progress: 50 + p / 2 } : prev)),
+        });
+        setMediaCache((prev) => ({ ...prev, [displayMedia.mediaId]: displayMedia }));
+
+        mediaIds = [...mediaIds, displayMedia.mediaId];
+        originalMediaIds = [...originalMediaIds, originalMedia.mediaId];
+        nextValues = { ...nextValues, [blockId]: { ...currentValue, mediaIds, originalMediaIds } };
+        setValues(nextValues);
+
+        for (let i = 1; i < files.length; i++) {
+          const file = files[i];
+          setImageUploadProgress({ blockId, progress: 80 * (i / files.length) });
+          const m = await uploadImage(user.uid, file, {
+            onProgress: (p) => setImageUploadProgress((prev) => (prev?.blockId === blockId ? { ...prev, progress: 80 + (20 * p) / 100 } : prev)),
+          });
+          setMediaCache((prev) => ({ ...prev, [m.mediaId]: m }));
+          mediaIds = [...mediaIds, m.mediaId];
+          originalMediaIds = [...originalMediaIds, m.mediaId];
+          nextValues = { ...nextValues, [blockId]: { ...nextValues[blockId], mediaIds, originalMediaIds } };
+          setValues(nextValues);
+        }
+
+        setSaving(true);
+        try {
+          await persistCard((aspectUsedInModal != null || cropState) ? nextBlocks : blocks, nextValues, { redirect: false });
+        } catch (err) {
+          console.error("Auto-save after image upload:", err);
+        } finally {
+          setSaving(false);
+        }
+      } finally {
+        setImageUploadProgress((p) => (p?.blockId === blockId ? null : p));
+      }
+      return;
+    }
+
+    const toUpload = files?.length > 1 ? [croppedFile, ...files.slice(1)] : [croppedFile];
+    await handleImageUpload(blockId, toUpload);
+  };
+
+  const handleCropCancel = () => {
+    if (imageCropPending?.imageSrc) URL.revokeObjectURL(imageCropPending.imageSrc);
+    setImageCropPending(null);
+  };
+
+  // Remove image from block (and delete from Firestore + Storage)
+  const removeImage = async (blockId, mediaId) => {
+    const currentValue = values[blockId];
+    const mediaIds = currentValue?.mediaIds || [];
+    const originalMediaIds = currentValue?.originalMediaIds || [];
+    const index = mediaIds.indexOf(mediaId);
+    const originalMediaId = index >= 0 && originalMediaIds[index] ? originalMediaIds[index] : null;
+
+    const toDelete = originalMediaId && originalMediaId !== mediaId ? [mediaId, originalMediaId] : [mediaId];
+    for (const id of toDelete) {
+      try {
+        const media = mediaCache[id];
+        const storagePath = media?.storagePath ?? (await getMedia(user.uid, id))?.storagePath;
+        await deleteMedia(user.uid, id, storagePath ?? null);
+      } catch (error) {
+        console.error("Error deleting image from storage/Firestore:", error);
+      }
+      setMediaCache((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+    }
+
+    setValues((prev) => {
+      const cur = prev[blockId];
+      if (!cur?.mediaIds) return prev;
+      const newMediaIds = cur.mediaIds.filter((id) => id !== mediaId);
+      const newOriginalMediaIds = (cur.originalMediaIds || []).filter((_, i) => cur.mediaIds[i] !== mediaId);
       return {
         ...prev,
         [blockId]: {
-          ...currentValue,
-          mediaIds: currentValue.mediaIds.filter((id) => id !== mediaId),
+          ...cur,
+          mediaIds: newMediaIds,
+          originalMediaIds: newOriginalMediaIds.length ? newOriginalMediaIds : undefined,
         },
       };
     });
@@ -424,7 +811,8 @@ export default function CardEditorPage() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || res.statusText || "Sample failed");
+        const msg = err.error || res.statusText || "Sample failed";
+        throw new Error(msg);
       }
       const blob = await res.blob();
       objectUrl = URL.createObjectURL(blob);
@@ -436,22 +824,33 @@ export default function CardEditorPage() {
       });
     } catch (error) {
       console.error("Voice sample error:", error);
-      alert(error.message || "Could not play sample");
+      const msg = error?.message || "Could not play sample";
+      if (msg.includes("ELEVENLABS_API_KEY") || msg.includes("not configured")) {
+        alert("Voice samples are not available. Add ELEVENLABS_API_KEY to .env.local to enable them.");
+      } else {
+        alert(msg);
+      }
     } finally {
       if (objectUrl) URL.revokeObjectURL(objectUrl);
       setPlayingSampleVoiceId(null);
     }
   }, []);
 
-  // Persist card (optionally redirect after save)
+  // Persist card (optionally redirect after save). Ensure image blocks have configJson so crop aspect is saved.
   const persistCard = async (blocksToSave, valuesObj, options = {}) => {
     const { redirect = false } = options;
+    const imageBefore = (blocksToSave || []).filter((x) => isImageBlock(x)).map((x) => ({ blockId: x.blockId, configJson: x.configJson }));
+    const blocksWithImageConfig = ensureImageBlockConfig(blocksToSave || []);
+    const imageAfter = blocksWithImageConfig.filter((x) => isImageBlock(x)).map((x) => ({ blockId: x.blockId, configJson: x.configJson }));
+    if (imageBefore.length || imageAfter.length) {
+      console.log("[RATIO] persistCard", { imageBlocksBefore: imageBefore, imageBlocksAfter: imageAfter });
+    }
     const valuesArray = Object.values(valuesObj);
     if (isNewCard) {
       const created = await createCard(
         user.uid,
         deckId,
-        blocksToSave,
+        blocksWithImageConfig,
         valuesArray,
         templateIdFromUrl || null,
         mainBlockId ?? null,
@@ -463,7 +862,7 @@ export default function CardEditorPage() {
         router.replace(`/dashboard/deck/${deckId}/card/${created.cardId}`);
       }
     } else {
-      await updateCard(user.uid, cardId, deckId, valuesArray, blocksToSave, mainBlockId ?? null, subBlockId ?? null);
+      await updateCard(user.uid, cardId, deckId, valuesArray, blocksWithImageConfig, mainBlockId ?? null, subBlockId ?? null);
       if (redirect) router.push(`/dashboard/deck/${deckId}`);
     }
   };
@@ -525,13 +924,8 @@ export default function CardEditorPage() {
 
   const resolveBlockType = (block) => normalizeBlockType(block?.type);
 
-  // Save card
+  // Save card (always allow save so user can save draft even with validation errors)
   const handleSave = async () => {
-    const { errors } = getBlockValidationErrorsFromValidators(blocks, values, {
-      resolveBlockType,
-      getBlockConfig,
-    });
-    if (errors.length > 0) return;
     setSaving(true);
     try {
       await persistCard(blocks, values, { redirect: true });
@@ -547,6 +941,11 @@ export default function CardEditorPage() {
     getBlockConfig,
   });
   const isCardValid = cardValidation.valid;
+
+  if (typeof window !== "undefined" && window.__DEBUG_CARD_VALIDATION__) {
+    const blocksWithResolved = blocks.map((b) => ({ blockId: b.blockId, rawType: b.type, resolvedType: resolveBlockType(b), label: b.label, required: b.required }));
+    console.log("[VALIDATION] card-editor", { valid: cardValidation.valid, errorCount: cardValidation.errors?.length ?? 0, errors: cardValidation.errors });
+  }
 
   if (loading) {
     return (
@@ -576,18 +975,18 @@ export default function CardEditorPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          {!isNewCard && (
-            <Link
-              href={`/dashboard/deck/${deckId}/card/${cardId}/preview`}
-              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-              title="Preview"
-            >
-              <Eye className="w-5 h-5 text-white/70" />
-            </Link>
-          )}
+          <button
+            type="button"
+            onClick={() => setShowPreviewModal(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-white/20 text-white/90 hover:bg-white/10 hover:border-white/30 transition-colors"
+            title="Preview card"
+          >
+            <Eye className="w-4 h-4" />
+            <span className="hidden sm:inline">Preview</span>
+          </button>
           <button
             onClick={handleSave}
-            disabled={saving || !isCardValid}
+            disabled={saving}
             className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent/90 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? (
@@ -603,10 +1002,18 @@ export default function CardEditorPage() {
       </div>
 
       {cardValidation.errors.length > 0 && (
-        <div className="mb-6 rounded-lg border border-amber-500/50 bg-amber-500/10 text-amber-200 text-sm px-4 py-3">
-          <p className="font-medium mb-1">Please fix the following:</p>
-          <ul className="list-disc list-inside space-y-0.5">
-            {cardValidation.errors.map((msg, i) => (
+        <div
+          role="alert"
+          className="mb-6 rounded-lg border-2 border-amber-500 bg-amber-500/25 text-amber-200 text-sm px-4 py-4 shadow-lg ring-2 ring-amber-400/30"
+        >
+          <p className="font-semibold mb-1">
+            Please fix the {cardValidation.errors.length} error{cardValidation.errors.length === 1 ? "" : "s"} below before saving.
+          </p>
+          <p className="text-amber-200/90 text-xs mb-2">
+            See the message under each block that has an error.
+          </p>
+          <ul className="list-disc list-inside text-amber-200/95 space-y-0.5">
+            {cardValidation.errors.slice(0, 8).map((msg, i) => (
               <li key={i}>{msg}</li>
             ))}
           </ul>
@@ -632,36 +1039,53 @@ export default function CardEditorPage() {
           const defaultVoiceId = audioConfig.defaultVoiceId || undefined;
           const defaultSourceBlockId = audioConfig.defaultSourceBlockId || undefined;
           const isDragging = draggedBlockIndex === index;
-          const isDragOver = dragOverBlockIndex === index;
+          const showDropDivider = dragOverBlockIndex === index;
 
           return (
-            <div
-              key={block.blockId || `block-${index}`}
-              draggable
-              onDragStart={(e) => {
-                e.dataTransfer.effectAllowed = "move";
-                e.dataTransfer.setData("text/plain", String(index));
-                setDraggedBlockIndex(index);
-              }}
-              onDragEnd={() => {
-                setDraggedBlockIndex(null);
-                setDragOverBlockIndex(null);
-              }}
-              onDragOver={(e) => {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = "move";
-                setDragOverBlockIndex(index);
-              }}
-              onDragLeave={() => setDragOverBlockIndex((i) => (i === index ? null : i))}
-              onDrop={(e) => {
-                e.preventDefault();
-                const from = draggedBlockIndex;
-                if (from != null && from !== index) moveBlock(from, index);
-                setDraggedBlockIndex(null);
-                setDragOverBlockIndex(null);
-              }}
-              className={`rounded-xl transition-colors cursor-grab active:cursor-grabbing ${isDragOver ? "ring-2 ring-accent/50 bg-accent/5" : ""} ${isDragging ? "opacity-60" : ""}`}
-            >
+            <Fragment key={block.blockId || `block-${index}`}>
+              {showDropDivider && (
+                <div
+                  className="h-1 rounded-full bg-accent/80 my-1 flex-shrink-0"
+                  aria-hidden
+                />
+              )}
+              <div
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.effectAllowed = "move";
+                  e.dataTransfer.setData("text/plain", String(index));
+                  setDraggedBlockIndex(index);
+                  setupDragScroll();
+                }}
+                onDragEnd={() => {
+                  setDraggedBlockIndex(null);
+                  setDragOverBlockIndex(null);
+                  clearDragScroll();
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = "move";
+                  setDragOverBlockIndex(index);
+                }}
+                onDragLeave={() => setDragOverBlockIndex((i) => (i === index ? null : i))}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const from = draggedBlockIndex;
+                  if (from != null && from !== index) moveBlock(from, index);
+                  setDraggedBlockIndex(null);
+                  setDragOverBlockIndex(null);
+                }}
+                className={`rounded-xl transition-colors cursor-grab active:cursor-grabbing ${isDragging ? "opacity-60" : ""}`}
+              >
+              {((cardValidation.errorsByBlockId ?? {})[block.blockId] || []).length > 0 && (
+                <div className="mb-2 rounded-lg border border-amber-500/50 bg-amber-500/10 text-amber-200 text-sm px-3 py-2">
+                  <ul className="list-disc list-inside space-y-0.5">
+                    {(cardValidation.errorsByBlockId ?? {})[block.blockId].map((msg, i) => (
+                      <li key={i}>{msg}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               <BlockEditor
                 block={block}
                 value={values[block.blockId]}
@@ -672,8 +1096,12 @@ export default function CardEditorPage() {
                 isSubBlock={subBlockId === block.blockId}
                 onValueChange={(text) => updateBlockValue(block.blockId, text)}
                 onRemove={() => removeBlock(block.blockId)}
+                onImageFileSelect={(files) => handleImageFileSelect(block.blockId, files)}
                 onImageUpload={(files) => handleImageUpload(block.blockId, files)}
+                onImageEdit={(mediaId) => handleEditImage(block.blockId, mediaId)}
                 onImageRemove={(mediaId) => removeImage(block.blockId, mediaId)}
+                imageUploadProgress={imageUploadProgress}
+                imageEditLoading={imageEditLoading}
                 onAudioUpload={(files) => handleAudioUpload(block.blockId, files)}
                 onAudioRemove={(mediaId) => removeAudio(block.blockId, mediaId)}
                 onGenerateAudio={audioProEntitled ? (text, voiceId) => handleGenerateAudio(block.blockId, text, voiceId) : undefined}
@@ -686,7 +1114,8 @@ export default function CardEditorPage() {
                 generatingAudio={generatingAudioBlockId === block.blockId}
                 onConfigChange={(config) => updateBlockConfig(block.blockId, config)}
               />
-            </div>
+              </div>
+            </Fragment>
           );
         })}
       </div>
@@ -733,6 +1162,53 @@ export default function CardEditorPage() {
             </motion.div>
           </>
         )}
+
+      {/* Image crop modal */}
+      {imageCropPending && (
+        <ImageCropModal
+          imageSrc={imageCropPending.imageSrc}
+          defaultAspect={imageCropPending.defaultAspect}
+          initialCrop={imageCropPending.initialCrop}
+          initialZoom={imageCropPending.initialZoom}
+          allowRatioChange={imageCropPending.allowRatioChange === true}
+          onComplete={handleCropComplete}
+          onCancel={handleCropCancel}
+        />
+      )}
+
+      {/* Preview modal */}
+      {showPreviewModal && (
+        <div
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => setShowPreviewModal(false)}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-zinc-900 border border-white/10 rounded-xl shadow-2xl w-full max-w-md max-h-[85vh] overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-3 py-2.5 border-b border-white/10">
+              <h2 className="text-sm font-medium text-white/90">Preview</h2>
+              <button
+                type="button"
+                onClick={() => setShowPreviewModal(false)}
+                className="p-1.5 rounded-lg hover:bg-white/10 text-white/50 hover:text-white transition-colors"
+                aria-label="Close preview"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="overflow-y-auto flex-1 overflow-x-hidden p-5">
+              <CardPreviewContent
+                blocks={blocks}
+                getValue={(blockId) => values[blockId]}
+                mediaCache={mediaCache}
+              />
+            </div>
+          </motion.div>
+        </div>
+      )}
       </div>
     </div>
   );
@@ -749,8 +1225,12 @@ function BlockEditor({
   isSubBlock,
   onValueChange,
   onRemove,
+  onImageFileSelect,
   onImageUpload,
+  onImageEdit,
   onImageRemove,
+  imageUploadProgress,
+  imageEditLoading,
   onAudioUpload,
   onAudioRemove,
   onGenerateAudio,
@@ -783,6 +1263,63 @@ function BlockEditor({
       voiceOptions[0]?.id ||
       ""
   );
+
+  const [audioBlobUrls, setAudioBlobUrls] = useState({});
+  const [loadingAudioMediaIds, setLoadingAudioMediaIds] = useState(() => new Set());
+  const audioObjectUrlsRef = useRef({});
+
+  useEffect(() => {
+    const mediaIds = value?.mediaIds ?? [];
+    const hasAllMedia = mediaIds.length > 0 && mediaIds.every((id) => mediaCache[id]?.downloadUrl);
+    if (blockType !== "audio" || !hasAllMedia) return;
+
+    let cancelled = false;
+    const prev = audioObjectUrlsRef.current;
+    audioObjectUrlsRef.current = {};
+    Object.values(prev).forEach((u) => URL.revokeObjectURL(u));
+
+    const load = async () => {
+      for (const mediaId of mediaIds) {
+        const media = mediaCache[mediaId];
+        if (!media?.downloadUrl || cancelled) continue;
+        setLoadingAudioMediaIds((prev) => new Set(prev).add(mediaId));
+        try {
+          const res = await fetch("/api/proxy-media", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url: media.downloadUrl }),
+          });
+          if (!res.ok || cancelled) return;
+          const blob = await res.blob();
+          if (cancelled) return;
+          const objectUrl = URL.createObjectURL(blob);
+          audioObjectUrlsRef.current[mediaId] = objectUrl;
+          setAudioBlobUrls((prev) => ({ ...prev, [mediaId]: objectUrl }));
+        } catch (err) {
+          console.warn("[BlockEditor audio] preload failed", mediaId, err);
+        } finally {
+          if (!cancelled) {
+            setLoadingAudioMediaIds((prev) => {
+              const next = new Set(prev);
+              next.delete(mediaId);
+              return next;
+            });
+          }
+        }
+      }
+    };
+    load();
+
+    return () => {
+      cancelled = true;
+      Object.values(audioObjectUrlsRef.current).forEach((u) => URL.revokeObjectURL(u));
+      audioObjectUrlsRef.current = {};
+    };
+  }, [
+    blockType,
+    value?.mediaIds?.join(","),
+    (value?.mediaIds ?? []).map((id) => (mediaCache[id]?.downloadUrl ? "1" : "0")).join(","),
+  ]);
 
   const renderInput = () => {
     switch (blockType) {
@@ -844,51 +1381,123 @@ function BlockEditor({
           </div>
         );
 
-      case "image":
+      case "image": {
+        const isUploading = imageUploadProgress?.blockId === block.blockId;
+        const progress = imageUploadProgress?.progress ?? 0;
+        const imageBlockConfig = getBlockConfig(block) || {};
+        const imageCropAspect = getCropAspectFromConfig(imageBlockConfig);
         return (
           <div>
-            {/* Image Preview Grid */}
+            {/* Image block settings: display aspect (applies to all images in block; no crop/zoom) */}
+            <div className="mb-3">
+              <span className="text-white/60 text-xs block mb-1.5">Display aspect</span>
+              <div className="flex flex-wrap gap-2">
+                {CROP_ASPECT_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.label}
+                    type="button"
+                    onClick={() => {
+                      const nextConfig = { ...imageBlockConfig, cropAspect: opt.value };
+                      console.log("[RATIO] button clicked", { blockId: block.blockId, cropAspect: opt.value, label: opt.label, hasOnConfigChange: !!onConfigChange, nextConfig });
+                      onConfigChange?.(nextConfig);
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                      imageCropAspect === opt.value
+                        ? "bg-accent/20 text-accent"
+                        : "bg-white/5 text-white/70 hover:bg-white/10"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {/* Image Preview Grid (centered) */}
             {value?.mediaIds && value.mediaIds.length > 0 && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">
+              <div className="flex justify-center mb-3">
+                <div className={`gap-2 ${value.mediaIds.length === 1 ? "w-full max-w-[280px]" : "grid grid-cols-2 sm:grid-cols-3 w-full max-w-[320px] sm:max-w-md"}`}>
                 {value.mediaIds.map((mediaId) => {
                   const media = mediaCache[mediaId];
                   if (!media?.downloadUrl) return null;
+                  const isEditLoading = imageEditLoading === mediaId;
                   return (
-                    <div key={mediaId} className="relative group aspect-square">
+                    <div
+                      key={mediaId}
+                      className="relative group w-full overflow-hidden rounded-xl"
+                      style={{ aspectRatio: imageCropAspect }}
+                    >
                       <Image
                         src={media.downloadUrl}
                         alt=""
                         fill
-                        className="object-cover rounded-lg"
+                        className="object-cover rounded-xl"
                       />
-                      <button
-                        onClick={() => onImageRemove(mediaId)}
-                        className="absolute top-1 right-1 p-1 bg-red-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <X className="w-3 h-3 text-white" />
-                      </button>
+                      <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {onImageEdit && (
+                          <button
+                            type="button"
+                            onClick={() => onImageEdit(mediaId)}
+                            disabled={isEditLoading}
+                            className="p-1 bg-white/20 hover:bg-white/30 rounded-full transition-colors disabled:opacity-50"
+                            title="Edit / re-crop"
+                          >
+                            {isEditLoading ? (
+                              <span className="inline-block w-3 h-3 border-2 border-white/80 border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              <Pencil className="w-3 h-3 text-white" />
+                            )}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => onImageRemove(mediaId)}
+                          className="p-1 bg-red-500 rounded-full hover:bg-red-600 transition-colors"
+                          title="Remove"
+                        >
+                          <X className="w-3 h-3 text-white" />
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
+                </div>
+              </div>
+            )}
+
+            {/* Upload progress bar */}
+            {isUploading && (
+              <div className="mb-3">
+                <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-accent transition-all duration-300"
+                    style={{ width: `${Math.min(100, progress)}%` }}
+                  />
+                </div>
+                <p className="text-white/60 text-xs mt-1">Uploading… {Math.round(progress)}%</p>
               </div>
             )}
 
             {/* Upload Area */}
-            <label className="flex items-center justify-center gap-2 py-4 border-2 border-dashed border-white/20 hover:border-accent/50 rounded-lg cursor-pointer transition-colors">
+            <label className={`flex items-center justify-center gap-2 py-4 border-2 border-dashed border-white/20 hover:border-accent/50 rounded-lg cursor-pointer transition-colors ${isUploading ? "pointer-events-none opacity-60" : ""}`}>
               <Upload className="w-5 h-5 text-white/50" />
               <span className="text-white/50 text-sm">
-                Click to upload images
+                Click to upload images (crop before upload)
               </span>
               <input
                 type="file"
                 accept="image/*"
                 multiple
-                onChange={(e) => onImageUpload(e.target.files)}
+                onChange={(e) => {
+                  const files = e.target.files;
+                  if (files?.length) onImageFileSelect(files);
+                  e.target.value = "";
+                }}
                 className="hidden"
               />
             </label>
           </div>
         );
+      }
 
       case "audio": {
         const audioMediaIds = value?.mediaIds || [];
@@ -899,15 +1508,19 @@ function BlockEditor({
                 {audioMediaIds.map((mediaId) => {
                   const media = mediaCache[mediaId];
                   if (!media?.downloadUrl) return null;
+                  const isLoading = loadingAudioMediaIds.has(mediaId);
+                  const src = audioBlobUrls[mediaId];
                   return (
                     <div key={mediaId} className="flex items-center gap-2">
+                      {isLoading && (
+                        <span className="w-4 h-4 border-2 border-white/50 border-t-transparent rounded-full animate-spin flex-shrink-0" aria-hidden />
+                      )}
                       <audio
+                        src={src ?? undefined}
                         controls
-                        className="flex-1 rounded-lg bg-white/5 h-10"
+                        className="flex-1 rounded-lg bg-white/5 h-10 min-w-0"
                         style={{ minWidth: 0 }}
-                      >
-                        <source src={media.downloadUrl} />
-                      </audio>
+                      />
                       <button
                         onClick={() => onAudioRemove(mediaId)}
                         className="p-1 bg-red-500 rounded-full flex-shrink-0"
