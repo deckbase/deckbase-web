@@ -162,27 +162,27 @@ export async function POST(request) {
   try {
     const isProduction = process.env.NODE_ENV === "production";
     let tokenUid = null;
+    let mobileApiKey = false;
     if (isProduction) {
       const auth = getAdminAuth();
       const authHeader = request.headers.get("authorization") || "";
       const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
-      if (!auth || !idToken) {
+      const apiKeyHeader = request.headers.get("x-api-key")?.trim();
+      const expectedApiKey = process.env.DECKBASE_API_KEY?.trim();
+      if (auth && idToken) {
+        try {
+          const decoded = await auth.verifyIdToken(idToken);
+          tokenUid = decoded.uid;
+        } catch {
+          return NextResponse.json({ error: "Invalid or expired token" }, { status: 401 });
+        }
+      } else if (expectedApiKey && apiKeyHeader === expectedApiKey) {
+        mobileApiKey = true;
+      }
+      if (!tokenUid && !mobileApiKey) {
         return NextResponse.json(
-          { error: "Authentication required" },
+          { error: "Authentication required (Bearer token or X-API-Key)" },
           { status: 401 }
-        );
-      }
-      try {
-        const decoded = await auth.verifyIdToken(idToken);
-        tokenUid = decoded.uid;
-      } catch {
-        return NextResponse.json({ error: "Invalid or expired token" }, { status: 401 });
-      }
-      const entitled = await isProOrVip(tokenUid);
-      if (!entitled) {
-        return NextResponse.json(
-          { error: "Active subscription required to use AI features" },
-          { status: 403 }
         );
       }
     }
@@ -211,6 +211,16 @@ export async function POST(request) {
       const maxCards = Math.min(30, Math.max(1, Number(body.maxCards) || 15));
       const fileName = typeof body.fileName === "string" ? body.fileName.trim() : "file";
 
+      if (mobileApiKey) tokenUid = uid;
+      if (isProduction && tokenUid) {
+        const entitled = await isProOrVip(tokenUid);
+        if (!entitled) {
+          return NextResponse.json(
+            { error: "Active subscription required to use AI features" },
+            { status: 403 }
+          );
+        }
+      }
       if (isProduction && uid && tokenUid && uid !== tokenUid) {
         return NextResponse.json(
           { error: "User id does not match signed-in user" },
@@ -312,6 +322,16 @@ export async function POST(request) {
     const uid = formData.get("uid")?.toString()?.trim() || "";
     const maxCards = Math.min(30, Math.max(1, Number(formData.get("maxCards")) || 15));
 
+    if (mobileApiKey) tokenUid = uid;
+    if (isProduction && tokenUid) {
+      const entitled = await isProOrVip(tokenUid);
+      if (!entitled) {
+        return NextResponse.json(
+          { error: "Active subscription required to use AI features" },
+          { status: 403 }
+        );
+      }
+    }
     if (isProduction && uid && tokenUid && uid !== tokenUid) {
       return NextResponse.json(
         { error: "User id does not match signed-in user" },
