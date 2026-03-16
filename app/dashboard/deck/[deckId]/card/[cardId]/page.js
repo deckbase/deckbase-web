@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef, Fragment } from "react";
+import { Suspense, useEffect, useState, useCallback, useRef, Fragment } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -114,7 +114,7 @@ function getDefaultValuesForBlocks(blocks) {
 
 const isProduction = process.env.NODE_ENV === "production";
 
-export default function CardEditorPage() {
+function CardEditorPageInner() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -1241,6 +1241,20 @@ export default function CardEditorPage() {
       )}
       </div>
     </div>
+  );
+}
+
+export default function CardEditorPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-black flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent"></div>
+        </div>
+      }
+    >
+      <CardEditorPageInner />
+    </Suspense>
   );
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
@@ -33,7 +33,7 @@ function getCardLabel(card) {
   return card.values?.[0]?.text ?? card.blocksSnapshot?.[0]?.label ?? "Card";
 }
 
-export default function CardGenerationStudioPage() {
+function CardGenerationStudioPageInner() {
   const { user } = useAuth();
   const searchParams = useSearchParams();
   const [step, setStep] = useState(1);
@@ -351,5 +351,19 @@ export default function CardGenerationStudioPage() {
         ) : null}
       </div>
     </div>
+  );
+}
+
+export default function CardGenerationStudioPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-black flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent"></div>
+        </div>
+      }
+    >
+      <CardGenerationStudioPageInner />
+    </Suspense>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
@@ -47,7 +47,7 @@ const RARITY_COLORS = {
   legendary: "border-amber-400/50 text-amber-300",
 };
 
-export default function WizardPage() {
+function WizardPageInner() {
   const { user } = useAuth();
   const searchParams = useSearchParams();
   const deckParam = searchParams.get("deck");
@@ -985,5 +985,19 @@ export default function WizardPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function WizardPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-black flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent"></div>
+        </div>
+      }
+    >
+      <WizardPageInner />
+    </Suspense>
   );
 }
