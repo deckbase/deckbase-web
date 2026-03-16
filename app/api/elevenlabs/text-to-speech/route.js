@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireElevenLabsAuth } from "@/lib/elevenlabs-auth";
-import { isProOrVip } from "@/lib/revenuecat-server";
+import { isBasicOrProOrVip } from "@/lib/revenuecat-server";
 import { checkTTSLimit, incrementTTSChars } from "@/lib/usage-limits";
 
 /**
@@ -39,7 +39,7 @@ export async function POST(request) {
     }
 
     if (process.env.NODE_ENV === "production" && effectiveUid) {
-      const entitled = await isProOrVip(effectiveUid);
+      const entitled = await isBasicOrProOrVip(effectiveUid);
       if (!entitled) {
         return NextResponse.json(
           { error: "Pro subscription required for text-to-speech" },

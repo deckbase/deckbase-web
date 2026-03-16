@@ -5,10 +5,13 @@ import { parseGeneratedCard, generatedCardHasContent } from "@/lib/ai-card-parse
 import { BlockTypeNames } from "@/utils/firestore";
 import { getAdminAuth } from "@/utils/firebase-admin";
 import { getTemplateAdmin } from "@/lib/firestore-admin";
-import { isProOrVip } from "@/lib/revenuecat-server";
+import { isBasicOrProOrVip } from "@/lib/revenuecat-server";
 import { checkAIGenerationLimit, incrementAIGenerations } from "@/lib/usage-limits";
 
 const MAX_EXTRACTED_CHARS = 50000;
+
+// Allow up to 60s for Claude API (avoids platform timeout → 530 when no JSON body is sent)
+export const maxDuration = 60;
 
 function normalizeBlockType(type) {
   if (type == null) return "text";
@@ -25,6 +28,11 @@ function isQuizBlock(block, normalizeFn) {
   return t === "quizSingleSelect" || t === "quizMultiSelect" || t === "quizTextAnswer";
 }
 
+function logRequest(step, detail = "") {
+  const ts = new Date().toISOString();
+  console.log(`[import-ai-blocks] ${ts} ${step}${detail ? ` ${detail}` : ""}`);
+}
+
 /**
  * POST /api/cards/import-ai-blocks
  * Body (JSON): extractedContent, deckId, templateId, uid, maxCards, blockIds (string[] — quiz block IDs only)
@@ -32,6 +40,7 @@ function isQuizBlock(block, normalizeFn) {
  * Claude generates quiz only. Audio "Use AI" uses row main text (no Claude); TTS later.
  */
 export async function POST(request) {
+  logRequest("start");
   try {
     const isProduction = process.env.NODE_ENV === "production";
     let tokenUid = null;
@@ -51,13 +60,14 @@ export async function POST(request) {
       } catch {
         return NextResponse.json({ error: "Invalid or expired token" }, { status: 401 });
       }
-      const entitled = await isProOrVip(tokenUid);
+      const entitled = await isBasicOrProOrVip(tokenUid);
       if (!entitled) {
         return NextResponse.json(
           { error: "Active subscription required to use AI features" },
           { status: 403 }
         );
       }
+      logRequest("auth", `uid=${tokenUid}`);
     }
 
     const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
@@ -117,11 +127,13 @@ export async function POST(request) {
 
     const template = await getTemplateAdmin(uid, templateId);
     if (!template?.blocks?.length) {
+      logRequest("template_missing", `uid=${uid} templateId=${templateId}`);
       return NextResponse.json(
         { error: "Template not found or has no blocks" },
         { status: 404 }
       );
     }
+    logRequest("template_ok", `templateId=${templateId} blocks=${template.blocks?.length}`);
 
     const normalizeFn = normalizeBlockType;
     const fullBlocks = template.blocks.map((b) => ({
@@ -177,13 +189,28 @@ export async function POST(request) {
       const t = normalizeFn(b.type);
       return t === "quizSingleSelect" || t === "quizMultiSelect" || t === "quizTextAnswer";
     });
-    const anthropic = new Anthropic({ apiKey });
-    const msg = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: hasQuiz ? 8192 : 4096,
-      system,
-      messages: [{ role: "user", content: user }],
-    });
+    logRequest("claude_call", `maxCards=${maxCards} hasQuiz=${hasQuiz}`);
+    let msg;
+    try {
+      const anthropic = new Anthropic({ apiKey });
+      msg = await anthropic.messages.create({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: hasQuiz ? 8192 : 4096,
+        system,
+        messages: [{ role: "user", content: user }],
+      });
+    } catch (claudeErr) {
+      const message = claudeErr?.message ?? String(claudeErr);
+      const status = message.includes("rate") || message.includes("overloaded")
+        ? 503
+        : 502;
+      console.error("[import-ai-blocks] Claude API error", status, message);
+      return NextResponse.json(
+        { error: status === 503 ? "AI service is busy. Please try again later." : "AI request failed. Please try again." },
+        { status }
+      );
+    }
+    logRequest("claude_done");
 
     const rawText = msg.content?.find((c) => c.type === "text")?.text?.trim() ?? "[]";
     const jsonStr = rawText.replace(/```json?\s*|\s*```/g, "").trim();
@@ -226,9 +253,10 @@ export async function POST(request) {
     }
     return NextResponse.json(payload);
   } catch (err) {
-    console.error("[import-ai-blocks]", err);
+    const message = err?.message ?? String(err);
+    console.error("[import-ai-blocks] error", message, err?.stack);
     return NextResponse.json(
-      { error: err.message || "Import AI blocks failed" },
+      { error: message || "Import AI blocks failed" },
       { status: 500 }
     );
   }

@@ -5,7 +5,7 @@
 import { NextResponse } from "next/server";
 import { resolveAuth } from "@/lib/auth-api";
 import { revokeApiKey } from "@/lib/api-keys-server";
-import { isProOrVip } from "@/lib/revenuecat-server";
+import { isBasicOrProOrVip } from "@/lib/revenuecat-server";
 
 export async function DELETE(request, context) {
   const authHeader = request.headers.get("authorization") || "";
@@ -20,7 +20,7 @@ export async function DELETE(request, context) {
   const uid = resolved.uid;
 
   if (process.env.NODE_ENV === "production") {
-    const entitled = await isProOrVip(uid);
+    const entitled = await isBasicOrProOrVip(uid);
     if (!entitled) {
       return NextResponse.json(
         { error: "MCP and API keys are available for Pro and VIP subscribers only" },

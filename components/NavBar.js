@@ -4,17 +4,19 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import Button from "./Button";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const router = useRouter();
+  const pathname = usePathname();
+  const { user, userProfile, loading } = useAuth();
 
-  const isActive = (pathname) => {
-    return router.pathname === pathname
-      ? "text-silver"
-      : "text-white hover:text-gray-300 transition-colors duration-300";
+  const isActive = (path) => {
+    return pathname === path
+      ? "text-white font-semibold bg-white/15 rounded-md px-2 py-1 -mx-1"
+      : "text-white/90 hover:text-white transition-colors duration-300";
   };
 
   const toggleMenu = () => {
@@ -33,70 +35,97 @@ const Navbar = () => {
       initial="hidden"
       animate="visible"
     >
-      <article className="p-4 px-5 md:px-[5%] w-full mx-auto flex items-center justify-between">
-        <Link
-          href="/"
-          className="flex items-center cursor-pointer font-ubuntu text-white md:text-xl font-bold"
-          onClick={() => setIsOpen(false)}
-        >
-          <Image
-            src="/app_logo.png"
-            alt="Deckbase Logo"
-            width={32}
-            height={32}
-            className="mr-2"
-            priority
-          />
-          Deckbase
-        </Link>
+      <article className="p-4 px-5 md:px-[5%] w-full mx-auto flex items-center justify-between gap-3 min-w-0">
+        <div className="flex items-center min-w-0 flex-1 md:flex-initial gap-4 md:gap-6 lg:gap-8">
+          <Link
+            href="/"
+            className="flex items-center flex-shrink-0 cursor-pointer font-ubuntu text-white text-base sm:text-lg md:text-xl font-bold min-w-0"
+            onClick={() => setIsOpen(false)}
+          >
+            <Image
+              src="/app_logo.png"
+              alt="Deckbase Logo"
+              width={32}
+              height={32}
+              className="mr-2 flex-shrink-0"
+              priority
+            />
+            <span className="truncate md:hidden lg:inline">Deckbase</span>
+          </Link>
 
-        <ul className="hidden md:flex space-x-12 items-center">
-          <li>
-            <Link
-              href="/features"
-              className={isActive("/features")}
-              onClick={toggleMenu}
-            >
-              Features
-            </Link>
-          </li>
-          <li>
-            <Link href="/about-us" className={isActive("/about-us")}>
-              About
-            </Link>
-          </li>
-          <li>
-            <Link href="/premium" className={isActive("/premium")}>
-              Pricing
-            </Link>
-          </li>
-          <li>
-            <Link href="/download" className={isActive("/download")}>
-              Download
-            </Link>
-          </li>
-          <li>
-            <Link href="/mcp" className={isActive("/mcp")}>
-              MCP
-            </Link>
-          </li>
-          <li>
-            <Link href="/contact-us" className={isActive("/contact-us")}>
-              Contact
-            </Link>
-          </li>
-          <li>
+          <ul className="hidden md:flex flex-shrink min-w-0 items-center md:space-x-4 lg:space-x-6 xl:space-x-8 text-sm lg:text-base flex-nowrap overflow-x-auto">
+            <li className="flex-shrink-0">
+              <Link
+                href="/features"
+                className={isActive("/features")}
+                onClick={toggleMenu}
+              >
+                Features
+              </Link>
+            </li>
+            <li className="flex-shrink-0">
+              <Link href="/premium" className={isActive("/premium")}>
+                Pricing
+              </Link>
+            </li>
+            <li className="flex-shrink-0">
+              <Link href="/download" className={isActive("/download")}>
+                Download
+              </Link>
+            </li>
+            <li className="flex-shrink-0">
+              <Link href="/mcp" className={isActive("/mcp")}>
+                MCP
+              </Link>
+            </li>
+            <li className="flex-shrink-0">
+              <Link href="/docs" className={isActive("/docs")}>
+                Docs
+              </Link>
+            </li>
+            <li className="flex-shrink-0">
+              <Link href="/resources" className={isActive("/resources")}>
+                Resources
+              </Link>
+            </li>
+          </ul>
+        </div>
+
+        <div className="hidden md:flex flex-shrink-0 items-center">
+          {!loading && !user && (
             <Link
               href="/login"
               className="px-4 py-2 bg-accent hover:bg-accent/90 text-white font-medium rounded-lg transition-colors"
             >
               Sign in
             </Link>
-          </li>
-        </ul>
+          )}
+          {!loading && user && (
+            <Link
+              href="/dashboard"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white transition-colors"
+              aria-label="Go to dashboard"
+            >
+              {(userProfile?.profileUrl || user.photoURL) ? (
+                <img
+                  src={userProfile?.profileUrl || user.photoURL}
+                  alt=""
+                  className="h-7 w-7 min-w-[28px] rounded-full object-cover shrink-0"
+                />
+              ) : (
+                <span className="inline-flex h-7 w-7 min-w-[28px] shrink-0 items-center justify-center rounded-full bg-accent text-sm font-semibold text-white">
+                  {(userProfile?.displayName || user.email || "U").charAt(0).toUpperCase()}
+                </span>
+              )}
+              <span className="max-w-[140px] truncate text-sm">
+                {userProfile?.displayName || user.email}
+              </span>
+            </Link>
+          )}
+        </div>
 
         {/* Mobile Menu Button */}
-        <article className="md:hidden flex items-center justify-between w-[50%]">
+        <article className="md:hidden flex items-center justify-end flex-shrink-0">
           <motion.button
             onClick={toggleMenu}
             whileHover={{ scale: 1.1 }}
@@ -160,15 +189,6 @@ const Navbar = () => {
           </li>
           <li className="text-3xl">
             <Link
-              href="/about-us"
-              className={isActive("/about-us")}
-              onClick={toggleMenu}
-            >
-              About
-            </Link>
-          </li>
-          <li className="text-3xl">
-            <Link
               href="/premium"
               className={isActive("/premium")}
               onClick={toggleMenu}
@@ -196,21 +216,55 @@ const Navbar = () => {
           </li>
           <li className="text-3xl">
             <Link
-              href="/contact-us"
-              className={isActive("/contact-us")}
+              href="/docs"
+              className={isActive("/docs")}
               onClick={toggleMenu}
             >
-              Contact
+              Docs
+            </Link>
+          </li>
+          <li className="text-3xl">
+            <Link
+              href="/resources"
+              className={isActive("/resources")}
+              onClick={toggleMenu}
+            >
+              Resources
             </Link>
           </li>
           <li className="text-2xl mt-4">
-            <Link
-              href="/login"
-              className="px-6 py-3 bg-accent hover:bg-accent/90 text-white font-medium rounded-lg transition-colors"
-              onClick={toggleMenu}
-            >
-              Sign in
-            </Link>
+            {!loading && !user && (
+              <Link
+                href="/login"
+                className="px-6 py-3 bg-accent hover:bg-accent/90 text-white font-medium rounded-lg transition-colors"
+                onClick={toggleMenu}
+              >
+                Sign in
+              </Link>
+            )}
+            {!loading && user && (
+              <Link
+                href="/dashboard"
+                className="flex items-center gap-3 px-6 py-3 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white font-medium transition-colors"
+                onClick={toggleMenu}
+                aria-label="Go to dashboard"
+              >
+                {(userProfile?.profileUrl || user.photoURL) ? (
+                  <img
+                    src={userProfile?.profileUrl || user.photoURL}
+                    alt=""
+                    className="h-9 w-9 min-w-[36px] rounded-full object-cover shrink-0"
+                  />
+                ) : (
+                  <span className="inline-flex h-9 w-9 min-w-[36px] shrink-0 items-center justify-center rounded-full bg-accent text-base font-semibold text-white">
+                    {(userProfile?.displayName || user.email || "U").charAt(0).toUpperCase()}
+                  </span>
+                )}
+                <span className="max-w-[160px] truncate text-base">
+                  {userProfile?.displayName || user.email}
+                </span>
+              </Link>
+            )}
           </li>
         </ul>
       </motion.article>

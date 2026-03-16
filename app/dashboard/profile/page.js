@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
 import { updateUserProfile, uploadImage } from "@/utils/firestore";
+import { checkStorageBeforeUpload } from "@/lib/storage-check-client";
 import { User, Loader2, Check, Camera, X, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
@@ -57,6 +58,11 @@ export default function ProfilePage() {
       setPhotoError(`Image must be under ${MAX_SIZE_MB} MB.`);
       return;
     }
+    const storageCheck = await checkStorageBeforeUpload(user, file.size);
+    if (!storageCheck.allowed) {
+      setPhotoError(storageCheck.message || "Cloud backup limit reached.");
+      return;
+    }
     setUploadingPhoto(true);
     try {
       const { downloadUrl } = await uploadImage(user.uid, file);
@@ -100,21 +106,21 @@ export default function ProfilePage() {
       </div>
 
       <div className="rounded-xl border border-white/10 bg-white/5 p-6 space-y-6">
-        {/* Avatar */}
+        {/* Avatar: user's uploaded photo first (profileUrl), then provider (e.g. Google), then initial */}
         <div className="flex items-start gap-4">
           <div className="relative shrink-0">
-            {userProfile?.profileUrl ? (
-              <Image
-                src={userProfile.profileUrl}
-                alt="Profile"
+            {(userProfile?.profileUrl || user?.photoURL) ? (
+              <img
+                src={userProfile?.profileUrl || user?.photoURL}
+                alt=""
                 width={80}
                 height={80}
-                className="rounded-full border-2 border-white/20 object-cover"
+                className="w-20 h-20 rounded-full border-2 border-white/20 object-cover"
               />
             ) : (
-              <div className="w-20 h-20 rounded-full bg-accent/20 flex items-center justify-center border-2 border-white/20">
-                <User className="w-10 h-10 text-accent" />
-              </div>
+              <span className="inline-flex h-20 w-20 items-center justify-center rounded-full border-2 border-white/20 bg-accent text-2xl font-semibold text-white">
+                {(userProfile?.displayName || user?.email || "U").charAt(0).toUpperCase()}
+              </span>
             )}
           </div>
           <div className="flex-1 min-w-0">

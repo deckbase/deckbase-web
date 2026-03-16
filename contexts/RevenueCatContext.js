@@ -147,20 +147,27 @@ export function RevenueCatProvider({ children, entitlementId = REVENUECAT_ENTITL
     };
   }, [apiKey, user?.uid]);
 
-  // Subscription entitlement (RevenueCat) – used together with isVip for isPro
+  // Subscription entitlement (RevenueCat) – isPro = has Basic or Pro (or VIP) for feature access
   useEffect(() => {
     if (!instanceRef.current || !user?.uid) {
       setEntitled(false);
       return;
     }
     let mounted = true;
-    instanceRef.current.isEntitledTo(entitlementId).then((v) => {
-      if (mounted) setEntitled(!!v);
-    });
+    Promise.all([
+      instanceRef.current.isEntitledTo("pro"),
+      instanceRef.current.isEntitledTo("basic"),
+    ])
+      .then(([pro, basic]) => {
+        if (mounted) setEntitled(!!(pro || basic));
+      })
+      .catch(() => {
+        if (mounted) setEntitled(false);
+      });
     return () => {
       mounted = false;
     };
-  }, [entitlementId, user?.uid, customerInfo, sdkReady]);
+  }, [user?.uid, customerInfo, sdkReady]);
 
   const isEntitledTo = useCallback(
     async (identifier = entitlementId) => {

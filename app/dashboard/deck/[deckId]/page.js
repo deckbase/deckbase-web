@@ -52,6 +52,7 @@ import {
   BlockTypeNames,
 } from "@/utils/firestore";
 import { getBlockValidationErrors } from "@/lib/block-validators";
+import { checkStorageBeforeUpload } from "@/lib/storage-check-client";
 import { buildCardPrompt, buildImportQuizAudioPrompt } from "@/lib/card-ai-prompt";
 import {
   parseFile,
@@ -241,6 +242,14 @@ export default function DeckDetailPage() {
       const objectUrl = URL.createObjectURL(blob);
       deckAudioObjectUrlRef.current = objectUrl;
       audio.src = objectUrl;
+      const onEnded = () => {
+        if (deckAudioObjectUrlRef.current) {
+          URL.revokeObjectURL(deckAudioObjectUrlRef.current);
+          deckAudioObjectUrlRef.current = null;
+        }
+        setPlayingCardId(null);
+      };
+      audio.addEventListener("ended", onEnded, { once: true });
       console.log("[DeckCardAudio] play start");
       await audio.play();
       console.log("[DeckCardAudio] play() resolved");
@@ -254,23 +263,6 @@ export default function DeckDetailPage() {
       setPlayingCardId(null);
     }
   }, [playingCardId]);
-
-  // Attach ended listener when audio element is in DOM (after loading finishes)
-  useEffect(() => {
-    if (loading) return;
-    const audio = deckAudioRef.current;
-    if (!audio) return;
-    const onEnded = () => {
-      console.log("[DeckCardAudio] ended");
-      if (deckAudioObjectUrlRef.current) {
-        URL.revokeObjectURL(deckAudioObjectUrlRef.current);
-        deckAudioObjectUrlRef.current = null;
-      }
-      setPlayingCardId(null);
-    };
-    audio.addEventListener("ended", onEnded);
-    return () => audio.removeEventListener("ended", onEnded);
-  }, [loading]);
 
   // Most-used template in this deck (when no explicit default is set)
   const mostUsedTemplateId = useMemo(() => {
@@ -1004,6 +996,8 @@ export default function DeckDetailPage() {
                   try {
                     const blob = new Blob([bytes], { type: "audio/mpeg" });
                     const file = new File([blob], filename || "audio.mp3", { type: "audio/mpeg" });
+                    const storageCheck = await checkStorageBeforeUpload(user, file.size);
+                    if (!storageCheck.allowed) continue;
                     const media = await uploadAudio(user.uid, file);
                     mediaIds.push(media.mediaId);
                   } catch (err) {
@@ -1026,6 +1020,8 @@ export default function DeckDetailPage() {
                     const mime = ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
                     const blob = new Blob([bytes], { type: mime });
                     const file = new File([blob], filename || "image.jpg", { type: mime });
+                    const storageCheck = await checkStorageBeforeUpload(user, file.size);
+                    if (!storageCheck.allowed) continue;
                     const media = await uploadImage(user.uid, file);
                     mediaIds.push(media.mediaId);
                   } catch (err) {
@@ -1279,20 +1275,25 @@ export default function DeckDetailPage() {
             if (ttsRes.ok) {
               const blob = await ttsRes.blob();
               const file = new File([blob], "import-tts.mp3", { type: "audio/mpeg" });
-              const media = await uploadAudio(user.uid, file);
-              const updatedValues = values.map((v) =>
-                v.blockId === audioMapping.blockId ? { ...v, mediaIds: [media.mediaId] } : v
-              );
-              await updateCard(
-                user.uid,
-                created.cardId,
-                deckId,
-                updatedValues,
-                rowBlocksSnapshot,
-                selectedTemplate.mainBlockId ?? null,
-                selectedTemplate.subBlockId ?? null
-              );
-              setImportAudioCompleted((c) => c + 1);
+              const storageCheck = await checkStorageBeforeUpload(user, file.size);
+              if (!storageCheck.allowed) {
+                setImportAudioFailed((f) => f + 1);
+              } else {
+                const media = await uploadAudio(user.uid, file);
+                const updatedValues = values.map((v) =>
+                  v.blockId === audioMapping.blockId ? { ...v, mediaIds: [media.mediaId] } : v
+                );
+                await updateCard(
+                  user.uid,
+                  created.cardId,
+                  deckId,
+                  updatedValues,
+                  rowBlocksSnapshot,
+                  selectedTemplate.mainBlockId ?? null,
+                  selectedTemplate.subBlockId ?? null
+                );
+                setImportAudioCompleted((c) => c + 1);
+              }
             } else {
               setImportAudioFailed((f) => f + 1);
             }
@@ -2354,17 +2355,20 @@ export default function DeckDetailPage() {
               if (res.ok) {
                 const blob = await res.blob();
                 const file = new File([blob], "ai-generated.mp3", { type: "audio/mpeg" });
-                const media = await uploadAudio(user.uid, file);
-                const audioIdx = list.findIndex((v) => v.blockId === audioBlock.blockId);
-                if (audioIdx >= 0) {
-                  list[audioIdx] = { ...list[audioIdx], mediaIds: [media.mediaId] };
-                } else {
-                  list.push({
-                    blockId: audioBlock.blockId,
-                    type: "audio",
-                    text: "",
-                    mediaIds: [media.mediaId],
-                  });
+                const storageCheck = await checkStorageBeforeUpload(user, file.size);
+                if (storageCheck.allowed) {
+                  const media = await uploadAudio(user.uid, file);
+                  const audioIdx = list.findIndex((v) => v.blockId === audioBlock.blockId);
+                  if (audioIdx >= 0) {
+                    list[audioIdx] = { ...list[audioIdx], mediaIds: [media.mediaId] };
+                  } else {
+                    list.push({
+                      blockId: audioBlock.blockId,
+                      type: "audio",
+                      text: "",
+                      mediaIds: [media.mediaId],
+                    });
+                  }
                 }
               }
             } catch (_) {}

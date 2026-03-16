@@ -1,6 +1,8 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
+import { useAuth } from "@/contexts/AuthContext";
 
 const MONTHLY = "monthly";
 const YEARLY = "yearly";
@@ -25,6 +27,7 @@ const plans = [
       "No MCP",
       "Import: CSV only",
       "Export: CSV only",
+      "Import from file: —",
       "No cloud backup",
     ],
     bestFor: "Manual card testing",
@@ -49,6 +52,7 @@ const plans = [
       "MCP",
       "Import: CSV, Excel, Anki",
       "Export: CSV, Excel, Anki",
+      "Import from file: PDF, DOCX, PNG, JPEG",
       "2GB cloud backup",
     ],
     bestFor: "Regular students",
@@ -72,14 +76,66 @@ const plans = [
       "MCP",
       "Import: CSV, Excel, Anki",
       "Export: CSV, Excel, Anki",
+      "Import from file: PDF, DOCX, PNG, JPEG",
       "20GB cloud backup",
     ],
     bestFor: "Exam prep, heavy users",
   },
 ];
 
+const SUBSCRIPTION_REDIRECT = "/dashboard/subscription";
+const LOGIN_REDIRECT = `/login?redirect=${encodeURIComponent(SUBSCRIPTION_REDIRECT)}`;
+
+const FREE_CHECKMARKS = [
+  "Unlimited OCR",
+  "Unlimited decks",
+  "Unlimited cards",
+  "Unlimited spaced repetition",
+  "Unlimited quizzes",
+  "Supported media: Image, Audio",
+  "Import: CSV only",
+  "Export: CSV only",
+  "Import from file: —",
+];
+
+function BenefitCell({ benefit, isFree, planTitle }) {
+  const showCheck = !isFree || FREE_CHECKMARKS.includes(benefit);
+  return (
+    <div className="flex items-start gap-2 py-2.5 px-3 md:px-6 border-b border-gray-100 min-h-[2.75rem]">
+      <span className="w-5 h-5 mt-0.5 flex-shrink-0 flex items-center justify-center">
+        {showCheck ? (
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="w-5 h-5 text-green-600"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+        ) : (
+          <span className="text-gray-400">—</span>
+        )}
+      </span>
+      <span className="text-gray-700 text-sm">
+        {planTitle ? (
+          <>
+            <span className="md:hidden font-medium text-gray-500 mr-1.5">{planTitle}:</span>
+            {benefit}
+          </>
+        ) : (
+          benefit
+        )}
+      </span>
+    </div>
+  );
+}
+
 const PricingPlans = () => {
   const [billingPeriod, setBillingPeriod] = useState(MONTHLY);
+  const { user } = useAuth();
+  const subscribeHref = user ? SUBSCRIPTION_REDIRECT : LOGIN_REDIRECT;
+  const benefitCount = plans[0].benefits.length;
 
   return (
     <motion.section
@@ -87,7 +143,7 @@ const PricingPlans = () => {
       animate={{ opacity: 1, transition: { duration: 0.8 } }}
       className="relative z-10 w-full bg-white pt-24 md:pt-28"
     >
-      <article className="container mx-auto py-14 p-4 px-5 md:px-[5%] 2xl:px-0 max-w-[1200px] gap-4flex flex-col items-center justify-center gap-4">
+      <article className="container mx-auto py-14 p-4 px-5 md:px-[5%] 2xl:px-0 max-w-[1200px] flex flex-col items-center justify-center gap-4">
         <div className="flex flex-col items-center justify-center">
           <h2 className="text-h2 lg:text-h3 font-bold text-center tracking-tight max-w-[80%]">
             Affordable
@@ -136,21 +192,25 @@ const PricingPlans = () => {
             </button>
           </div>
         </div>
-        <div className="mt-16 lg:mt-26 grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-10">
-          {plans.map((plan) => (
-            <motion.article
+
+        {/* Plan headers: Free | Basic | Pro */}
+        <div className="mt-16 w-full grid grid-cols-1 md:grid-cols-3 gap-0">
+          {plans.map((plan, colIndex) => (
+            <motion.div
               key={plan.id}
-              initial={{ opacity: 0, y: 100 }}
-              whileInView={{ opacity: 1, y: 0, transition: { duration: 0.5 } }}
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0, transition: { duration: 0.4, delay: colIndex * 0.05 } }}
               viewport={{ once: true }}
-              className="my-2 shadow-lg flex flex-col gap-4 lg:p-8 p-8 rounded-xl relative"
+              className={`flex flex-col rounded-xl shadow-lg p-6 md:p-8 relative ${
+                plan.popular ? "ring-2 ring-violet-500/30 md:ring-0 md:shadow-[0_0_30px_-8px_rgba(139,92,246,0.3)]" : ""
+              } ${colIndex === 0 ? "md:rounded-r-none" : colIndex === 2 ? "md:rounded-l-none" : ""}`}
             >
               {plan.popular && (
                 <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-gradient-to-r from-accent to-purple-600 text-white text-xs font-semibold rounded-full shadow">
                   Popular
                 </span>
               )}
-              <div className={`flex flex-col gap-0 ${billingPeriod === YEARLY ? "h-[14rem]" : "min-h-[11.5rem]"}`}>
+              <div className={`flex flex-col gap-0 ${billingPeriod === YEARLY ? "min-h-[11rem]" : "min-h-[8rem]"}`}>
                 <h3 className="text-h2 font-bold flex flex-wrap items-baseline gap-x-1.5">
                   {billingPeriod === YEARLY && plan.priceYearly
                     ? (() => {
@@ -168,10 +228,10 @@ const PricingPlans = () => {
                     <span className="text-h5 font-inter">/mo</span>
                   )}
                 </h3>
-                <h4 className="text-h4 font-bold font-inter mt-3 lg:mt-0">
+                <h4 className="text-h4 font-bold font-inter mt-2">
                   {plan.title}
                 </h4>
-                <p className="text-[#505050] flex flex-wrap items-center gap-2">
+                <p className="text-[#505050] text-sm flex flex-wrap items-center gap-2">
                   {billingPeriod === YEARLY && plan.priceYearly ? (
                     <>
                       <span>Billed annually at ${parseFloat(plan.priceYearly.replace(/[$,]/g, "")).toFixed(2)}</span>
@@ -195,50 +255,40 @@ const PricingPlans = () => {
                   );
                 })()}
               </div>
-              <ul className="mt-2 grid grid-cols-1 gap-3 mb-4 flex-1">
-                {plan.benefits.map((benefit, index) => (
-                  <li key={index} className="flex items-start">
-                    <span className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0 flex items-center justify-center">
-                      {plan.price === "$0" &&
-                      ![
-                        "Unlimited OCR",
-                        "Unlimited decks",
-                        "Unlimited cards",
-                        "Unlimited spaced repetition",
-                        "Unlimited quizzes",
-                        "Supported media: Image, Audio",
-                        "Import: CSV only",
-                        "Export: CSV only",
-                      ].includes(benefit) ? (
-                        <span className="text-gray-400">—</span>
-                      ) : (
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="w-5 h-5 text-green-600"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M5 13l4 4L19 7"
-                          />
-                        </svg>
-                      )}
-                    </span>
-                    <span className="text-gray-700 text-sm">{benefit}</span>
-                  </li>
-                ))}
-              </ul>
-              {plan.bestFor && (
-                <p className="text-[#505050] text-sm pt-2 border-t border-gray-200">
-                  Best for: {plan.bestFor}
-                </p>
+              <p className="text-[#505050] text-sm pt-2 border-t border-gray-200 mt-2">
+                Best for: {plan.bestFor}
+              </p>
+              {plan.price !== "$0" && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <Link
+                    href={subscribeHref}
+                    className="block w-full py-3 px-4 rounded-lg text-center text-sm font-semibold text-white bg-gradient-to-r from-accent to-purple-600 hover:opacity-90 transition-opacity"
+                  >
+                    {user ? "Subscribe" : "Sign in to subscribe"}
+                  </Link>
+                </div>
               )}
-            </motion.article>
+            </motion.div>
           ))}
+        </div>
+
+        {/* Aligned comparison table: one row per benefit, columns match plan headers */}
+        <div className="mt-0 w-full rounded-b-xl overflow-hidden border border-t-0 border-gray-200 shadow-lg bg-white">
+          <div className="grid grid-cols-1 md:grid-cols-3" role="table" aria-label="Plan comparison">
+            {Array.from({ length: benefitCount }, (_, i) => (
+              <div key={i} className="contents" role="row">
+                <div role="cell" className="bg-white">
+                  <BenefitCell benefit={plans[0].benefits[i]} isFree={true} planTitle="Free" />
+                </div>
+                <div role="cell" className="bg-white">
+                  <BenefitCell benefit={plans[1].benefits[i]} isFree={false} planTitle="Basic" />
+                </div>
+                <div role="cell" className="bg-white">
+                  <BenefitCell benefit={plans[2].benefits[i]} isFree={false} planTitle="Pro" />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </article>
     </motion.section>

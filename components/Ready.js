@@ -20,7 +20,7 @@ const ReadyToStart = () => {
             learning journey begins with Deckbase!
           </p>
         </div>
-        <div className="self-start md:self-end">
+        <div className="flex flex-wrap items-center gap-3 self-start md:self-end [&_img]:h-[45px] [&_img]:w-auto">
           <AppStoreDownloadButton />
           <GooglePlayDownloadButton />
         </div>

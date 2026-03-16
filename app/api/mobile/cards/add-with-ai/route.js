@@ -12,10 +12,11 @@ import {
 } from "@/lib/firestore-admin";
 import { generateTTS } from "@/lib/elevenlabs-server";
 import { parseAudioBlockConfig } from "@/lib/audio-block-config";
-import { isProOrVip } from "@/lib/revenuecat-server";
+import { isBasicOrProOrVip } from "@/lib/revenuecat-server";
 import {
   checkAIGenerationLimit,
   checkTTSLimit,
+  checkStorageLimit,
   incrementAIGenerations,
   incrementTTSChars,
 } from "@/lib/usage-limits";
@@ -89,7 +90,7 @@ export async function POST(request) {
     }
 
     if (process.env.NODE_ENV === "production" && process.env.REQUIRE_PRO_FOR_AI !== "false") {
-      const entitled = await isProOrVip(uid);
+      const entitled = await isBasicOrProOrVip(uid);
       if (!entitled) {
         return NextResponse.json(
           { error: "Active subscription required to use AI features" },
@@ -379,20 +380,25 @@ export async function POST(request) {
                 const { defaultVoiceId: voiceId } = parseAudioBlockConfig(audioBlock.configJson);
                 const buffer = await generateTTS({ text: mainText, voiceId });
                 if (buffer) {
-                  incrementTTSChars(uid, mainText.length).catch((e) =>
-                    console.warn("[mobile add-with-ai] TTS usage increment failed", e?.message)
-                  );
-                  const { mediaId } = await uploadAudioBufferAdmin(uid, buffer, "audio/mpeg");
-                  const audioIdx = values.findIndex((v) => v.blockId === audioBlock.blockId);
-                  if (audioIdx >= 0) {
-                    values[audioIdx] = { ...values[audioIdx], mediaIds: [mediaId] };
+                  const storageCheck = await checkStorageLimit(uid, buffer.length);
+                  if (!storageCheck.allowed) {
+                    console.warn("[mobile add-with-ai] Storage limit reached, skipping TTS upload", storageCheck.message);
                   } else {
-                    values.push({
-                      blockId: audioBlock.blockId,
-                      type: "audio",
-                      text: "",
-                      mediaIds: [mediaId],
-                    });
+                    incrementTTSChars(uid, mainText.length).catch((e) =>
+                      console.warn("[mobile add-with-ai] TTS usage increment failed", e?.message)
+                    );
+                      const { mediaId } = await uploadAudioBufferAdmin(uid, buffer, "audio/mpeg");
+                    const audioIdx = values.findIndex((v) => v.blockId === audioBlock.blockId);
+                    if (audioIdx >= 0) {
+                      values[audioIdx] = { ...values[audioIdx], mediaIds: [mediaId] };
+                    } else {
+                      values.push({
+                        blockId: audioBlock.blockId,
+                        type: "audio",
+                        text: "",
+                        mediaIds: [mediaId],
+                      });
+                    }
                   }
                 }
               }

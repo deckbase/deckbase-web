@@ -1,27 +1,32 @@
 import { NextResponse } from "next/server";
 import { getAdminAuth } from "@/utils/firebase-admin";
-import { isProOrVip } from "@/lib/revenuecat-server";
 import {
   getMonthlyUsage,
-  AI_GENERATIONS_LIMIT,
-  TTS_CHARS_LIMIT,
+  getLimitsForUser,
+  getStorageUsage,
+  AI_GENERATIONS_LIMIT_PRO,
+  TTS_CHARS_LIMIT_PRO,
 } from "@/lib/usage-limits";
 
 /**
  * GET /api/user/usage
  * Auth: Bearer <Firebase ID token>
- * Returns: { aiUsed, aiLimit, ttsUsed, ttsLimit, isPro } for the current user.
+ * Returns: { aiUsed, aiLimit, ttsUsed, ttsLimit, storageUsed, storageLimit, isPro, tier } for the current user.
+ * tier = 'free' | 'basic' | 'pro'. Limits: Basic 250 AI / 30K TTS / 2GB; Pro 600 AI / 50K TTS / 20GB.
  */
 export async function GET(request) {
   try {
     if (process.env.NODE_ENV !== "production") {
-      return NextResponse.json({
-        aiUsed: 0,
-        aiLimit: AI_GENERATIONS_LIMIT,
-        ttsUsed: 0,
-        ttsLimit: TTS_CHARS_LIMIT,
-        isPro: true,
-      });
+    return NextResponse.json({
+      aiUsed: 0,
+      aiLimit: AI_GENERATIONS_LIMIT_PRO,
+      ttsUsed: 0,
+      ttsLimit: TTS_CHARS_LIMIT_PRO,
+      storageUsed: 0,
+      storageLimit: 20 * 1024 * 1024 * 1024,
+      isPro: true,
+      tier: "pro",
+    });
     }
 
     const authHeader = request.headers.get("authorization") || "";
@@ -52,15 +57,23 @@ export async function GET(request) {
       );
     }
 
-    const isPro = await isProOrVip(uid);
-    const usage = await getMonthlyUsage(uid);
+    const [usage, limits, storageUsed] = await Promise.all([
+      getMonthlyUsage(uid),
+      getLimitsForUser(uid),
+      getStorageUsage(uid),
+    ]);
+    const { aiLimit, ttsLimit, storageLimit, tier } = limits;
+    const isPro = tier !== "free";
 
     return NextResponse.json({
       aiUsed: usage?.aiGenerations ?? 0,
-      aiLimit: isPro ? AI_GENERATIONS_LIMIT : 0,
+      aiLimit,
       ttsUsed: usage?.ttsChars ?? 0,
-      ttsLimit: isPro ? TTS_CHARS_LIMIT : 0,
+      ttsLimit,
+      storageUsed,
+      storageLimit,
       isPro,
+      tier,
     });
   } catch (err) {
     console.error("[user/usage]", err);

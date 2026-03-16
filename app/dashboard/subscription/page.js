@@ -2,16 +2,243 @@
 
 import { useState, useEffect } from "react";
 import { useRevenueCat, DEFAULT_ENTITLEMENT_ID } from "@/contexts/RevenueCatContext";
-import { Crown, Loader2, ExternalLink, Check } from "lucide-react";
+import { Crown, Loader2, ExternalLink, Check, Calendar } from "lucide-react";
 import Link from "next/link";
+import { motion } from "framer-motion";
 
-/** Human-readable label for package identifier (e.g. $rc_monthly -> Monthly) */
+const MONTHLY = "monthly";
+const YEARLY = "yearly";
+
+/** Plan content for paywall (matches pricing page / PRICING.md) */
+const PLAN_CONTENT = {
+  free: {
+    id: "free",
+    title: "Free",
+    price: "$0",
+    priceYearly: null,
+    billing: "Free forever",
+    billingYearly: null,
+    benefits: [
+      "No AI card generation",
+      "Unlimited OCR",
+      "Unlimited decks",
+      "Unlimited cards",
+      "Unlimited spaced repetition",
+      "Unlimited quizzes",
+      "Supported media: Image, Audio",
+      "No text-to-speech",
+      "No MCP",
+      "Import: CSV only",
+      "Export: CSV only",
+      "Import from file: —",
+      "No cloud backup",
+    ],
+    bestFor: "Manual card testing",
+    freeTierCheckmarks: [
+      "Unlimited OCR",
+      "Unlimited decks",
+      "Unlimited cards",
+      "Unlimited spaced repetition",
+      "Unlimited quizzes",
+      "Supported media: Image, Audio",
+      "Import: CSV only",
+      "Export: CSV only",
+      "Import from file: —",
+    ],
+  },
+  basic: {
+    id: "basic",
+    title: "Basic",
+    popular: true,
+    billing: "Per month",
+    billingYearly: "Save 18%",
+    benefits: [
+      "250 AI card generations/month",
+      "Unlimited OCR",
+      "Unlimited decks",
+      "Unlimited cards",
+      "Unlimited spaced repetition",
+      "Unlimited quizzes",
+      "Supported media: Image, Audio",
+      "Premium voices + speed (up to 30K chars/mo)",
+      "MCP",
+      "Import: CSV, Excel, Anki",
+      "Export: CSV, Excel, Anki",
+      "Import from file: PDF, DOCX, PNG, JPEG",
+      "2GB cloud backup",
+    ],
+    bestFor: "Regular students",
+  },
+  pro: {
+    id: "pro",
+    title: "Pro",
+    billing: "Per month",
+    billingYearly: "Save 17%",
+    benefits: [
+      "600 AI card generations/month",
+      "Unlimited OCR",
+      "Unlimited decks",
+      "Unlimited cards",
+      "Unlimited spaced repetition",
+      "Unlimited quizzes",
+      "Supported media: Image, Audio",
+      "Premium voices (up to 50K chars/mo)",
+      "MCP",
+      "Import: CSV, Excel, Anki",
+      "Export: CSV, Excel, Anki",
+      "Import from file: PDF, DOCX, PNG, JPEG",
+      "20GB cloud backup",
+    ],
+    bestFor: "Exam prep, heavy users",
+  },
+};
+
+/** Human-readable label for package identifier */
 function packageLabel(identifier) {
   const id = (identifier || "").toLowerCase();
   if (id.includes("annual") || id.includes("yearly") || id === "$rc_annual") return "Annual";
   if (id.includes("monthly") || id === "$rc_monthly") return "Monthly";
   if (id.includes("weekly") || id === "$rc_weekly") return "Weekly";
   return identifier || "Plan";
+}
+
+/** True if package is yearly by identifier */
+function isYearlyPackage(pkg) {
+  const id = (pkg?.identifier || "").toLowerCase();
+  return id.includes("year") || id.includes("annual") || id === "$rc_annual";
+}
+
+/** Split packages into monthly and yearly */
+function getMonthlyYearlyPackages(packages) {
+  let monthly = null;
+  let yearly = null;
+  for (const pkg of packages || []) {
+    if (isYearlyPackage(pkg)) yearly = pkg;
+    else monthly = pkg;
+  }
+  return { monthly, yearly };
+}
+
+/** Get price string from RevenueCat package (e.g. "$5.99" or "¥500") */
+function getPackagePrice(pkg) {
+  if (!pkg) return null;
+  const product = pkg.webBillingProduct || pkg.rcBillingProduct;
+  return product?.price?.formattedPrice ?? product?.currentPrice?.formattedPrice ?? null;
+}
+
+/** Get currency symbol from RevenueCat formatted price so we don't mix $ and ¥ */
+function getPackageCurrencySymbol(pkg) {
+  const formatted = getPackagePrice(pkg);
+  if (!formatted || typeof formatted !== "string") return null;
+  const match = formatted.trim().match(/^([^\d\s.,]+)/);
+  return match ? match[1] : null;
+}
+
+/** Currency code by locale (browser language / region) for user-location display */
+const LOCALE_CURRENCY = {
+  ja: "JPY",
+  "ja-JP": "JPY",
+  en: "USD",
+  "en-US": "USD",
+  "en-GB": "GBP",
+  "en-EU": "EUR",
+  de: "EUR",
+  "de-DE": "EUR",
+  fr: "EUR",
+  "fr-FR": "EUR",
+  es: "EUR",
+  it: "EUR",
+  ko: "KRW",
+  "ko-KR": "KRW",
+  zh: "CNY",
+  "zh-CN": "CNY",
+  "zh-TW": "TWD",
+  in: "INR",
+  "en-IN": "INR",
+  au: "AUD",
+  "en-AU": "AUD",
+};
+
+/** Get currency symbol from user's browser locale (for Free tier and fallback) */
+function getLocaleCurrencySymbol() {
+  if (typeof navigator === "undefined" || !navigator.language) return "$";
+  const locale = navigator.language || "en-US";
+  const lang = locale.split("-")[0];
+  const currencyCode = LOCALE_CURRENCY[locale] ?? LOCALE_CURRENCY[lang] ?? "USD";
+  try {
+    const parts = new Intl.NumberFormat(locale, { style: "currency", currency: currencyCode }).formatToParts(0);
+    const symbolPart = parts.find((p) => p.type === "currency");
+    return symbolPart ? symbolPart.value : "$";
+  } catch {
+    return "$";
+  }
+}
+
+/** Get numeric price for yearly per-month calculation (amount may be in cents) */
+function getPackagePriceAmount(pkg) {
+  if (!pkg) return null;
+  const product = pkg.webBillingProduct || pkg.rcBillingProduct;
+  const price = product?.price ?? product?.currentPrice;
+  const amount = price?.amount ?? price?.value;
+  if (amount == null) return null;
+  const num = Number(amount);
+  if (isNaN(num)) return null;
+  return num >= 100 ? num / 100 : num;
+}
+
+/** Get product title from package */
+function getPackageTitle(pkg) {
+  if (!pkg) return "";
+  const product = pkg.webBillingProduct || pkg.rcBillingProduct;
+  return product?.title || packageLabel(pkg.identifier);
+}
+
+/**
+ * Flatten all offerings from getOfferings() into [{ identifier, displayName, packages, monthlyPkg, yearlyPkg }].
+ */
+function getAllOfferingsWithPackages(offerings) {
+  if (!offerings) return [];
+  const all = offerings.all ?? {};
+  const entries = Object.keys(all).length > 0
+    ? Object.entries(all)
+    : offerings.current
+      ? [[offerings.current.identifier || "default", offerings.current]]
+      : [];
+  return entries
+    .map(([id, offering]) => {
+      const packages = offering?.availablePackages ?? [];
+      if (packages.length === 0) return null;
+      const { monthly, yearly } = getMonthlyYearlyPackages(packages);
+      const displayName = offering?.metadata?.displayName ?? (id.charAt(0).toUpperCase() + id.slice(1));
+      return {
+        identifier: (offering?.identifier ?? id).toLowerCase(),
+        displayName,
+        packages,
+        monthlyPkg: monthly,
+        yearlyPkg: yearly,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => {
+      const order = { basic: 0, pro: 1 };
+      return (order[a.identifier] ?? 2) - (order[b.identifier] ?? 2);
+    });
+}
+
+/** Format entitlement expiry for display (from RevenueCat CustomerInfo) */
+function formatExpiry(customerInfo, entitlementId = "pro") {
+  const entitlements = customerInfo?.entitlements;
+  if (!entitlements) return null;
+  const ent = entitlements[entitlementId] ?? entitlements.all?.[entitlementId];
+  const date = ent?.expirationDate ?? ent?.expiresDate;
+  if (!date) return null;
+  try {
+    const d = typeof date === "string" ? new Date(date) : date;
+    if (isNaN(d.getTime())) return null;
+    return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  } catch {
+    return null;
+  }
 }
 
 export default function SubscriptionPage() {
@@ -27,6 +254,7 @@ export default function SubscriptionPage() {
   } = useRevenueCat();
   const [offerings, setOfferings] = useState(null);
   const [offeringsLoading, setOfferingsLoading] = useState(false);
+  const [billingPeriod, setBillingPeriod] = useState(MONTHLY);
   const [purchasingPackageId, setPurchasingPackageId] = useState(null);
   const [purchaseError, setPurchaseError] = useState(null);
 
@@ -38,7 +266,7 @@ export default function SubscriptionPage() {
     if (!isConfigured) return;
     let mounted = true;
     setOfferingsLoading(true);
-    getOfferings()
+    getOfferings({ currency: "USD" })
       .then((off) => {
         if (mounted) setOfferings(off);
       })
@@ -106,110 +334,282 @@ export default function SubscriptionPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-12">
-      <div className="flex items-center gap-2 mb-8">
-        <Crown className="w-8 h-8 text-amber-400" />
-        <h1 className="text-2xl font-bold text-white">Subscription</h1>
+    <div className={`mx-auto px-4 py-8 sm:py-12 ${!isPro ? "max-w-6xl" : "max-w-2xl"}`}>
+      <div className="mb-8">
+        <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-white">
+          Subscription
+        </h1>
+        <p className="mt-1 text-white/50 text-sm">
+          Manage your plan and billing
+        </p>
       </div>
 
       {error && (
-        <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-200 text-sm mb-6">
+        <div className="rounded-2xl bg-red-500/10 border border-red-500/20 p-4 text-red-300 text-sm mb-6">
           {error}
         </div>
       )}
 
-      {purchaseError && (
-        <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-200 text-sm mb-6">
-          {purchaseError}
-        </div>
-      )}
-
-      <div className="rounded-xl border border-white/10 bg-white/5 p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <span className="text-white/70">Status</span>
-          <span className={isPro ? "text-emerald-400 font-medium" : "text-white/50"}>
-            {isPro ? (isVip ? "Pro (VIP)" : "Active") : "Free plan"}
-          </span>
+      <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-5 sm:p-6 backdrop-blur-sm">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${isPro ? "bg-emerald-500/20" : "bg-white/5"}`}>
+              <Crown className={`h-5 w-5 ${isPro ? "text-emerald-400" : "text-white/40"}`} />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-white/90">
+                {isPro ? (isVip ? "Pro (VIP)" : "Active") : "Current plan"}
+              </p>
+              <p className={`text-sm ${isPro ? "text-emerald-400/90" : "text-white/50"}`}>
+                {isPro ? (isVip ? "VIP access" : "Subscribed") : "Free"}
+              </p>
+            </div>
+          </div>
+          {isPro && (() => {
+            const expiry = formatExpiry(customerInfo, DEFAULT_ENTITLEMENT_ID);
+            return expiry ? (
+              <div className="flex items-center gap-2 text-white/50 text-sm">
+                <Calendar className="h-4 w-4" />
+                <span>Through {expiry}</span>
+              </div>
+            ) : null;
+          })()}
         </div>
         {showManageBlock && (
-          <div className="space-y-1">
+          <div className="mt-4 pt-4 border-t border-white/[0.06]">
             <a
               href={manageUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 text-amber-400 hover:text-amber-300 text-sm"
+              className="inline-flex items-center gap-2 text-sm text-white/70 hover:text-white transition-colors"
             >
-              <ExternalLink className="w-4 h-4" />
-              Manage subscription (cancel or update payment)
+              <ExternalLink className="h-4 w-4" />
+              Manage subscription
             </a>
-            <p className="text-white/40 text-xs">
-              Cancellation stops future charges; you keep access until the end of your current billing period.
+            <p className="text-white/40 text-xs mt-1">
+              Cancel or update payment · access until period end
             </p>
           </div>
         )}
+        <div className="mt-4 pt-4 border-t border-white/[0.06]">
+          <Link
+            href="/premium"
+            className="text-sm text-white/60 hover:text-white/80 transition-colors"
+          >
+            Compare all plans →
+          </Link>
+        </div>
       </div>
 
       {!isPro && (
-        <div className="mt-8">
-          <h2 className="text-lg font-semibold text-white mb-4">Choose a plan</h2>
+        <div className="mt-10">
           {offeringsLoading ? (
-            <div className="flex justify-center py-8">
+            <div className="flex justify-center py-12">
               <Loader2 className="w-8 h-8 text-white/50 animate-spin" />
             </div>
-          ) : offerings?.current?.availablePackages?.length > 0 ? (
-            <div className="grid gap-4 sm:grid-cols-2">
-              {offerings.current.availablePackages.map((pkg) => {
-                const product = pkg.webBillingProduct || pkg.rcBillingProduct;
-                const priceStr = product?.price?.formattedPrice ?? product?.currentPrice?.formattedPrice ?? "—";
-                const title = product?.title || packageLabel(pkg.identifier);
-                const isPurchasing = purchasingPackageId === pkg.identifier;
-                return (
-                  <button
-                    key={pkg.identifier}
-                    type="button"
-                    onClick={() => handlePurchase(pkg)}
-                    disabled={isPurchasing}
-                    className="flex flex-col items-start gap-2 rounded-xl border border-white/20 bg-white/5 p-5 text-left hover:border-amber-500/50 hover:bg-white/10 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    <div className="flex w-full items-center justify-between">
-                      <span className="font-semibold text-white">{title}</span>
-                      <span className="text-amber-400 font-medium">{priceStr}</span>
-                    </div>
-                    {product?.description && (
-                      <p className="text-sm text-white/60">{product.description}</p>
+          ) : (() => {
+            const offeringGroups = getAllOfferingsWithPackages(offerings);
+            const basicOffering = offeringGroups.find((o) => o.identifier === "basic");
+            const proOffering = offeringGroups.find((o) => o.identifier === "pro");
+            const hasPaidPlans = (basicOffering?.monthlyPkg || basicOffering?.yearlyPkg) || (proOffering?.monthlyPkg || proOffering?.yearlyPkg);
+            if (!hasPaidPlans) {
+              return (
+                <p className="text-white/60 text-sm py-4">
+                  No plans available right now. Make sure you have offerings with packages in the{" "}
+                  <a href="https://app.revenuecat.com" target="_blank" rel="noopener noreferrer" className="text-amber-400 hover:underline">
+                    RevenueCat dashboard
+                  </a>
+                  .
+                </p>
+              );
+            }
+
+            const freePlan = PLAN_CONTENT.free;
+            const basicPlan = PLAN_CONTENT.basic;
+            const proPlan = PLAN_CONTENT.pro;
+
+            const basicPkg = billingPeriod === YEARLY ? basicOffering?.yearlyPkg : basicOffering?.monthlyPkg;
+            const proPkg = billingPeriod === YEARLY ? proOffering?.yearlyPkg : proOffering?.monthlyPkg;
+
+            const packageSymbol = getPackageCurrencySymbol(basicPkg ?? proPkg ?? basicOffering?.monthlyPkg ?? proOffering?.monthlyPkg);
+            const defaultCurrencySymbol = packageSymbol ?? "$";
+
+            const benefitCount = freePlan.benefits.length;
+
+            const renderBenefitCell = (benefit, isFree) => {
+              const showCheck = !isFree || freePlan.freeTierCheckmarks.includes(benefit);
+              return (
+                <div className="flex items-start gap-2.5 py-2.5 px-3 sm:px-4 border-b border-white/[0.06] min-h-[2.75rem]">
+                  <span className="mt-0.5 flex-shrink-0">
+                    {showCheck ? (
+                      <Check className="h-4 w-4 text-emerald-400/90" strokeWidth={2.5} />
+                    ) : (
+                      <span className="text-white/20">—</span>
                     )}
-                    <span className="mt-2 flex items-center gap-2 text-amber-400 text-sm font-medium">
-                      {isPurchasing ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Check className="w-4 h-4" />
-                      )}
-                      {isPurchasing ? "Opening checkout…" : "Subscribe"}
-                    </span>
+                  </span>
+                  <span className="text-sm text-white/70">{benefit}</span>
+                </div>
+              );
+            };
+
+            const renderPlanCard = (planKey, plan, pkg, isPurchasing, index) => {
+              const isFree = planKey === "free";
+              const priceStr = isFree ? plan.price : (pkg ? getPackagePrice(pkg) : "—");
+              const billingText = isFree
+                ? plan.billing
+                : billingPeriod === YEARLY && pkg
+                  ? `Billed annually · ${plan.billingYearly}`
+                  : plan.billing;
+              const showYearlyPerMonth = !isFree && billingPeriod === YEARLY && pkg;
+              const yearlyAmount = showYearlyPerMonth ? getPackagePriceAmount(pkg) : null;
+              const yearlyPerMonth = yearlyAmount != null ? (yearlyAmount / 12).toFixed(2) : null;
+              const currencySymbol = (pkg ? getPackageCurrencySymbol(pkg) : null) ?? defaultCurrencySymbol;
+              const isPopular = plan.popular;
+
+              return (
+                <motion.article
+                  key={planKey}
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.35, delay: index * 0.05 }}
+                  className={`relative flex flex-col rounded-2xl border p-6 sm:p-7 transition-all duration-200 ${
+                    isPopular
+                      ? "bg-white/[0.07] border-violet-500/30 shadow-[0_0_40px -12px rgba(139,92,246,0.25)]"
+                      : "bg-white/[0.03] border-white/[0.06] hover:border-white/[0.1] hover:bg-white/[0.05]"
+                  }`}
+                >
+                  <div className="min-h-[2.5rem] flex items-center justify-center mb-4">
+                    {isPopular && (
+                      <span className="inline-flex w-fit px-3 py-1 rounded-full bg-violet-500/90 text-white text-xs font-medium">
+                        Most popular
+                      </span>
+                    )}
+                  </div>
+                  <div className="mb-5">
+                    <p className="text-sm font-medium text-white/50 uppercase tracking-wider">
+                      {plan.title}
+                    </p>
+                    <div className="mt-2 flex flex-wrap items-baseline gap-x-1.5">
+                      <span className="text-3xl font-semibold tracking-tight text-white">
+                        {showYearlyPerMonth && yearlyPerMonth != null
+                          ? `${currencySymbol}${yearlyPerMonth}`
+                          : isFree
+                            ? `${currencySymbol}0`
+                            : priceStr}
+                      </span>
+                      {(showYearlyPerMonth && yearlyPerMonth != null) || (!isFree && billingPeriod === MONTHLY) ? (
+                        <span className="text-white/45 text-sm">/mo</span>
+                      ) : null}
+                    </div>
+                    <p className="mt-1 text-sm text-white/50">{billingText}</p>
+                  </div>
+                  {plan.bestFor && (
+                    <p className="mt-2 pt-4 border-t border-white/[0.06] text-xs text-white/45">
+                      Best for: {plan.bestFor}
+                    </p>
+                  )}
+                  {!isFree && pkg && (
+                    <div className="mt-5 pt-5 border-t border-white/[0.06]">
+                      <button
+                        type="button"
+                        onClick={() => handlePurchase(pkg)}
+                        disabled={isPurchasing}
+                        className={`w-full py-2.5 px-4 rounded-xl text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${
+                          isPopular
+                            ? "bg-violet-500 hover:bg-violet-400 text-white"
+                            : "bg-violet-600 hover:bg-violet-500 text-white border border-violet-500/50"
+                        }`}
+                      >
+                        {isPurchasing ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : null}
+                        {isPurchasing ? "Opening…" : "Subscribe"}
+                      </button>
+                    </div>
+                  )}
+                </motion.article>
+              );
+            };
+
+            return (
+              <div className="mt-10">
+                <div className="mb-8 text-center">
+                  <h2 className="text-lg font-semibold tracking-tight text-white">
+                    Choose a plan
+                  </h2>
+                  <p className="mt-1 text-sm text-white/50">
+                    Upgrade to unlock AI generation, TTS, and more.
+                  </p>
+                </div>
+                <div className="flex justify-center mb-8">
+                  <div className="inline-flex p-1 rounded-xl bg-white/[0.04] border border-white/[0.06]">
+                  <button
+                    type="button"
+                    onClick={() => setBillingPeriod(MONTHLY)}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                      billingPeriod === MONTHLY
+                        ? "bg-white/10 text-white shadow-sm"
+                        : "text-white/60 hover:text-white/80"
+                    }`}
+                  >
+                    Monthly
                   </button>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="text-white/60 text-sm py-4">
-              No plans available right now. Make sure you have an offering with packages in the{" "}
-              <a
-                href="https://app.revenuecat.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-amber-400 hover:underline"
-              >
-                RevenueCat dashboard
-              </a>
-              .
-            </p>
-          )}
+                  <button
+                    type="button"
+                    onClick={() => setBillingPeriod(YEARLY)}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                      billingPeriod === YEARLY
+                        ? "bg-white/10 text-white shadow-sm"
+                        : "text-white/60 hover:text-white/80"
+                    }`}
+                  >
+                    Yearly
+                  </button>
+                  </div>
+                </div>
+                <div className="overflow-x-auto -mx-2 px-2">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-0 min-w-0">
+                    {renderPlanCard("free", freePlan, null, false, 0)}
+                    {renderPlanCard(
+                      "basic",
+                      basicPlan,
+                      basicPkg ?? basicOffering?.monthlyPkg ?? basicOffering?.yearlyPkg,
+                      purchasingPackageId != null && basicPkg && purchasingPackageId === basicPkg.identifier,
+                      1
+                    )}
+                    {renderPlanCard(
+                      "pro",
+                      proPlan,
+                      proPkg ?? proOffering?.monthlyPkg ?? proOffering?.yearlyPkg,
+                      purchasingPackageId != null && proPkg && purchasingPackageId === proPkg.identifier,
+                      2
+                    )}
+                  </div>
+                  {/* Aligned comparison table: one row per benefit */}
+                  <div className="mt-0 rounded-b-2xl overflow-hidden border border-t-0 border-white/[0.08] bg-white/[0.02]">
+                    <div className="grid grid-cols-1 md:grid-cols-3" role="table" aria-label="Plan comparison">
+                      {Array.from({ length: benefitCount }, (_, i) => (
+                        <div key={i} className="contents" role="row">
+                          <div role="cell" className="bg-white/[0.02]">
+                            {renderBenefitCell(freePlan.benefits[i], true)}
+                          </div>
+                          <div role="cell" className="bg-white/[0.02]">
+                            {renderBenefitCell(basicPlan.benefits[i], false)}
+                          </div>
+                          <div role="cell" className="bg-white/[0.02]">
+                            {renderBenefitCell(proPlan.benefits[i], false)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
 
-      <p className="mt-6 text-white/40 text-sm text-center">
-        <Link href="/dashboard" className="hover:text-white/60">Back to dashboard</Link>
-      </p>
     </div>
   );
 }

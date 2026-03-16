@@ -62,6 +62,9 @@ async function handleInitialize() {
   };
 }
 
+const HOSTED_ONLY_MSG =
+  "This tool is only available when using the hosted MCP endpoint (POST /api/mcp) with an API key. Use the Deckbase MCP URL and Bearer token in your client.";
+
 async function handleToolsList() {
   return {
     tools: [
@@ -79,6 +82,29 @@ async function handleToolsList() {
           required: ["path"],
         },
       },
+      {
+        name: "list_decks",
+        description: "List the user's flashcard decks. Requires hosted MCP with API key.",
+        inputSchema: { type: "object", properties: {} },
+      },
+      {
+        name: "create_deck",
+        description: "Create a new flashcard deck. Requires hosted MCP with API key.",
+        inputSchema: {
+          type: "object",
+          properties: { title: { type: "string" }, description: { type: "string" } },
+          required: ["title"],
+        },
+      },
+      {
+        name: "create_card",
+        description: "Create a simple flashcard with front content only (back not supported). Requires hosted MCP with API key.",
+        inputSchema: {
+          type: "object",
+          properties: { deckId: { type: "string" }, front: { type: "string" } },
+          required: ["deckId", "front"],
+        },
+      },
     ],
   };
 }
@@ -94,6 +120,9 @@ async function handleToolCall(name, args) {
     const content = await readDoc(path);
     if (content == null) return { content: [{ type: "text", text: `Doc not found: ${path}` }], isError: true };
     return { content: [{ type: "text", text: content }] };
+  }
+  if (name === "list_decks" || name === "create_deck" || name === "create_card") {
+    return { content: [{ type: "text", text: HOSTED_ONLY_MSG }], isError: true };
   }
   return { content: [{ type: "text", text: `Unknown tool: ${name}` }], isError: true };
 }

@@ -7,7 +7,7 @@
 import { NextResponse } from "next/server";
 import { resolveAuth } from "@/lib/auth-api";
 import { createApiKey, listApiKeysByUser } from "@/lib/api-keys-server";
-import { isProOrVip } from "@/lib/revenuecat-server";
+import { isBasicOrProOrVip } from "@/lib/revenuecat-server";
 
 async function getUidFromRequest(request) {
   const authHeader = request.headers.get("authorization") || "";
@@ -25,7 +25,7 @@ export async function POST(request) {
   }
 
   if (process.env.NODE_ENV === "production") {
-    const entitled = await isProOrVip(uid);
+    const entitled = await isBasicOrProOrVip(uid);
     if (!entitled) {
       return NextResponse.json(
         { error: "MCP and API keys are available for Pro and VIP subscribers only" },
@@ -62,7 +62,7 @@ export async function GET(request) {
   }
 
   if (process.env.NODE_ENV === "production") {
-    const entitled = await isProOrVip(uid);
+    const entitled = await isBasicOrProOrVip(uid);
     if (!entitled) {
       return NextResponse.json(
         { error: "MCP and API keys are available for Pro and VIP subscribers only" },

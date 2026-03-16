@@ -29,6 +29,7 @@ Plans and feature limits for Deckbase subscriptions. Use this for paywall copy, 
 | MCP                 | ❌ None              | Included                          | Included                          |
 | Import              | CSV only            | CSV, Excel, Anki                  | CSV, Excel, Anki                 |
 | Export              | CSV only            | CSV, Excel, Anki                  | CSV, Excel, Anki                 |
+| Import from file    | —                   | PDF, DOCX, PNG, JPEG              | PDF, DOCX, PNG, JPEG             |
 | Storage & Backup    | ❌ None              | 2GB cloud backup                   | 20GB cloud backup         |
 | Best for            | Manual card testing | Regular students                   | Exam prep, heavy users    |
 

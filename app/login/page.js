@@ -1,16 +1,29 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
+/** Allowed redirect paths after login (avoid open redirect). */
+const ALLOWED_REDIRECT_PREFIXES = ["/dashboard", "/premium"];
+
+function getRedirectPath(searchParams) {
+  const redirect = searchParams?.get("redirect");
+  if (!redirect || typeof redirect !== "string") return "/dashboard";
+  const path = redirect.startsWith("/") ? redirect : `/${redirect}`;
+  const allowed = ALLOWED_REDIRECT_PREFIXES.some((prefix) => path === prefix || path.startsWith(prefix + "/"));
+  return allowed ? path : "/dashboard";
+}
+
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, loading, signIn, signInWithGoogle } = useAuth();
+  const redirectTo = getRedirectPath(searchParams);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -20,9 +33,9 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!loading && user) {
-      router.push("/dashboard");
+      router.push(redirectTo);
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, redirectTo]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -31,7 +44,7 @@ export default function LoginPage() {
 
     try {
       await signIn(email, password);
-      router.push("/dashboard");
+      router.push(redirectTo);
     } catch (err) {
       console.error("Login error:", err);
       if (
@@ -55,7 +68,7 @@ export default function LoginPage() {
     setError("");
     try {
       await signInWithGoogle();
-      router.push("/dashboard");
+      router.push(redirectTo);
     } catch (err) {
       console.error("Google sign in error:", err);
       setError("Failed to sign in with Google. Please try again.");
@@ -221,7 +234,7 @@ export default function LoginPage() {
         <p className="text-center text-white/60 mt-6">
           Don&apos;t have an account?{" "}
           <Link
-            href="/register"
+            href={redirectTo !== "/dashboard" ? `/register?redirect=${encodeURIComponent(redirectTo)}` : "/register"}
             className="text-accent hover:text-accent/80 transition-colors"
           >
             Sign up

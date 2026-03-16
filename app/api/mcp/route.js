@@ -10,7 +10,7 @@
 import { NextResponse } from "next/server";
 import { handleMcpRequest } from "@/lib/mcp-handlers";
 import { resolveAuthApiKeyOnly } from "@/lib/auth-api";
-import { isProOrVip } from "@/lib/revenuecat-server";
+import { isBasicOrProOrVip } from "@/lib/revenuecat-server";
 
 export async function POST(request) {
   const authHeader = request.headers.get("authorization") || "";
@@ -32,7 +32,7 @@ export async function POST(request) {
   const uid = resolved.uid;
 
   if (process.env.NODE_ENV === "production") {
-    const entitled = await isProOrVip(uid);
+    const entitled = await isBasicOrProOrVip(uid);
     if (!entitled) {
       return NextResponse.json(
         { jsonrpc: "2.0", id: null, error: { code: -32002, message: "MCP is available for Pro and VIP subscribers only" } },
@@ -53,7 +53,8 @@ export async function POST(request) {
 
   const id = body.id;
   const rootPath = process.cwd();
-  const { result, error } = await handleMcpRequest(rootPath, body);
+  const context = { uid };
+  const { result, error } = await handleMcpRequest(rootPath, body, context);
 
   const response = { jsonrpc: "2.0", id };
   if (error) {

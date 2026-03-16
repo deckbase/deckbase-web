@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
 import Image from "next/image";
-import { LogOut, User, Home, LayoutTemplate, Settings, Crown, Key } from "lucide-react";
+import { LogOut, Home, LayoutTemplate, Settings, Crown, Key } from "lucide-react";
 
 export default function DashboardLayout({ children }) {
   const { user, userProfile, loading, logout } = useAuth();
@@ -99,21 +99,19 @@ export default function DashboardLayout({ children }) {
               href="/dashboard/profile"
               className="flex items-center gap-3 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
             >
-              {userProfile?.profileUrl ? (
-                <Image
-                  src={userProfile.profileUrl}
-                  alt="Profile"
-                  width={28}
-                  height={28}
-                  className="rounded-full"
+              {(userProfile?.profileUrl || user?.photoURL) ? (
+                <img
+                  src={userProfile?.profileUrl || user?.photoURL}
+                  alt=""
+                  className="h-7 w-7 min-w-[28px] rounded-full object-cover shrink-0"
                 />
               ) : (
-                <div className="w-7 h-7 rounded-full bg-accent/20 flex items-center justify-center">
-                  <User className="w-4 h-4 text-accent" />
-                </div>
+                <span className="inline-flex h-7 w-7 min-w-[28px] shrink-0 items-center justify-center rounded-full bg-accent text-sm font-semibold text-white">
+                  {(userProfile?.displayName || user?.email || "U").charAt(0).toUpperCase()}
+                </span>
               )}
-              <span className="text-white/80 text-sm hidden sm:block">
-                {userProfile?.displayName || user?.email?.split("@")[0]}
+              <span className="text-white/80 text-sm hidden sm:block truncate max-w-[140px]">
+                {userProfile?.displayName || user?.email}
               </span>
             </Link>
 

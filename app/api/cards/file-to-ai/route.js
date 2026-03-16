@@ -14,7 +14,7 @@ import {
 import { BlockTypeNames } from "@/utils/firestore";
 import { getAdminAuth } from "@/utils/firebase-admin";
 import { getTemplateAdmin } from "@/lib/firestore-admin";
-import { isProOrVip } from "@/lib/revenuecat-server";
+import { isBasicOrProOrVip } from "@/lib/revenuecat-server";
 import { checkAIGenerationLimit, incrementAIGenerations } from "@/lib/usage-limits";
 
 const MAX_EXTRACTED_CHARS = 50000;
@@ -213,7 +213,7 @@ export async function POST(request) {
 
       if (mobileApiKey) tokenUid = uid;
       if (isProduction && tokenUid) {
-        const entitled = await isProOrVip(tokenUid);
+        const entitled = await isBasicOrProOrVip(tokenUid);
         if (!entitled) {
           return NextResponse.json(
             { error: "Active subscription required to use AI features" },
@@ -324,7 +324,7 @@ export async function POST(request) {
 
     if (mobileApiKey) tokenUid = uid;
     if (isProduction && tokenUid) {
-      const entitled = await isProOrVip(tokenUid);
+      const entitled = await isBasicOrProOrVip(tokenUid);
       if (!entitled) {
         return NextResponse.json(
           { error: "Active subscription required to use AI features" },

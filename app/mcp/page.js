@@ -3,9 +3,6 @@
 import { motion } from "framer-motion";
 import { Cpu, ChevronDown, ChevronUp, Copy, Check } from "lucide-react";
 import { useState, useCallback } from "react";
-import { useAuth } from "@/contexts/AuthContext";
-import { useRevenueCat } from "@/contexts/RevenueCatContext";
-import Link from "next/link";
 import Image from "next/image";
 import { siCursor } from "simple-icons";
 
@@ -54,9 +51,6 @@ const configSnippet = (mcpUrl) => `{
 export default function McpPage() {
   const [showProjectConfig, setShowProjectConfig] = useState(false);
   const [showOtherTools, setShowOtherTools] = useState(false);
-  const { user, loading } = useAuth();
-  const { isPro } = useRevenueCat();
-  const canUseMcp = !!user && isPro;
 
   const baseUrl =
     typeof window !== "undefined" && !window.location.origin.startsWith("http://localhost")
@@ -137,56 +131,14 @@ url = "${mcpUrl}"`;
               Connecting to Deckbase MCP
             </h1>
             <p className="text-base sm:text-lg text-white/85 max-w-2xl leading-relaxed">
-              Connect your AI tool to Deckbase with the Model Context Protocol. Use{" "}
+              Connect your AI tool to Deckbase with the Model Context Protocol. Read docs with{" "}
               <code className="px-1.5 py-0.5 rounded bg-white/15 text-accent font-mono text-sm">list_docs</code> and{" "}
-              <code className="px-1.5 py-0.5 rounded bg-white/15 text-accent font-mono text-sm">read_doc</code> with an API key in the <code className="px-1.5 py-0.5 rounded bg-white/15 text-accent font-mono text-sm">Authorization</code> header.
+              <code className="px-1.5 py-0.5 rounded bg-white/15 text-accent font-mono text-sm">read_doc</code>, and create decks and cards with{" "}
+              <code className="px-1.5 py-0.5 rounded bg-white/15 text-accent font-mono text-sm">list_decks</code>,{" "}
+              <code className="px-1.5 py-0.5 rounded bg-white/15 text-accent font-mono text-sm">create_deck</code>, and{" "}
+              <code className="px-1.5 py-0.5 rounded bg-white/15 text-accent font-mono text-sm">create_card</code>. Send your API key in the <code className="px-1.5 py-0.5 rounded bg-white/15 text-accent font-mono text-sm">Authorization: Bearer</code> header.
             </p>
           </div>
-
-          {/* API keys */}
-          <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 sm:p-8">
-            <h2 className="text-xl font-semibold text-white mb-2">
-              API keys (recommended)
-            </h2>
-            <p className="text-white/80 text-sm sm:text-base mb-6 max-w-xl">
-              API keys don&apos;t expire. Create and manage them in the dashboard and use one in your MCP config so you don&apos;t have to refresh every hour.
-            </p>
-          {!loading && user && (
-            <>
-              {!isPro && (
-                <div className="rounded-xl border border-amber-500/30 bg-amber-950/20 p-5 mb-4">
-                  <p className="text-amber-200 font-medium mb-2">
-                    MCP is available for Pro and VIP subscribers
-                  </p>
-                  <p className="text-white/75 text-sm mb-4">
-                    Upgrade to create API keys and connect Cursor to Deckbase.
-                  </p>
-                  <Link
-                    href="/dashboard/subscription"
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-accent hover:bg-accent/90 text-white font-medium transition-colors"
-                  >
-                    View subscription
-                  </Link>
-                </div>
-              )}
-              {canUseMcp && (
-                <div className="rounded-xl border border-white/10 bg-white/[0.04] p-5">
-                  <Link
-                    href="/dashboard/api-keys"
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-accent hover:bg-accent/90 text-white font-medium transition-colors"
-                  >
-                    Create & manage API keys
-                  </Link>
-                </div>
-              )}
-            </>
-          )}
-          {!loading && !user && (
-            <p className="text-white/70">
-              Log in to create and manage API keys in the dashboard.
-            </p>
-          )}
-          </section>
 
           {/* Cursor */}
           <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 sm:p-8">

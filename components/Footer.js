@@ -66,12 +66,6 @@ const Footer = () => {
                 Pricing
               </Link>
               <Link
-                href="/updates"
-                className="cursor-pointer transition-all hover:text-silver"
-              >
-                What&apos;s New
-              </Link>
-              <Link
                 href="/contact-us"
                 className="cursor-pointer transition-all hover:text-silver"
               >

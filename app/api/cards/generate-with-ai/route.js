@@ -4,7 +4,7 @@ import { buildCardPrompt } from "@/lib/card-ai-prompt";
 import { parseGeneratedCard } from "@/lib/ai-card-parse";
 import { BlockTypeNames } from "@/utils/firestore";
 import { getAdminAuth } from "@/utils/firebase-admin";
-import { isProOrVip } from "@/lib/revenuecat-server";
+import { isBasicOrProOrVip } from "@/lib/revenuecat-server";
 import { checkAIGenerationLimit, incrementAIGenerations } from "@/lib/usage-limits";
 
 function normalizeBlockType(type) {
@@ -56,7 +56,7 @@ export async function POST(request) {
           { status: 401 }
         );
       }
-      const entitled = await isProOrVip(requestUid);
+      const entitled = await isBasicOrProOrVip(requestUid);
       if (!entitled) {
         return NextResponse.json(
           { error: "Active subscription required to use AI features" },

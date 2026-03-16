@@ -12,7 +12,6 @@ import AppFeatures from "@/components/AppFeatures";
 import UserTestimonials from "@/components/UserTestimonials";
 import Start from "@/components/Start";
 import Faqs from "@/components/Faqs";
-
 export default function Home() {
   useEffect(() => {
     window.scrollTo(0, 0);

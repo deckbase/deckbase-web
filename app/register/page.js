@@ -1,15 +1,27 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { Mail, Lock, User, Eye, EyeOff, ArrowRight, Check } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
+const ALLOWED_REDIRECT_PREFIXES = ["/dashboard", "/premium"];
+
+function getRedirectPath(searchParams) {
+  const redirect = searchParams?.get("redirect");
+  if (!redirect || typeof redirect !== "string") return "/dashboard";
+  const path = redirect.startsWith("/") ? redirect : `/${redirect}`;
+  const allowed = ALLOWED_REDIRECT_PREFIXES.some((prefix) => path === prefix || path.startsWith(prefix + "/"));
+  return allowed ? path : "/dashboard";
+}
+
 export default function RegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = getRedirectPath(searchParams);
   const { user, loading, signUp, signInWithGoogle } = useAuth();
 
   const [name, setName] = useState("");
@@ -22,9 +34,9 @@ export default function RegisterPage() {
 
   useEffect(() => {
     if (!loading && user) {
-      router.push("/dashboard");
+      router.push(redirectTo);
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, redirectTo]);
 
   // Password requirements
   const passwordRequirements = [
@@ -53,7 +65,7 @@ export default function RegisterPage() {
 
     try {
       await signUp(email, password, name);
-      router.push("/dashboard");
+      router.push(redirectTo);
     } catch (err) {
       console.error("Registration error:", err);
       if (err.code === "auth/email-already-in-use") {
@@ -74,7 +86,7 @@ export default function RegisterPage() {
     setError("");
     try {
       await signInWithGoogle();
-      router.push("/dashboard");
+      router.push(redirectTo);
     } catch (err) {
       console.error("Google sign in error:", err);
       setError("Failed to sign in with Google. Please try again.");
@@ -315,7 +327,7 @@ export default function RegisterPage() {
         <p className="text-center text-white/60 mt-6">
           Already have an account?{" "}
           <Link
-            href="/login"
+            href={redirectTo !== "/dashboard" ? `/login?redirect=${encodeURIComponent(redirectTo)}` : "/login"}
             className="text-accent hover:text-accent/80 transition-colors"
           >
             Sign in

@@ -40,6 +40,7 @@ import { BLOCK_TYPES, TEXT_BLOCK_TYPES } from "@/components/blocks/blockTypes";
 import { ELEVENLABS_VOICES, ELEVENLABS_SAMPLE_PHRASE } from "@/lib/elevenlabs-voices";
 import { parseAudioBlockConfig } from "@/lib/audio-block-config";
 import { getBlockValidationErrors as getBlockValidationErrorsFromValidators } from "@/lib/block-validators";
+import { checkStorageBeforeUpload } from "@/lib/storage-check-client";
 import { getCropAspectFromConfig, getCropStateFromConfig, CROP_ASPECT_OPTIONS, DEFAULT_CROP_ASPECT } from "@/lib/image-block-config";
 import CardPreviewContent from "@/components/CardPreviewContent";
 import ImageCropModal from "@/components/ImageCropModal";
@@ -459,6 +460,11 @@ export default function CardEditorPage() {
     let nextValues = { ...values };
     for (const file of fileList) {
       try {
+        const storageCheck = await checkStorageBeforeUpload(user, file.size);
+        if (!storageCheck.allowed) {
+          window.alert(storageCheck.message || "Cloud backup limit reached.");
+          return;
+        }
         setImageUploadProgress({ blockId, progress: 0 });
         const media = await uploadImage(user.uid, file, {
           onProgress: (percent) => setImageUploadProgress((p) => (p?.blockId === blockId ? { ...p, progress: percent } : p)),
@@ -575,6 +581,11 @@ export default function CardEditorPage() {
       const oldMedia = mediaCache[mediaIdToReplace];
       const oldStoragePath = oldMedia?.storagePath ?? null;
       const croppedFile = new File([blob], "image.png", { type: blob.type || "image/png" });
+      const replaceCheck = await checkStorageBeforeUpload(user, croppedFile.size);
+      if (!replaceCheck.allowed) {
+        window.alert(replaceCheck.message || "Cloud backup limit reached.");
+        return;
+      }
       try {
         setImageUploadProgress({ blockId, progress: 0 });
         const media = await uploadImage(user.uid, croppedFile, {
@@ -642,6 +653,11 @@ export default function CardEditorPage() {
         setBlocks(nextBlocks);
       }
 
+      const firstCheck = await checkStorageBeforeUpload(user, (originalFile?.size || 0) + (croppedFile?.size || 0));
+      if (!firstCheck.allowed) {
+        window.alert(firstCheck.message || "Cloud backup limit reached.");
+        return;
+      }
       try {
         setImageUploadProgress({ blockId, progress: 0 });
         const originalMedia = await uploadImage(user.uid, originalFile, {
@@ -662,6 +678,11 @@ export default function CardEditorPage() {
 
         for (let i = 1; i < files.length; i++) {
           const file = files[i];
+          const extraCheck = await checkStorageBeforeUpload(user, file.size);
+          if (!extraCheck.allowed) {
+            window.alert(extraCheck.message || "Cloud backup limit reached.");
+            break;
+          }
           setImageUploadProgress({ blockId, progress: 80 * (i / files.length) });
           const m = await uploadImage(user.uid, file, {
             onProgress: (p) => setImageUploadProgress((prev) => (prev?.blockId === blockId ? { ...prev, progress: 80 + (20 * p) / 100 } : prev)),
@@ -742,6 +763,11 @@ export default function CardEditorPage() {
 
     for (const file of files) {
       try {
+        const storageCheck = await checkStorageBeforeUpload(user, file.size);
+        if (!storageCheck.allowed) {
+          window.alert(storageCheck.message || "Cloud backup limit reached.");
+          return;
+        }
         const media = await uploadAudio(user.uid, file);
 
         setMediaCache((prev) => ({ ...prev, [media.mediaId]: media }));
@@ -891,6 +917,10 @@ export default function CardEditorPage() {
       }
       const blob = await res.blob();
       const file = new File([blob], "generated.mp3", { type: "audio/mpeg" });
+      const storageCheck = await checkStorageBeforeUpload(user, file.size);
+      if (!storageCheck.allowed) {
+        throw new Error(storageCheck.message || "Cloud backup limit reached.");
+      }
       const media = await uploadAudio(user.uid, file);
       setMediaCache((prev) => ({ ...prev, [media.mediaId]: media }));
       const newValues = (prev) => {
