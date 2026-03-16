@@ -4358,7 +4358,9 @@ export default function DeckDetailPage() {
                             Template Blocks:
                           </h4>
                           <p className="text-white/45 text-xs mb-2">
-                            Click a block then a column to map. Use "AI" only for <strong className="text-white/60">quiz or audio</strong> blocks — AI generates that block per row from the table context.
+                            Click a block then a column to map. Use &quot;AI&quot; only for{" "}
+                            <strong className="text-white/60">quiz or audio</strong> blocks — AI
+                            generates that block per row from the table context.
                           </p>
                           <div className="flex flex-wrap gap-2 items-center">
                             {selectedTemplate.blocks.map((block) => {

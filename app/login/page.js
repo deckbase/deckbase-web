@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -15,11 +15,13 @@ function getRedirectPath(searchParams) {
   const redirect = searchParams?.get("redirect");
   if (!redirect || typeof redirect !== "string") return "/dashboard";
   const path = redirect.startsWith("/") ? redirect : `/${redirect}`;
-  const allowed = ALLOWED_REDIRECT_PREFIXES.some((prefix) => path === prefix || path.startsWith(prefix + "/"));
+  const allowed = ALLOWED_REDIRECT_PREFIXES.some(
+    (prefix) => path === prefix || path.startsWith(prefix + "/")
+  );
   return allowed ? path : "/dashboard";
 }
 
-export default function LoginPage() {
+function LoginPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading, signIn, signInWithGoogle } = useAuth();
@@ -252,5 +254,19 @@ export default function LoginPage() {
         </p>
       </motion.div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-black flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent"></div>
+        </div>
+      }
+    >
+      <LoginPageInner />
+    </Suspense>
   );
 }
