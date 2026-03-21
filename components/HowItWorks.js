@@ -68,7 +68,7 @@ const HowItWorks = () => {
               <div className="relative">
                 {/* Phone mockup image (demo.mp4 removed) */}
                 <img
-                  src="/mock/mock1.png"
+                  src="/mock/mock1.webp"
                   alt="Deckbase app preview"
                   className="w-full max-w-[200px] lg:max-w-xs h-auto drop-shadow-lg rounded-3xl object-cover"
                 />

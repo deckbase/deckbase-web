@@ -1,4 +1,7 @@
 # SEO Full Audit Report — deckbase.co
+
+> **Point-in-time audit (2026-03-11).** Scores and issues reflect that date; several fixes (canonical host, aggregateRating removal, sitemap, etc.) shipped later. See **[TODO.md](./TODO.md)** for what is done vs open.
+
 **Audit Date:** 2026-03-11
 **URL Audited:** https://www.deckbase.co/
 **Business Type:** SaaS / Mobile App (EdTech — AI Flashcard App)

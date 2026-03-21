@@ -1,4 +1,7 @@
 # SEO Action Plan — deckbase.co
+
+> **Historical snapshot (2026-03-11).** Many items are implemented in `deckbase-web` (www canonicals, schema, sitemap, `llms.txt`, etc.). Use **[TODO.md](./TODO.md)** for the living checklist; treat this file as reference detail, not current status.
+
 **Generated:** 2026-03-11
 **Overall SEO Health Score:** 47 / 100
 

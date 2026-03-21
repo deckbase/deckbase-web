@@ -2,7 +2,8 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { BookOpen, Cpu, ChevronRight } from "lucide-react";
+import { Cpu, ChevronRight } from "lucide-react";
+import { mediumArticle, M } from "@/components/resources/MediumArticle";
 
 const docLinks = [
   {
@@ -16,45 +17,52 @@ const docLinks = [
 
 export default function DocsIndexClient() {
   return (
-    <motion.div
+    <motion.article
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="space-y-10"
+      className={`${mediumArticle} flex flex-col gap-10`}
     >
-      <div>
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-accent/15 border border-accent/30 text-accent text-sm font-medium mb-6">
-          <BookOpen className="w-4 h-4" aria-hidden />
-          Documentation
-        </div>
-        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white tracking-tight mb-4">
-          Docs
-        </h1>
-        <p className="text-base sm:text-lg text-white/85 max-w-2xl leading-relaxed">
+      <nav className={M.breadcrumb} aria-label="Breadcrumb">
+        <ol className="flex flex-wrap gap-x-2 gap-y-1">
+          <li>
+            <Link href="/">Home</Link>
+          </li>
+          <li aria-hidden="true" className="text-neutral-400">
+            /
+          </li>
+          <li className={M.breadcrumbCurrent}>Docs</li>
+        </ol>
+      </nav>
+
+      <header>
+        <p className={M.kicker}>Documentation</p>
+        <h1 className={M.title}>Docs</h1>
+        <p className={M.lead}>
           Technical documentation for Deckbase: integrations, APIs, and guides.
         </p>
-      </div>
+      </header>
 
-      <section>
-        <h2 className="text-xl font-semibold text-white mb-4">Documentation</h2>
-        <ul className="space-y-4">
+      <section id="documentation" className="scroll-mt-28">
+        <h2 className={M.h2}>Documentation</h2>
+        <ul className="divide-y divide-neutral-800 border-y border-neutral-800">
           {docLinks.map((item) => {
             const Icon = item.icon;
             return (
               <li key={item.href}>
                 <Link
                   href={item.href}
-                  className="flex items-start gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-6 sm:p-8 hover:bg-white/[0.06] hover:border-white/15 transition-colors group"
+                  className="flex items-start gap-4 py-7 transition-colors hover:text-neutral-100"
                 >
-                  <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center text-accent">
-                    <Icon className="w-5 h-5" aria-hidden />
+                  <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center text-accent">
+                    <Icon className="h-[1.125rem] w-[1.125rem]" aria-hidden />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h3 className="text-lg font-semibold text-white flex items-center gap-2 group-hover:text-accent transition-colors">
+                    <h3 className="flex items-center gap-2 text-base font-semibold text-neutral-100">
                       {item.title}
-                      <ChevronRight className="w-4 h-4 flex-shrink-0" aria-hidden />
+                      <ChevronRight className="h-4 w-4 flex-shrink-0 text-neutral-500" aria-hidden />
                     </h3>
-                    <p className="text-white/75 text-sm mt-1">{item.description}</p>
+                    <p className={`${M.bodyMuted} mt-1`}>{item.description}</p>
                   </div>
                 </Link>
               </li>
@@ -63,17 +71,17 @@ export default function DocsIndexClient() {
         </ul>
       </section>
 
-      <p className="text-white/60 text-sm pt-4 border-t border-white/10">
+      <p className={M.footerNote}>
         For setup and client config (Cursor, VS Code, Claude, etc.), see{" "}
-        <Link href="/mcp" className="text-accent hover:underline">
+        <Link href="/mcp" className={M.linkPlain}>
           Connecting to Deckbase MCP
         </Link>
         . For quick links (Download, Contact), see{" "}
-        <Link href="/resources" className="text-accent hover:underline">
+        <Link href="/resources" className={M.linkPlain}>
           Resources
         </Link>
         .
       </p>
-    </motion.div>
+    </motion.article>
   );
 }

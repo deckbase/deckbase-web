@@ -45,7 +45,7 @@ export default function DashboardLayout({ children }) {
         <div className="h-full max-w-7xl mx-auto px-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <Image
-              src="/app_logo.png"
+              src="/app_logo.webp"
               alt="Deckbase"
               width={32}
               height={32}

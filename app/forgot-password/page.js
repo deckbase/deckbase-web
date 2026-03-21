@@ -68,7 +68,7 @@ export default function ForgotPasswordPage() {
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2">
             <Image
-              src="/app_logo.png"
+              src="/app_logo.webp"
               alt="Deckbase"
               width={48}
               height={48}

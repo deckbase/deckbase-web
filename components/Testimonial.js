@@ -53,18 +53,11 @@ const Testimonial = () => {
     >
       <article className="container mx-auto bg-transparent relative py-14 p-4 px-5 md:px-[5%] 2xl:px-0 max-w-[1200px] flex flex-col items-center justify-center gap-4">
         <div className="flex flex-col items-center justify-center">
-          <p className="text-sm text-gray-500 mb-2">What We Expect to Hear</p>
+          <p className="text-sm text-gray-500 mb-2">What learners say</p>
           <h2 className="text-h2 lg:text-h3 font-bold text-center max-w-[80%]">
-            Expected User Feedback
+            Stories from the community
           </h2>
           <span className="w-16 h-1 mt-3 bg-gradient-to-r from-accent to-purple-600 rounded-full" />
-
-          <article className="flex flex-col items-center justify-center mt-10">
-            <p className="mt-5 text-center max-w-[80%] lg:max-w-[60%] lg:leading-8">
-              Here&apos;s the kind of experience we&apos;re building Deckbase to
-              deliver. Real user testimonials coming soon!
-            </p>
-          </article>
         </div>
 
         <div className="mt-4 bg-transparent w-full relative">

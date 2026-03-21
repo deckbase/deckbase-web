@@ -136,7 +136,7 @@ export default function Home() {
           >
             <div className="">
               <Image
-                src="/mock/mock1.png"
+                src="/mock/mock1.webp"
                 alt="Deckbase App Screenshot"
                 width={1500}
                 height={1125}

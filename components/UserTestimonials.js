@@ -63,7 +63,7 @@ const UserTestimonials = () => {
             viewport={{ once: true }}
             className="text-sm text-gray-500 mb-2"
           >
-            What We Expect to Hear
+            What learners say
           </motion.p>
           <motion.h2
             initial={{ opacity: 0, y: 50 }}
@@ -71,7 +71,7 @@ const UserTestimonials = () => {
             viewport={{ once: true }}
             className="text-3xl md:text-4xl font-bold mb-3 text-primary"
           >
-            Expected User Feedback
+            How people use Deckbase
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 30 }}
@@ -83,8 +83,7 @@ const UserTestimonials = () => {
             viewport={{ once: true }}
             className="text-base text-secondary max-w-2xl mx-auto"
           >
-            Here&apos;s the kind of experience we&apos;re building Deckbase to
-            deliver. Real user testimonials coming soon!
+            Examples of study workflows—your experience may vary.
           </motion.p>
         </div>
 

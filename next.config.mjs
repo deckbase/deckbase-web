@@ -2,9 +2,31 @@
 import dotenv from "dotenv";
 dotenv.config();
 
+/**
+ * Security headers (non-HSTS). Vercel adds Strict-Transport-Security on production HTTPS;
+ * duplicating HSTS here can send two values — rely on the platform unless you self-host.
+ */
+const securityHeaders = [
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "X-Frame-Options", value: "SAMEORIGIN" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  {
+    key: "Permissions-Policy",
+    value: "camera=(), microphone=(), geolocation=(), interest-cohort=()",
+  },
+];
+
 const nextConfig = {
   reactStrictMode: true,
   allowedDevOrigins: ["dev.deckbase.co"],
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: securityHeaders,
+      },
+    ];
+  },
   env: {
     NEXT_PUBLIC_REVENUECAT_WEB_API_KEY: process.env.NEXT_PUBLIC_REVENUECAT_WEB_API_KEY || "",
   },

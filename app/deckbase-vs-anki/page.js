@@ -412,6 +412,18 @@ export default function DeckbaseVsAnki() {
               >
                 Deckbase vs Quizlet →
               </Link>
+              <Link
+                href="/anki-alternatives"
+                className="px-4 py-2 rounded-lg bg-gray-900 border border-gray-800 text-gray-300 text-sm hover:border-gray-600 transition-colors"
+              >
+                Best Anki alternatives →
+              </Link>
+              <Link
+                href="/best-flashcard-apps"
+                className="px-4 py-2 rounded-lg bg-gray-900 border border-gray-800 text-gray-300 text-sm hover:border-gray-600 transition-colors"
+              >
+                Best flashcard apps →
+              </Link>
             </div>
           </section>
         </main>

@@ -1,5 +1,6 @@
 import { JsonLdScript } from "@/components/seo/JsonLdScript";
-import { breadcrumbSchema } from "@/lib/seo-schema";
+import { breadcrumbSchema, faqPageSchemaFromItems } from "@/lib/seo-schema";
+import { downloadFaqItems } from "@/lib/download-faq";
 import { absoluteUrl } from "@/lib/site-url";
 
 export const metadata = {
@@ -24,6 +25,7 @@ export default function DownloadLayout({ children }) {
           { name: "Download", path: "/download" },
         ])}
       />
+      <JsonLdScript data={faqPageSchemaFromItems(downloadFaqItems)} />
       {children}
     </>
   );

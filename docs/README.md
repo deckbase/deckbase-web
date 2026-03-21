@@ -48,6 +48,9 @@ Index of project documentation. Use this to find specs, setup guides, and featur
 
 | Doc | Description |
 |-----|--------------|
+| [seo/TODO.md](./seo/TODO.md) | Living SEO checklist (done vs open; links to other seo docs). |
+| [seo/INDEXNOW.md](./seo/INDEXNOW.md) | IndexNow key file + ping (Bing). |
+| [seo/CLOUDFLARE-AI-BOTS.md](./seo/CLOUDFLARE-AI-BOTS.md) | CDN vs AI crawler blocks checklist. |
 | [seo/ACTION-PLAN.md](./seo/ACTION-PLAN.md) | SEO action plan for deckbase.co. |
 | [seo/COMPETITOR-PAGES.md](./seo/COMPETITOR-PAGES.md) | Competitor pages. |
 | [seo/DATA_FOR_SEO_MCP_PROMPTS.md](./seo/DATA_FOR_SEO_MCP_PROMPTS.md) | DataForSEO MCP prompts. |

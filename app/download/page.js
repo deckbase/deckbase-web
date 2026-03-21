@@ -1,7 +1,6 @@
 "use client";
 
 import { motion } from "framer-motion";
-import Image from "next/image";
 import Link from "next/link";
 import {
   Smartphone,
@@ -14,6 +13,7 @@ import {
 } from "lucide-react";
 import AppStoreDownloadButton from "@/components/AppStoreDownloadButton";
 import GooglePlayDownloadButton from "@/components/GooglePlayDownloadButton";
+import DownloadFaq from "@/components/DownloadFaq";
 
 export default function DownloadPage() {
   const features = [
@@ -202,6 +202,8 @@ export default function DownloadPage() {
           </div>
         </motion.div>
       </section>
+
+      <DownloadFaq />
 
       {/* CTA Section */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">

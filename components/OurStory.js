@@ -27,7 +27,7 @@ const OurStory = () => {
           <span className="w-16 h-1 mt-3 bg-gradient-to-r from-accent to-purple-600 rounded-full" />
           <div className="flex items-center justify-center lg:justify-start mt-6">
             <img
-              src="/mock/mock1.png"
+              src="/mock/mock1.webp"
               alt="Deckbase App Mockup"
               className="w-auto h-auto max-w-[300px] lg:max-w-[350px]"
             />

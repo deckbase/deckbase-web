@@ -58,7 +58,7 @@ Both pages are **Next.js server components** (no `"use client"`) with:
 ```json
 {
   "@type": "WebPage",
-  "@id": "https://deckbase.co/deckbase-vs-[competitor]",
+  "@id": "https://www.deckbase.co/deckbase-vs-[competitor]",
   "breadcrumb": { "@type": "BreadcrumbList", ... }
 }
 ```

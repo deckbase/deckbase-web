@@ -41,6 +41,11 @@ body {
   font-size: 0.875rem;
 }
 
+/* Medium-style guide column — dark theme (resources / SEO articles) */
+.medium-article ::selection {
+  background-color: rgba(35, 131, 226, 0.28);
+}
+
 .arc {
   background-image: url("/bg/glowingBg.png");
   background-size: contain;

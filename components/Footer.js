@@ -16,7 +16,7 @@ const Footer = () => {
               className="flex items-center cursor-pointer font-ubuntu text-white md:text-xl font-bold"
             >
               <Image
-                src="/app_logo.png"
+                src="/app_logo.webp"
                 alt="Deckbase Logo"
                 width={32}
                 height={32}

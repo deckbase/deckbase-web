@@ -8,7 +8,10 @@ import {
   Download,
   MessageCircle,
   ExternalLink,
+  Layers,
+  Sparkles,
 } from "lucide-react";
+import { mediumArticle, M } from "@/components/resources/MediumArticle";
 
 const resourceGroups = [
   {
@@ -16,7 +19,8 @@ const resourceGroups = [
     items: [
       {
         title: "MCP setup",
-        description: "Connect Cursor, Claude Code, VS Code, and other AI tools to Deckbase via the Model Context Protocol.",
+        description:
+          "Connect Cursor, Claude Code, VS Code, and other AI tools to Deckbase via the Model Context Protocol.",
         href: "/mcp",
         internal: true,
         icon: Cpu,
@@ -35,26 +39,43 @@ const resourceGroups = [
         internal: true,
         icon: MessageCircle,
       },
+      {
+        title: "Best Anki alternatives",
+        description: "Roundup of apps like Anki — AI cards, FSRS, and mobile study.",
+        href: "/anki-alternatives",
+        internal: true,
+        icon: Layers,
+      },
+      {
+        title: "Best flashcard apps (2026)",
+        description: "How to choose a flashcard app for med school, languages, and exams.",
+        href: "/best-flashcard-apps",
+        internal: true,
+        icon: Sparkles,
+      },
     ],
   },
 ];
 
 function ResourceCard({ item }) {
   const Icon = item.icon;
+  const cardClass =
+    "block border-b border-neutral-800 py-7 transition-colors last:border-b-0 hover:text-neutral-100";
+
   const content = (
     <>
       <div className="flex items-start gap-4">
-        <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center text-accent">
-          <Icon className="w-5 h-5" aria-hidden />
+        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center text-accent">
+          <Icon className="h-[1.125rem] w-[1.125rem]" aria-hidden />
         </div>
         <div className="min-w-0 flex-1">
-          <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+          <h3 className="flex items-center gap-2 text-base font-semibold text-neutral-100">
             {item.title}
             {!item.internal && (
-              <ExternalLink className="w-4 h-4 text-white/50 flex-shrink-0" aria-hidden />
+              <ExternalLink className="h-4 w-4 flex-shrink-0 text-neutral-500" aria-hidden />
             )}
           </h3>
-          <p className="text-white/75 text-sm mt-1">{item.description}</p>
+          <p className="mt-1 text-sm leading-relaxed text-neutral-400">{item.description}</p>
         </div>
       </div>
     </>
@@ -62,22 +83,14 @@ function ResourceCard({ item }) {
 
   if (item.internal) {
     return (
-      <Link
-        href={item.href}
-        className="block rounded-2xl border border-white/10 bg-white/[0.03] p-6 sm:p-8 hover:bg-white/[0.06] hover:border-white/15 transition-colors"
-      >
+      <Link href={item.href} className={cardClass}>
         {content}
       </Link>
     );
   }
 
   return (
-    <a
-      href={item.href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="block rounded-2xl border border-white/10 bg-white/[0.03] p-6 sm:p-8 hover:bg-white/[0.06] hover:border-white/15 transition-colors"
-    >
+    <a href={item.href} target="_blank" rel="noopener noreferrer" className={cardClass}>
       {content}
     </a>
   );
@@ -85,42 +98,41 @@ function ResourceCard({ item }) {
 
 export default function ResourcesPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-neutral-950 via-neutral-950 to-black pt-24 pb-20">
-      <section className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          className="space-y-12"
-        >
-          <div>
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-accent/15 border border-accent/30 text-accent text-sm font-medium mb-6">
-              <Link2 className="w-4 h-4" aria-hidden />
-              Quick links
-            </div>
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white tracking-tight mb-4">
-              Resources
-            </h1>
-            <p className="text-base sm:text-lg text-white/85 max-w-2xl leading-relaxed">
-              Quick links for MCP setup, app download, and contact. For feature docs and API reference, see{" "}
-              <Link href="/docs" className="text-accent hover:underline">Docs</Link>.
-            </p>
-          </div>
+    <motion.article
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className={`${mediumArticle} flex flex-col gap-10`}
+    >
+      <header>
+        <p className={M.kicker}>Resources</p>
+        <h1 className={M.title}>Guides &amp; quick links</h1>
+        <p className={M.lead}>
+          MCP setup, downloads, contact, and in-depth guides. For technical API and MCP reference, see{" "}
+          <Link href="/docs" className={M.link}>
+            Docs
+          </Link>
+          .
+        </p>
+        <p className={M.byline}>
+          <span className={M.bylineBrand}>Deckbase</span>
+          <span aria-hidden="true">·</span>
+          <span>1 min read</span>
+        </p>
+      </header>
 
-          {resourceGroups.map((group) => (
-            <div key={group.title}>
-              <h2 className="text-xl font-semibold text-white mb-4">{group.title}</h2>
-              <ul className="space-y-4">
-                {group.items.map((item) => (
-                  <li key={item.title}>
-                    <ResourceCard item={item} />
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </motion.div>
-      </section>
-    </div>
+      {resourceGroups.map((group) => (
+        <section key={group.title} id="quick-links" className="scroll-mt-28 space-y-4">
+          <h2 className={M.h2}>{group.title}</h2>
+          <ul className="flex flex-col gap-4">
+            {group.items.map((item) => (
+              <li key={item.title}>
+                <ResourceCard item={item} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+    </motion.article>
   );
 }

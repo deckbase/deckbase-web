@@ -10,7 +10,7 @@ export const features = [
   {
     id: "02",
     title: "Spaced Repetition Algorithm",
-    desc: "Review cards at scientifically optimal intervals. Our algorithm schedules each card based on your performance, ensuring you study right before you would forget.",
+    desc: "Review cards at intervals tuned to how memory fades (spaced repetition). Our FSRS-style scheduler updates each card from your performance so you review at sensible times—not random cramming. See the FSRS project for background: https://github.com/open-spaced-repetition/fsrs4anki",
   },
   {
     id: "03",

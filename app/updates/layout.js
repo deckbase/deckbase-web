@@ -1,5 +1,3 @@
-import { JsonLdScript } from "@/components/seo/JsonLdScript";
-import { breadcrumbSchema } from "@/lib/seo-schema";
 import { absoluteUrl } from "@/lib/site-url";
 
 export const metadata = {
@@ -12,18 +10,10 @@ export const metadata = {
     url: absoluteUrl("/updates"),
   },
   alternates: { canonical: absoluteUrl("/updates") },
+  /** Thin placeholder page — remove when there is a real public changelog. */
+  robots: { index: false, follow: true },
 };
 
 export default function UpdatesLayout({ children }) {
-  return (
-    <>
-      <JsonLdScript
-        data={breadcrumbSchema([
-          { name: "Home", path: "/" },
-          { name: "Updates", path: "/updates" },
-        ])}
-      />
-      {children}
-    </>
-  );
+  return children;
 }

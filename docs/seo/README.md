@@ -2,7 +2,8 @@
 
 Docs in this folder cover **website SEO** for deckbase.co: action plans, audits, competitor pages, and DataForSEO MCP.
 
-**Full index:** [../README.md](../README.md)
+**Full index:** [../README.md](../README.md)  
+**Tracked checklist:** [TODO.md](./TODO.md) · [IndexNow](./INDEXNOW.md) · [Cloudflare AI bots](./CLOUDFLARE-AI-BOTS.md)
 
 ---
 

@@ -43,7 +43,7 @@ const Navbar = () => {
             onClick={() => setIsOpen(false)}
           >
             <Image
-              src="/app_logo.png"
+              src="/app_logo.webp"
               alt="Deckbase Logo"
               width={32}
               height={32}

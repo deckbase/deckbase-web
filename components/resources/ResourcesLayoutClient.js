@@ -2,39 +2,47 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, BookOpen } from "lucide-react";
+import { Menu, X, Link2, BookOpen } from "lucide-react";
 import { useState } from "react";
 
-const docPages = [
-  { href: "/docs", label: "Overview" },
-  { href: "/docs/mcp-server", label: "MCP Server" },
+const resourceNav = [
+  { href: "/resources", label: "Overview" },
+  { href: "/mcp", label: "MCP setup" },
+  { href: "/download", label: "Download" },
+  { href: "/contact-us", label: "Contact" },
+  { href: "/anki-alternatives", label: "Anki alternatives" },
+  { href: "/best-flashcard-apps", label: "Best flashcard apps" },
 ];
 
-const docsIndexAnchors = [{ id: "documentation", label: "Documentation" }];
+/** In-page anchors for long guides (must match `id` on sections). */
+const pageAnchors = {
+  "/resources": [{ id: "quick-links", label: "Quick links" }],
+  "/anki-alternatives": [
+    { id: "who-looks", label: "Who looks for alternatives" },
+    { id: "apps-at-a-glance", label: "Apps at a glance" },
+    { id: "why-deckbase", label: "Why Deckbase" },
+    { id: "try-deckbase", label: "Try Deckbase" },
+    { id: "faq", label: "FAQ" },
+    { id: "related", label: "Related" },
+  ],
+  "/best-flashcard-apps": [
+    { id: "how-to-choose", label: "How to choose" },
+    { id: "shortlist", label: "Shortlist" },
+    { id: "try-deckbase", label: "Try Deckbase" },
+    { id: "faq", label: "FAQ" },
+    { id: "related", label: "Related" },
+  ],
+};
 
-const mcpServerAnchors = [
-  { id: "endpoints", label: "Endpoints" },
-  { id: "tools", label: "Tools" },
-  { id: "resources", label: "Resources" },
-  { id: "example", label: "Example" },
-  { id: "technical-details", label: "Technical details" },
-];
-
-const docNavLink = (active) =>
+const navLink = (active) =>
   active
     ? "block py-2 px-3 rounded-lg text-sm font-medium text-accent"
     : "block py-2 px-3 rounded-lg text-sm text-neutral-300 hover:text-white";
 
-export default function DocsLayoutClient({ children }) {
+export default function ResourcesLayoutClient({ children }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const isMcpServer = pathname === "/docs/mcp-server";
-  const isDocsIndex = pathname === "/docs";
-  const sidebarAnchors = isMcpServer
-    ? mcpServerAnchors
-    : isDocsIndex
-      ? docsIndexAnchors
-      : [];
+  const anchors = pageAnchors[pathname] ?? [];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-neutral-950 via-neutral-950 to-black pt-24 pb-20">
@@ -43,29 +51,40 @@ export default function DocsLayoutClient({ children }) {
           <div className="sticky top-28 space-y-6">
             <div>
               <Link
-                href="/docs"
+                href="/resources"
                 className="flex items-center gap-2 text-white/70 hover:text-white mb-4"
               >
-                <BookOpen className="w-4 h-4" />
-                <span className="text-sm font-medium">Docs</span>
+                <Link2 className="w-4 h-4" />
+                <span className="text-sm font-medium">Resources</span>
               </Link>
               <ul className="space-y-1">
-                {docPages.map((page) => (
+                {resourceNav.map((page) => (
                   <li key={page.href}>
-                    <Link href={page.href} className={docNavLink(pathname === page.href)}>
+                    <Link href={page.href} className={navLink(pathname === page.href)}>
                       {page.label}
                     </Link>
                   </li>
                 ))}
               </ul>
             </div>
-            {sidebarAnchors.length > 0 && (
+
+            <div className="pt-2 border-t border-neutral-800">
+              <Link
+                href="/docs"
+                className="flex items-center gap-2 text-xs text-white/50 hover:text-white/80 transition-colors px-3"
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                Technical docs
+              </Link>
+            </div>
+
+            {anchors.length > 0 && (
               <div>
                 <p className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-2 px-3">
                   On this page
                 </p>
                 <ul className="space-y-1">
-                  {sidebarAnchors.map((item) => (
+                  {anchors.map((item) => (
                     <li key={item.id}>
                       <a
                         href={`#${item.id}`}
@@ -87,47 +106,55 @@ export default function DocsLayoutClient({ children }) {
             onClick={() => setSidebarOpen((o) => !o)}
             className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-neutral-200"
             aria-expanded={sidebarOpen}
-            aria-controls="docs-mobile-nav"
+            aria-controls="resources-mobile-nav"
           >
             {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            <span>{sidebarOpen ? "Close" : "Docs menu"}</span>
+            <span>{sidebarOpen ? "Close" : "Resources menu"}</span>
           </button>
         </div>
 
         {sidebarOpen && (
           <div
             className="lg:hidden fixed inset-0 z-40 pt-28 pb-8 px-4 bg-black"
-            id="docs-mobile-nav"
+            id="resources-mobile-nav"
             onClick={() => setSidebarOpen(false)}
             aria-hidden
           >
             <div
-              className="max-w-xs w-full border-l border-neutral-800 pl-4"
+              className="max-w-xs w-full max-h-[calc(100vh-8rem)] overflow-y-auto border-l border-neutral-800 pl-4"
               onClick={(e) => e.stopPropagation()}
             >
               <p className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-3">
-                Documentation
+                Resources
               </p>
               <ul className="space-y-1 mb-4">
-                {docPages.map((page) => (
+                {resourceNav.map((page) => (
                   <li key={page.href}>
                     <Link
                       href={page.href}
                       onClick={() => setSidebarOpen(false)}
-                      className={docNavLink(pathname === page.href)}
+                      className={navLink(pathname === page.href)}
                     >
                       {page.label}
                     </Link>
                   </li>
                 ))}
               </ul>
-              {sidebarAnchors.length > 0 && (
+              <Link
+                href="/docs"
+                onClick={() => setSidebarOpen(false)}
+                className="flex items-center gap-2 text-xs text-white/60 hover:text-white mb-4 px-3"
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                Technical docs
+              </Link>
+              {anchors.length > 0 && (
                 <>
                   <p className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-2 px-3">
                     On this page
                   </p>
                   <ul className="space-y-1">
-                    {sidebarAnchors.map((item) => (
+                    {anchors.map((item) => (
                       <li key={item.id}>
                         <a
                           href={`#${item.id}`}
@@ -145,9 +172,7 @@ export default function DocsLayoutClient({ children }) {
           </div>
         )}
 
-        <main className="flex-1 min-w-0 pt-12 lg:pt-12 lg:pl-8">
-          {children}
-        </main>
+        <main className="flex-1 min-w-0 pt-12 lg:pt-12 lg:pl-8">{children}</main>
       </div>
     </div>
   );

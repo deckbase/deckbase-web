@@ -12,7 +12,7 @@ const faqs = [
   {
     question: "What is spaced repetition and why does it matter?",
     answer:
-      "Spaced repetition is a scientifically proven learning technique where you review information at increasing intervals over time. Instead of cramming, you review cards right before you're about to forget them. This approach is proven to dramatically improve long-term retention—studies show it can reduce study time by up to 50% while improving recall.",
+      "Spaced repetition is a learning approach where you review information at increasing intervals (building on research into forgetting curves and memory). Instead of cramming, you review cards when you are about to forget them, which supports long-term retention. Deckbase uses an FSRS-style scheduler; you can read about the FSRS algorithm family at https://github.com/open-spaced-repetition/fsrs4anki",
   },
   {
     question: "What sources can I create flashcards from?",
