@@ -1,4 +1,9 @@
 import Link from "next/link";
+import { absoluteUrl } from "@/lib/site-url";
+
+const PAGE_PATH = "/deckbase-vs-anki";
+const pageUrl = absoluteUrl(PAGE_PATH);
+const homeUrl = absoluteUrl("/");
 
 export const metadata = {
   title: "Deckbase vs Anki: AI Flashcards vs Manual SRS (2026)",
@@ -20,7 +25,7 @@ export const metadata = {
     title: "Deckbase vs Anki: AI Flashcards vs Manual SRS (2026)",
     description:
       "Honest head-to-head comparison of Deckbase and Anki — AI generation, spaced repetition algorithm, pricing, and ease of use.",
-    url: "https://deckbase.co/deckbase-vs-anki",
+    url: pageUrl,
     siteName: "Deckbase",
     images: [{ url: "/og.png", width: 1200, height: 630, alt: "Deckbase vs Anki Comparison" }],
     locale: "en_US",
@@ -41,20 +46,20 @@ const jsonLd = {
   "@graph": [
     {
       "@type": "WebPage",
-      "@id": "https://deckbase.co/deckbase-vs-anki",
-      url: "https://deckbase.co/deckbase-vs-anki",
+      "@id": pageUrl,
+      url: pageUrl,
       name: "Deckbase vs Anki: AI Flashcards vs Manual SRS (2026)",
       description:
         "Honest head-to-head comparison of Deckbase and Anki — AI card generation, FSRS vs SM-2, pricing, and ease of use.",
       breadcrumb: {
         "@type": "BreadcrumbList",
         itemListElement: [
-          { "@type": "ListItem", position: 1, name: "Home", item: "https://deckbase.co" },
+          { "@type": "ListItem", position: 1, name: "Home", item: homeUrl },
           {
             "@type": "ListItem",
             position: 2,
             name: "Deckbase vs Anki",
-            item: "https://deckbase.co/deckbase-vs-anki",
+            item: pageUrl,
           },
         ],
       },

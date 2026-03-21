@@ -66,7 +66,7 @@ export default function SEOCommandCenterPage() {
   const [overviewError, setOverviewError] = useState(null);
   const [overviewData, setOverviewData] = useState(null);
 
-  const [scrapeUrlInput, setScrapeUrlInput] = useState("https://deckbase.co");
+  const [scrapeUrlInput, setScrapeUrlInput] = useState("https://www.deckbase.co");
   const [scrapeLoading, setScrapeLoading] = useState(false);
   const [scrapeError, setScrapeError] = useState(null);
   const [scrapeResult, setScrapeResult] = useState(null);
@@ -79,7 +79,7 @@ export default function SEOCommandCenterPage() {
   const [firecrawlOk, setFirecrawlOk] = useState(null);
   const [perplexityOk, setPerplexityOk] = useState(null);
 
-  const [auditUrlInput, setAuditUrlInput] = useState("https://deckbase.co");
+  const [auditUrlInput, setAuditUrlInput] = useState("https://www.deckbase.co");
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditError, setAuditError] = useState(null);
   const [auditResult, setAuditResult] = useState(null);

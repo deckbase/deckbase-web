@@ -1,5 +1,6 @@
 import "./globals.css";
 import LayoutClient from "@/components/LayoutClient";
+import { SITE_URL, absoluteUrl } from "@/lib/site-url";
 
 // ✅ Export metadata for SEO - this runs on the server
 export const metadata = {
@@ -31,7 +32,7 @@ export const metadata = {
   authors: [{ name: "Deckbase" }],
   creator: "Deckbase",
   publisher: "Deckbase",
-  metadataBase: new URL("https://deckbase.co"),
+  metadataBase: new URL(SITE_URL),
   alternates: {
     canonical: "/",
   },
@@ -39,7 +40,7 @@ export const metadata = {
     title: "Deckbase — Scan. Build. Remember.",
     description:
       "Scan books into flashcards with AI. Study smarter with spaced repetition and remember more of what you read.",
-    url: "https://deckbase.co",
+    url: SITE_URL,
     siteName: "Deckbase",
     images: [
       {
@@ -92,6 +93,8 @@ export const metadata = {
   },
 };
 
+const orgId = `${SITE_URL}/#organization`;
+
 // ✅ Structured data for Google rich results (SoftwareApplication + Organization + WebSite)
 const jsonLd = {
   "@context": "https://schema.org",
@@ -101,7 +104,7 @@ const jsonLd = {
       name: "Deckbase",
       applicationCategory: "EducationalApplication",
       operatingSystem: "Android, iOS",
-      url: "https://deckbase.co",
+      url: SITE_URL,
       description:
         "Scan books into flashcards with AI. Study smarter with spaced repetition and remember more of what you read.",
       offers: {
@@ -109,30 +112,37 @@ const jsonLd = {
         price: "0",
         priceCurrency: "USD",
       },
-      aggregateRating: {
-        "@type": "AggregateRating",
-        ratingValue: "4.8",
-        ratingCount: "500",
-      },
     },
     {
       "@type": "Organization",
-      "@id": "https://deckbase.co/#organization",
+      "@id": orgId,
       name: "Deckbase",
-      url: "https://deckbase.co",
-      logo: "https://deckbase.co/favicon/android-chrome-512x512.png",
-      sameAs: ["https://twitter.com/DeckbaseApp"],
+      url: SITE_URL,
+      logo: absoluteUrl("/favicon/android-chrome-512x512.png"),
+      sameAs: [
+        "https://twitter.com/DeckbaseApp",
+        "https://apps.apple.com/app/deckbase/id6748827564",
+        "https://play.google.com/store/apps/details?id=co.deckbase.app",
+      ],
+      contactPoint: {
+        "@type": "ContactPoint",
+        email: "support@deckbase.co",
+        contactType: "customer support",
+      },
     },
     {
       "@type": "WebSite",
       name: "Deckbase",
-      url: "https://deckbase.co",
+      url: SITE_URL,
       description:
         "Scan books into flashcards with AI. Study smarter with spaced repetition.",
-      publisher: { "@id": "https://deckbase.co/#organization" },
+      publisher: { "@id": orgId },
       potentialAction: {
         "@type": "SearchAction",
-        target: { "@type": "EntryPoint", urlTemplate: "https://deckbase.co/?q={search_term_string}" },
+        target: {
+          "@type": "EntryPoint",
+          urlTemplate: `${SITE_URL}/?q={search_term_string}`,
+        },
         "query-input": "required name=search_term_string",
       },
     },

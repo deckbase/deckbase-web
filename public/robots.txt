@@ -1,5 +1,5 @@
 # Deckbase robots.txt
-# https://deckbase.co
+# https://www.deckbase.co
 
 # Allow all crawlers
 User-agent: *
@@ -15,4 +15,4 @@ Disallow: /developers
 Disallow: /api/
 
 # Sitemap location
-Sitemap: https://deckbase.co/sitemap.xml
+Sitemap: https://www.deckbase.co/sitemap.xml

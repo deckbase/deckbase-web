@@ -1,3 +1,7 @@
+import { JsonLdScript } from "@/components/seo/JsonLdScript";
+import { breadcrumbSchema } from "@/lib/seo-schema";
+import { absoluteUrl } from "@/lib/site-url";
+
 export const metadata = {
   title: "Download Deckbase — iOS & Android | Scan. Build. Remember.",
   description:
@@ -6,11 +10,21 @@ export const metadata = {
     title: "Download Deckbase — iOS & Android",
     description:
       "Download Deckbase for iPhone and Android. Turn books and PDFs into AI flashcards with spaced repetition.",
-    url: "https://deckbase.co/download",
+    url: absoluteUrl("/download"),
   },
-  alternates: { canonical: "https://deckbase.co/download" },
+  alternates: { canonical: absoluteUrl("/download") },
 };
 
 export default function DownloadLayout({ children }) {
-  return children;
+  return (
+    <>
+      <JsonLdScript
+        data={breadcrumbSchema([
+          { name: "Home", path: "/" },
+          { name: "Download", path: "/download" },
+        ])}
+      />
+      {children}
+    </>
+  );
 }

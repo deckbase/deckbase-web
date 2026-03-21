@@ -1,3 +1,7 @@
+import { JsonLdScript } from "@/components/seo/JsonLdScript";
+import { breadcrumbSchema, marketingFaqPageSchema } from "@/lib/seo-schema";
+import { absoluteUrl } from "@/lib/site-url";
+
 export const metadata = {
   title: "About Deckbase — Our Story, Mission & Values",
   description:
@@ -6,11 +10,22 @@ export const metadata = {
     title: "About Deckbase — Our Story & Mission",
     description:
       "Learn about Deckbase: AI-powered flashcards and spaced repetition for lasting knowledge.",
-    url: "https://deckbase.co/about-us",
+    url: absoluteUrl("/about-us"),
   },
-  alternates: { canonical: "https://deckbase.co/about-us" },
+  alternates: { canonical: absoluteUrl("/about-us") },
 };
 
 export default function AboutLayout({ children }) {
-  return children;
+  return (
+    <>
+      <JsonLdScript data={marketingFaqPageSchema()} />
+      <JsonLdScript
+        data={breadcrumbSchema([
+          { name: "Home", path: "/" },
+          { name: "About", path: "/about-us" },
+        ])}
+      />
+      {children}
+    </>
+  );
 }

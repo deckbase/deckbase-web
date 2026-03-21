@@ -1,4 +1,9 @@
 import Link from "next/link";
+import { absoluteUrl } from "@/lib/site-url";
+
+const PAGE_PATH = "/deckbase-vs-quizlet";
+const pageUrl = absoluteUrl(PAGE_PATH);
+const homeUrl = absoluteUrl("/");
 
 export const metadata = {
   title: "Deckbase vs Quizlet: Real Spaced Repetition vs Study Modes (2026)",
@@ -20,7 +25,7 @@ export const metadata = {
     title: "Deckbase vs Quizlet: Real Spaced Repetition vs Study Modes (2026)",
     description:
       "Honest comparison of Deckbase and Quizlet — FSRS algorithm, AI card generation, pricing, and which app is better for long-term retention.",
-    url: "https://deckbase.co/deckbase-vs-quizlet",
+    url: pageUrl,
     siteName: "Deckbase",
     images: [{ url: "/og.png", width: 1200, height: 630, alt: "Deckbase vs Quizlet Comparison" }],
     locale: "en_US",
@@ -41,20 +46,20 @@ const jsonLd = {
   "@graph": [
     {
       "@type": "WebPage",
-      "@id": "https://deckbase.co/deckbase-vs-quizlet",
-      url: "https://deckbase.co/deckbase-vs-quizlet",
+      "@id": pageUrl,
+      url: pageUrl,
       name: "Deckbase vs Quizlet: Real Spaced Repetition vs Study Modes (2026)",
       description:
         "Honest comparison of Deckbase and Quizlet — FSRS algorithm, AI card generation, pricing, and which app is better for long-term retention.",
       breadcrumb: {
         "@type": "BreadcrumbList",
         itemListElement: [
-          { "@type": "ListItem", position: 1, name: "Home", item: "https://deckbase.co" },
+          { "@type": "ListItem", position: 1, name: "Home", item: homeUrl },
           {
             "@type": "ListItem",
             position: 2,
             name: "Deckbase vs Quizlet",
-            item: "https://deckbase.co/deckbase-vs-quizlet",
+            item: pageUrl,
           },
         ],
       },

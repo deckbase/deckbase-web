@@ -1,0 +1,20 @@
+# Deckbase
+
+> AI-powered flashcard app that turns books, notes, and PDFs into spaced-repetition flashcards using OCR and the FSRS algorithm.
+
+## Key pages
+
+- [Homepage](https://www.deckbase.co/)
+- [Features](https://www.deckbase.co/features)
+- [Premium](https://www.deckbase.co/premium)
+- [Download](https://www.deckbase.co/download)
+- [MCP integration](https://www.deckbase.co/mcp)
+- [Documentation](https://www.deckbase.co/docs)
+
+## About
+
+Deckbase is an iOS and Android app with a free tier and Premium plans. It scans physical books and digital documents to generate flashcard decks and schedules reviews using FSRS (Free Spaced Repetition Scheduler) for retention.
+
+## Contact
+
+support@deckbase.co

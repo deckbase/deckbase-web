@@ -1,16 +1,10 @@
-"use strict";
+"use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { motion } from "framer-motion";
 
 const Footer = () => {
-  const [currentYear, setCurrentYear] = useState(null);
-
-  useEffect(() => {
-    setCurrentYear(new Date().getFullYear());
-  }, []);
+  const currentYear = new Date().getFullYear();
 
   return (
     <footer className="w-full bg-[#050507] text-white border-t border-white/10 footer">
@@ -100,7 +94,10 @@ const Footer = () => {
         <div className="w-full h-[1px] bg-[#fff] mt-8 mb-3"></div>
         <small className="flex items-center justify-center gap-1 text-white py-1">
           &copy;
-          <span className="text-[14px] lg:text-[15px] text-[#fff]">
+          <span
+            className="text-[14px] lg:text-[15px] text-[#fff]"
+            suppressHydrationWarning
+          >
             {`${currentYear} Deckbase AI. All Rights Reserved`}
           </span>
         </small>

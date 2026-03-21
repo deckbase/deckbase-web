@@ -112,10 +112,12 @@ Review and update these pages when:
 
 ## Sitemap
 
-Add both URLs to `app/sitemap.js`:
+**Status (deckbase-web):** Both routes are listed in `app/sitemap.js` (`/deckbase-vs-anki`, `/deckbase-vs-quizlet`) with `changeFrequency: "monthly"` and `priority: 0.8`.
+
+Reference shape if you add more comparison URLs elsewhere:
 ```js
-{ url: 'https://deckbase.co/deckbase-vs-anki', lastModified: new Date(), changeFrequency: 'monthly', priority: 0.8 },
-{ url: 'https://deckbase.co/deckbase-vs-quizlet', lastModified: new Date(), changeFrequency: 'monthly', priority: 0.8 },
+{ path: "/deckbase-vs-anki", changeFrequency: "monthly", priority: 0.8 },
+{ path: "/deckbase-vs-quizlet", changeFrequency: "monthly", priority: 0.8 },
 ```
 
 ---

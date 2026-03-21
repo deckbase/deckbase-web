@@ -37,6 +37,7 @@ users/{uid}/media/{mediaId}          # Media metadata (NOT the file bytes)
 
 ```
 free_trials/{userId}                 # Free trial records
+vip/{uid}                            # VIP allowlist (Pro without subscription)—clients do not read this; see IS_VIP_MOBILE.md
 ```
 
 *(Web docs may mention `notifications/{uid}` for FCM—confirm in your project’s rules if you use push tokens.)*

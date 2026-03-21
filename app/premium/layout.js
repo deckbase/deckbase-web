@@ -1,3 +1,7 @@
+import { JsonLdScript } from "@/components/seo/JsonLdScript";
+import { breadcrumbSchema, marketingFaqPageSchema } from "@/lib/seo-schema";
+import { absoluteUrl } from "@/lib/site-url";
+
 export const metadata = {
   title: "Deckbase Premium — Unlimited AI & Advanced Learning Tools",
   description:
@@ -6,11 +10,22 @@ export const metadata = {
     title: "Deckbase Premium — Unlimited AI Learning",
     description:
       "Unlimited AI generation, advanced analytics, and cross-device sync. Unlock Premium.",
-    url: "https://deckbase.co/premium",
+    url: absoluteUrl("/premium"),
   },
-  alternates: { canonical: "https://deckbase.co/premium" },
+  alternates: { canonical: absoluteUrl("/premium") },
 };
 
 export default function PremiumLayout({ children }) {
-  return children;
+  return (
+    <>
+      <JsonLdScript data={marketingFaqPageSchema()} />
+      <JsonLdScript
+        data={breadcrumbSchema([
+          { name: "Home", path: "/" },
+          { name: "Premium", path: "/premium" },
+        ])}
+      />
+      {children}
+    </>
+  );
 }
