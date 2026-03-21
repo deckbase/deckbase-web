@@ -1,0 +1,6 @@
+{
+  "projects": {
+    "default": "deckbase-prod",
+    "prod": "deckbase-prod"
+  }
+}

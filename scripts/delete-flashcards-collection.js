@@ -1,6 +1,6 @@
 /**
  * Permanently delete the entire flashcards collection and all nested data.
- * Deletes: flashcards/{uid}/data/main/{decks,cards,templates,wizard_deck} and parent docs.
+ * Deletes: flashcards/{uid}/data/main/{decks,cards,templates} and parent docs.
  *
  * Run (prod):
  *   node --env-file=.env.prod scripts/delete-flashcards-collection.js
@@ -21,7 +21,7 @@ if (process.env.ENV_FILE) {
   require("dotenv").config({ path: path.join(root, ".env.prod") });
 }
 
-const COLLECTIONS = ["decks", "cards", "templates", "wizard_deck"];
+const COLLECTIONS = ["decks", "cards", "templates"];
 const BATCH_SIZE = 500;
 
 async function deleteCollection(ref, db) {

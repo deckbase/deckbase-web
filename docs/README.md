@@ -9,6 +9,8 @@ Index of project documentation. Use this to find specs, setup guides, and featur
 | Doc | Description |
 |-----|--------------|
 | [features/DECKBASE_WEBAPP_DEV_GUIDE.md](./features/DECKBASE_WEBAPP_DEV_GUIDE.md) | Web app developer guide: stack, Firebase, data models, routes, UI. |
+| [features/FIREBASE_STRUCTURE_MOBILE.md](./features/FIREBASE_STRUCTURE_MOBILE.md) | Firebase layout for mobile: Auth, Firestore paths, Storage, rules model. |
+| [features/FIREBASE_MCP_CURSOR.md](./features/FIREBASE_MCP_CURSOR.md) | Official Firebase MCP in Cursor (`firestore_get_documents`, etc.). |
 | [features/DECK_STUDY_MODE_WEB_DOCUMENTATION.md](./features/DECK_STUDY_MODE_WEB_DOCUMENTATION.md) | Deck study mode on web. |
 | [features/FILE_TO_AI_CARDS_FEATURE.md](./features/FILE_TO_AI_CARDS_FEATURE.md) | File-to-AI cards: upload PDF/Word/Excel, AI maps content to template. |
 | [features/FILE_TO_AI_CARDS_IMPLEMENTATION_PLAN.md](./features/FILE_TO_AI_CARDS_IMPLEMENTATION_PLAN.md) | Implementation plan for File-to-AI cards. |
@@ -16,7 +18,9 @@ Index of project documentation. Use this to find specs, setup guides, and featur
 | [features/ELEVENLABS_API_MOBILE.md](./features/ELEVENLABS_API_MOBILE.md) | ElevenLabs text-to-speech API for mobile. |
 | [features/MOBILE_ADD_CARDS_WITH_AI.md](./features/MOBILE_ADD_CARDS_WITH_AI.md) | Add-cards-with-AI API and flow for mobile. |
 | [features/MOBILE_DEFAULT_TEMPLATE_PER_DECK.md](./features/MOBILE_DEFAULT_TEMPLATE_PER_DECK.md) | Default template per deck (mobile). |
+| [features/MOBILE_MEDIA_SYNC.md](./features/MOBILE_MEDIA_SYNC.md) | Audio/image media: Storage + Firestore + card `media_ids` contract for mobile → web. |
 | [features/STATE_BASED_SYNC_MOBILE.md](./features/STATE_BASED_SYNC_MOBILE.md) | State-based sync for mobile. |
+| [features/DELETED_AT_MOBILE.md](./features/DELETED_AT_MOBILE.md) | Soft delete: `deleted_at` + `is_deleted` contract for mobile (aligned with web & retention purge). |
 
 ---
 

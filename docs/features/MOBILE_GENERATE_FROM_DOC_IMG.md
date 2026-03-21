@@ -181,7 +181,27 @@ Quiz blocks (quizSingleSelect, quizMultiSelect, quizTextAnswer) have `configJson
 
 ---
 
-## 3. Step 2: Add selected cards to the deck
+## 3. Audio handling (mobile implementation)
+
+Important: `POST /api/cards/file-to-ai` returns audio block values with `mediaIds: []`.
+It does not generate or upload MP3 files.
+
+For selected cards, mobile should do:
+
+1. Detect whether the selected card's `blocksSnapshot` contains an audio block (`type: "audio"` or numeric 7).
+2. If no audio block exists, skip audio processing for that card.
+3. If an audio block exists:
+   - Pick source text to speak (recommended: template main block text; fallback: first non-empty text value).
+   - Call `POST /api/elevenlabs/text-to-speech` with `text`, optional `voice_id`, and `uid`.
+   - Upload returned MP3 to your media storage.
+   - Update that card payload in memory: set the audio value's `mediaIds` to the uploaded media id.
+4. After all selected cards are prepared, call add endpoint once with final card payloads.
+
+This is the same behavior used in web add-to-deck flow: TTS is generated before card creation for card payloads that include audio blocks.
+
+---
+
+## 4. Step 2: Add selected cards to the deck
 
 Same as [Add Cards with AI – Mobile](./MOBILE_ADD_CARDS_WITH_AI.md) Step 2.
 
@@ -196,30 +216,50 @@ Same as [Add Cards with AI – Mobile](./MOBILE_ADD_CARDS_WITH_AI.md) Step 2.
 | `deckId` | string | Yes | Deck ID |
 | `cards` | array | Yes | Subset of the `cards` returned from file-to-ai (or all). Each item: `{ templateId, blocksSnapshot, values, mainBlockId?, subBlockId? }` |
 
-The server creates cards in Firestore and returns `{ cardIds: [...] }`. If the template has audio blocks and you support TTS, you can generate audio after add (same pattern as add-with-ai / Import from table: TTS → upload → updateCard with mediaIds).
+The server creates cards in Firestore and returns `{ cardIds: [...] }`.
+`/api/mobile/cards/add` does not generate TTS and does not update card media afterward.
+Any audio `mediaIds` must already be present in `cards[].values` before this call.
 
 ---
 
-## 4. UI flow (suggested)
+## 5. UI flow (suggested)
 
 1. **Entry:** From deck screen, show a “Generate from doc/img” (or “Document/Image”) action (same as web).
 2. **Pick file:** Document picker or image picker. Restrict to PDF, DOCX, PNG, JPEG, WebP. Show file name and size; reject if &gt; 20 MB.
 3. **Template:** Let user pick template or use deck default (see [MOBILE_DEFAULT_TEMPLATE_PER_DECK.md](./MOBILE_DEFAULT_TEMPLATE_PER_DECK.md)).
 4. **Generate:** Call **POST /api/cards/file-to-ai** (multipart with file, deckId, templateId, uid, maxCards). Show loading (“Generating cards…”).
 5. **Review:** Show list of generated cards (preview text per card, e.g. first block or question). Allow select all / deselect all; optional in-card edit (match web if needed).
-6. **Add:** On “Add selected to deck”, call **POST /api/mobile/cards/add** with selected cards. Show success and optionally navigate to deck or first new card.
+6. **Prepare audio (if needed):** For each selected card with an audio block, run TTS and attach uploaded `mediaIds`.
+7. **Add:** Call **POST /api/mobile/cards/add** with finalized selected cards. Show success and optionally navigate to deck or first new card.
 
 ---
 
-## 5. Pro/VIP and limits
+## 6. Pro/VIP and limits
 
 - **Pro/VIP:** Required in production for file-to-ai (same as other AI features).
 - **Monthly AI limit:** Same cap as add-with-ai / import-ai-blocks; counted per generated card. 403 when over limit.
 - **File size:** 20 MB max per file.
+- **TTS limits:** ElevenLabs route enforces subscription/usage rules in production. Handle 403 responses and allow add without audio if product decision permits.
 
 ---
 
-## 6. References
+## 7. Mobile team handoff (copy/paste)
+
+Use this implementation contract:
+
+1. Call `POST /api/cards/file-to-ai` to get draft cards.
+2. Let user select cards to keep.
+3. For each selected card:
+   - if no audio block: keep as-is.
+   - if audio block: generate MP3 via `/api/elevenlabs/text-to-speech`, upload file, set `mediaIds` on that audio value.
+4. Send finalized selected cards to `POST /api/mobile/cards/add`.
+5. Show success with returned `cardIds`.
+
+In short: generate cards first, optional audio enrichment second, add cards last.
+
+---
+
+## 8. References
 
 | Doc | Purpose |
 |-----|---------|

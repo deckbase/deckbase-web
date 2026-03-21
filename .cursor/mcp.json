@@ -4,6 +4,18 @@
       "command": "node",
       "args": ["mcp-server/index.js"],
       "cwd": "${workspaceFolder}"
+    },
+    "firebase": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "firebase-tools@latest",
+        "experimental:mcp",
+        "--dir",
+        "${workspaceFolder}",
+        "--only",
+        "core,firestore,storage,auth"
+      ]
     }
   }
 }

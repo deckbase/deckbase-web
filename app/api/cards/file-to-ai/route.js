@@ -13,7 +13,7 @@ import {
 } from "@/lib/file-to-text";
 import { BlockTypeNames } from "@/utils/firestore";
 import { getAdminAuth } from "@/utils/firebase-admin";
-import { getTemplateAdmin } from "@/lib/firestore-admin";
+import { getTemplateAdmin, getDeckAdmin } from "@/lib/firestore-admin";
 import { isBasicOrProOrVip } from "@/lib/revenuecat-server";
 import { checkAIGenerationLimit, incrementAIGenerations } from "@/lib/usage-limits";
 
@@ -37,6 +37,10 @@ async function runFileToAiWithContent({
   templateBlocks,
   templateFull,
   normalizeBlockTypeFn,
+  deckTitle = "",
+  exampleCards = [],
+  avoidMainPhrases = [],
+  exampleCardsLabel = "Reference cards (style examples):",
 }) {
   const text = (extractedContent || "").trim().slice(0, MAX_EXTRACTED_CHARS);
   if (!text) {
@@ -49,7 +53,10 @@ async function runFileToAiWithContent({
     extractedContent: text,
     templateBlocks,
     maxCards,
-    deckTitle: template.title ?? "",
+    deckTitle: (deckTitle || template?.title) ?? "",
+    exampleCards,
+    avoidMainPhrases,
+    exampleCardsLabel,
   });
   const hasQuiz = templateFull.some((b) => {
     const t = normalizeBlockTypeFn(b.type);
@@ -240,13 +247,17 @@ export async function POST(request) {
         );
       }
 
-      const template = await getTemplateAdmin(uid, templateId);
+      const [template, deck] = await Promise.all([
+        getTemplateAdmin(uid, templateId),
+        getDeckAdmin(uid, deckId),
+      ]);
       if (!template?.blocks?.length) {
         return NextResponse.json(
           { error: "Template not found or has no blocks" },
           { status: 404 }
         );
       }
+      const deckTitle = deck?.title ?? "";
       const templateBlocks = template.blocks
         .map((b) => ({ blockId: b.blockId, type: b.type, label: b.label ?? "" }))
         .filter((b) => b.blockId);
@@ -283,6 +294,7 @@ export async function POST(request) {
         templateBlocks,
         templateFull,
         normalizeBlockTypeFn: normalizeBlockType,
+        deckTitle,
       });
       if (result instanceof NextResponse) return result;
 
@@ -302,7 +314,7 @@ export async function POST(request) {
           extractedContent: (extractedContent || "").trim().slice(0, MAX_EXTRACTED_CHARS),
           templateBlocks,
           maxCards,
-          deckTitle: template.title ?? "",
+          deckTitle,
         });
         payload._devPrompt = { system, user };
       }
@@ -321,6 +333,27 @@ export async function POST(request) {
     const templateId = formData.get("templateId")?.toString()?.trim() || "";
     const uid = formData.get("uid")?.toString()?.trim() || "";
     const maxCards = Math.min(30, Math.max(1, Number(formData.get("maxCards")) || 15));
+    let exampleCards = [];
+    let avoidMainPhrases = [];
+    let exampleCardsLabel = "Reference cards (style examples):";
+    try {
+      const ecRaw = formData.get("exampleCards");
+      if (ecRaw && typeof ecRaw === "string") {
+        const parsed = JSON.parse(ecRaw);
+        exampleCards = Array.isArray(parsed) ? parsed : [];
+      }
+    } catch (_) {}
+    try {
+      const apRaw = formData.get("avoidMainPhrases");
+      if (apRaw && typeof apRaw === "string") {
+        const parsed = JSON.parse(apRaw);
+        avoidMainPhrases = Array.isArray(parsed) ? parsed.map((s) => String(s ?? "").trim()).filter(Boolean) : [];
+      }
+    } catch (_) {}
+    const refLabelRaw = formData.get("exampleCardsLabel");
+    if (refLabelRaw && typeof refLabelRaw === "string" && refLabelRaw.trim()) {
+      exampleCardsLabel = refLabelRaw.trim();
+    }
 
     if (mobileApiKey) tokenUid = uid;
     if (isProduction && tokenUid) {
@@ -367,13 +400,17 @@ export async function POST(request) {
       );
     }
 
-    const template = await getTemplateAdmin(uid, templateId);
+    const [template, deck] = await Promise.all([
+      getTemplateAdmin(uid, templateId),
+      getDeckAdmin(uid, deckId),
+    ]);
     if (!template?.blocks?.length) {
       return NextResponse.json(
         { error: "Template not found or has no blocks" },
         { status: 404 }
       );
     }
+    const deckTitle = deck?.title ?? "";
 
     console.log("[file-to-ai] template.blocks raw", template.blocks?.map((b, i) => ({ i, blockId: b.blockId?.slice(0, 8), type: b.type, typeOf: typeof b.type, label: b.label?.slice(0, 20) })));
     const templateBlocks = template.blocks
@@ -405,7 +442,10 @@ export async function POST(request) {
         const { system, user } = buildCardPromptFromImage({
           templateBlocks,
           maxCards,
-          deckTitle: template.title ?? "",
+          deckTitle,
+          exampleCards,
+          avoidMainPhrases,
+          exampleCardsLabel,
         });
         console.log("[file-to-ai] preview returning image prompt", { systemLen: system?.length, userLen: user?.length });
         return NextResponse.json({ _devPrompt: { system, user: "[image] " + user } });
@@ -426,7 +466,10 @@ export async function POST(request) {
         extractedContent: text,
         templateBlocks,
         maxCards,
-        deckTitle: template.title ?? "",
+        deckTitle,
+        exampleCards,
+        avoidMainPhrases,
+        exampleCardsLabel,
       });
       console.log("[file-to-ai] preview returning content prompt", { systemLen: system?.length, userLen: user?.length });
       return NextResponse.json({ _devPrompt: { system, user } });
@@ -451,7 +494,10 @@ export async function POST(request) {
       const { system, user } = buildCardPromptFromImage({
         templateBlocks,
         maxCards,
-        deckTitle: template.title ?? "",
+        deckTitle,
+        exampleCards,
+        avoidMainPhrases,
+        exampleCardsLabel,
       });
       const anthropic = new Anthropic({ apiKey });
       const mediaType = anthropicImageMediaType(mimeType);
@@ -528,6 +574,10 @@ export async function POST(request) {
         templateBlocks,
         templateFull,
         normalizeBlockTypeFn: normalizeBlockType,
+        deckTitle,
+        exampleCards,
+        avoidMainPhrases,
+        exampleCardsLabel,
       });
       if (result instanceof NextResponse) return result;
     }
@@ -558,7 +608,10 @@ export async function POST(request) {
         const { system, user } = buildCardPromptFromImage({
           templateBlocks,
           maxCards,
-          deckTitle: template.title ?? "",
+          deckTitle,
+          exampleCards,
+          avoidMainPhrases,
+          exampleCardsLabel,
         });
         payload._devPrompt = { system, user: "[image] " + user };
       } else {
@@ -566,7 +619,10 @@ export async function POST(request) {
           extractedContent: extractedTextForDev || "",
           templateBlocks,
           maxCards,
-          deckTitle: template.title ?? "",
+          deckTitle,
+          exampleCards,
+          avoidMainPhrases,
+          exampleCardsLabel,
         });
         payload._devPrompt = { system, user };
       }

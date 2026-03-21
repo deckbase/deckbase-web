@@ -26,10 +26,6 @@ service cloud.firestore {
     match /users/{userId}/templates/{templateId} {
       allow read, write: if isOwner(userId);
     }
-    // Legacy wizard_deck migration subcollection
-    match /users/{userId}/wizard_deck/{entryId} {
-      allow read, write: if isOwner(userId);
-    }
 
     // Card media (images, audio) — path: users/{uid}/media/{mediaId}
     match /users/{userId}/media/{mediaId} {
@@ -37,11 +33,6 @@ service cloud.firestore {
     }
 
     // Sync is state-based: users/{uid}/decks and users/{uid}/cards only (no ops collection).
-
-    // Wizard (TCG decks, progress): wizard/{userId}/progress, wizard/{userId}/decks/...
-    match /wizard/{userId}/{document=**} {
-      allow read, write: if isOwner(userId);
-    }
 
     match /free_trials/{userId} {
       allow read, write: if isOwner(userId);

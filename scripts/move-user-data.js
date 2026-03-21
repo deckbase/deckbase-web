@@ -1,6 +1,6 @@
 /**
  * One-time script: copy all data from users/{fromUid} to users/{toUid}.
- * Copies the user doc and subcollections: decks, cards, templates, media, wizard_deck, inAppNotifications.
+ * Copies the user doc and subcollections: decks, cards, templates, media, inAppNotifications.
  * Does not delete the source user; run delete-users-except or manually remove old user after verification.
  *
  * Run:
@@ -21,7 +21,7 @@ if (process.env.ENV_FILE) {
 
 const { FieldPath } = require("firebase-admin/firestore");
 
-const SUBCOLLECTIONS = ["decks", "cards", "templates", "media", "wizard_deck", "inAppNotifications"];
+const SUBCOLLECTIONS = ["decks", "cards", "templates", "media", "inAppNotifications"];
 const BATCH_SIZE = 500;
 
 async function copyCollection(db, fromUid, toUid, collName) {

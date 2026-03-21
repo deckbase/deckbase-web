@@ -18,7 +18,7 @@ This doc is for the **mobile team**. It describes moving from **op-log sync** (`
 | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
 | Push: write ops to `users/{uid}/ops`                      | Push: write directly to `users/{uid}/decks`, `users/{uid}/cards`                                             |
 | Pull: read ops, apply to local                            | Pull: read decks/cards, merge into local (see “Pull” below)                                                  |
-| Delete: emit delete op                                    | Delete: set `is_deleted: true` (and `updated_at`) on the doc — **tombstone**                                 |
+| Delete: emit delete op                                    | Delete: set `is_deleted: true`, **`deleted_at`** (Timestamp), and `updated_at` — **tombstone** (see **[DELETED_AT_MOBILE.md](./DELETED_AT_MOBILE.md)**) |
 | Bootstrap: one-time read of decks/cards when cursor empty | No bootstrap; sync is always “read decks/cards, merge” (and optionally “what changed since X” if you add it) |
 
 You **stop** reading and writing `users/{uid}/ops`. You **only** read and write `users/{uid}/decks` and `users/{uid}/cards`.
@@ -42,6 +42,7 @@ Store fields in **snake_case** in Firestore so web and mobile stay aligned.
 | `created_at`  | Timestamp or number (ms) |                                               |
 | `updated_at`  | Timestamp or number (ms) |                                               |
 | `is_deleted`  | boolean                  | `true` = tombstone (deleted); default `false` |
+| `deleted_at`  | **Timestamp**            | Set when `is_deleted` becomes `true`; `null`/absent when active. See **[DELETED_AT_MOBILE.md](./DELETED_AT_MOBILE.md)** |
 
 (Web may have more fields; you can add them as needed. These are the ones used for sync and filtering.)
 
@@ -61,6 +62,7 @@ Store fields in **snake_case** in Firestore so web and mobile stay aligned.
 | `created_at`                                                          | Timestamp or number (ms) |                                                            |
 | `updated_at`                                                          | Timestamp or number (ms) |                                                            |
 | `is_deleted`                                                          | boolean                  | `true` = tombstone; default `false`                        |
+| `deleted_at`                                                          | **Timestamp**            | Set on soft delete with `is_deleted`; see **[DELETED_AT_MOBILE.md](./DELETED_AT_MOBILE.md)** |
 | `srs_state`, `srs_step`, `srs_due`, `srs_last_review`, `review_count` | (your SRS types)         | Web uses these for study                                   |
 
 For content, web reads **either** `values` / `blocks_snapshot` **or** `values_json` / `blocks_snapshot_json` (prefers `_json` when present). Writing both keeps web and mobile compatible.
@@ -97,8 +99,8 @@ To support “incremental” pull later, you can add something like “only docs
 - **Create:** `setDoc(users/{uid}/decks/{deckId}, data)` or `setDoc(users/{uid}/cards/{cardId}, data)` with `is_deleted: false`.
 - **Update:** `setDoc(..., data, { merge: true })` or `updateDoc` with the fields that changed; keep `updated_at` (and optionally `created_at`) in sync with web.
 - **Delete:** Do **not** remove the document. Use a **tombstone:**  
-  `updateDoc(ref, { is_deleted: true, updated_at: <now> })`  
-  so other clients (and web) see “this deck/card was deleted” when they pull.
+  `updateDoc(ref, { is_deleted: true, deleted_at: <now Timestamp>, updated_at: <now> })`  
+  so other clients (and web) see “this deck/card was deleted” when they pull. **`deleted_at`** must be a Firestore **Timestamp** (same instant as the delete). Full contract: **[DELETED_AT_MOBILE.md](./DELETED_AT_MOBILE.md)**.
 
 ### How to resolve conflicts
 
@@ -136,7 +138,7 @@ Use the same rule on both clients so they converge.
 
 ## Transition / rollout
 
-1. **Align on schema** (paths, snake_case, `is_deleted`, `created_at`/`updated_at`, `values_json`/`blocks_snapshot_json` for cards) — this doc and the web repo are the source of truth.
+1. **Align on schema** (paths, snake_case, `is_deleted`, **`deleted_at`**, `created_at`/`updated_at`, `values_json`/`blocks_snapshot_json` for cards) — this doc, **[DELETED_AT_MOBILE.md](./DELETED_AT_MOBILE.md)**, and the web repo are the source of truth.
 2. **Mobile:** Implement state-based sync (write to decks/cards, tombstones for delete, pull from decks/cards). You can do this behind a flag or in a branch.
 3. **Optional interim:** For a short period, mobile could write to **both** ops and decks/cards so web (still on ops) continues to see mobile changes; then web switches to state-only and stops ops; then mobile drops ops.
 4. **Cutover:** Once both sides use only decks/cards:
@@ -149,7 +151,7 @@ Use the same rule on both clients so they converge.
 ## Summary for mobile
 
 - **Remove:** All reads and writes to `users/{uid}/ops`; op cursor/HLC logic for sync.
-- **Add / keep:** Read and write `users/{uid}/decks` and `users/{uid}/cards` only. Use **tombstones** (`is_deleted: true`, `updated_at`) for deletes. Merge on pull; push creates/updates/tombstones. Use LWW by `updated_at` (or your chosen rule) for conflicts.
+- **Add / keep:** Read and write `users/{uid}/decks` and `users/{uid}/cards` only. Use **tombstones** (`is_deleted: true`, **`deleted_at`**, `updated_at`) for deletes. Merge on pull; push creates/updates/tombstones. Use LWW by `updated_at` (or your chosen rule) for conflicts.
 - **Result:** No op log, no cursor, no cleanup policy; sync is “state + tombstones” like Anki/Evernote, and web and mobile stay in sync through the same collections.
 
 If you have questions or want to adjust the schema (e.g. extra fields, naming), we can update this doc and the web implementation to match.

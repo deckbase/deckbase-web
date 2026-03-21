@@ -1,6 +1,6 @@
 /**
  * Permanently delete one user's Firestore data: user doc + all subcollections
- * (decks, cards, templates, media, wizard_deck, inAppNotifications).
+ * (decks, cards, templates, media, inAppNotifications).
  *
  * Run:
  *   DELETE_UID=fOPAq9OrjAZ9KFRFnBM0MqOaeJh2 node --env-file=.env.prod scripts/delete-one-user.js
@@ -20,7 +20,7 @@ if (process.env.ENV_FILE) {
 
 const { FieldPath } = require("firebase-admin/firestore");
 
-const SUBCOLLECTIONS = ["decks", "cards", "templates", "media", "wizard_deck", "inAppNotifications"];
+const SUBCOLLECTIONS = ["decks", "cards", "templates", "media", "inAppNotifications"];
 const BATCH_SIZE = 500;
 
 async function deleteCollection(ref, db) {

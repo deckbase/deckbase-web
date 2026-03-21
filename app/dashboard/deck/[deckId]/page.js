@@ -62,7 +62,7 @@ import {
 import { exportApkgToBlob } from "@/utils/apkgExport";
 import { parseAudioBlockConfig } from "@/lib/audio-block-config";
 import CardPreviewContent from "@/components/CardPreviewContent";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
 // Import steps matching mobile
 const ImportStep = {
@@ -89,6 +89,20 @@ export default function DeckDetailPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedCard, setSelectedCard] = useState(null);
   const [actionMenuCardId, setActionMenuCardId] = useState(null);
+
+  // Edit deck: edit mode for title/description + bulk delete
+  const [deckEditMode, setDeckEditMode] = useState(false);
+  const [editDeckTitle, setEditDeckTitle] = useState("");
+  const [editDeckDescription, setEditDeckDescription] = useState("");
+  const [savingDeck, setSavingDeck] = useState(false);
+  /** After tapping Edit, delay swapping in "Done" so the same tap can't submit (pointer-up on new button). */
+  const enterEditModeRafRef = useRef(null);
+
+  // Bulk delete cards
+  const [bulkSelectMode, setBulkSelectMode] = useState(false);
+  const [selectedCardIds, setSelectedCardIds] = useState(new Set());
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   // Import state
   const [showImportModal, setShowImportModal] = useState(false);
@@ -157,6 +171,7 @@ export default function DeckDetailPage() {
   const [fileToAIPreviewPromptOpen, setFileToAIPreviewPromptOpen] = useState(false);
   const [fileToAIPreviewUrl, setFileToAIPreviewUrl] = useState(null); // object URL for image preview
   const [fileToAIPreviewCardIndex, setFileToAIPreviewCardIndex] = useState(null); // index of card to show in preview modal
+  const [fileToAIReferenceCardIds, setFileToAIReferenceCardIds] = useState(new Set());
   const fileToAIFileInputRef = useRef(null);
   const fileToAIPreviewPromptBlockRef = useRef(null);
 
@@ -343,6 +358,23 @@ export default function DeckDetailPage() {
     return () => unsubscribe();
   }, [user, deckId, router]);
 
+  useEffect(() => {
+    return () => {
+      if (enterEditModeRafRef.current != null) {
+        cancelAnimationFrame(enterEditModeRafRef.current);
+        enterEditModeRafRef.current = null;
+      }
+    };
+  }, []);
+
+  // Sync inline edit fields when deck loads (skip while in edit mode so we don't overwrite user input)
+  useEffect(() => {
+    if (deck && !deckEditMode) {
+      setEditDeckTitle(deck.title ?? "");
+      setEditDeckDescription(deck.description ?? "");
+    }
+  }, [deck, deckEditMode]);
+
   // Load templates on page load (for card previews with main/sub blocks)
   useEffect(() => {
     if (user) {
@@ -384,6 +416,24 @@ export default function DeckDetailPage() {
       );
       if (cancelled) return;
       const urlByMediaId = Object.fromEntries(results.map((r) => [r.id, r.url]).filter(([, u]) => u));
+      const unresolved = needs.flatMap(({ cardId, imageMediaId, audioMediaId }) => {
+        const missing = [];
+        if (imageMediaId && !urlByMediaId[imageMediaId]) {
+          missing.push({ cardId, mediaId: imageMediaId, kind: "image" });
+        }
+        if (audioMediaId && !urlByMediaId[audioMediaId]) {
+          missing.push({ cardId, mediaId: audioMediaId, kind: "audio" });
+        }
+        return missing;
+      });
+      if (unresolved.length > 0) {
+        console.warn("[DeckMediaResolve] unresolved media for cards", {
+          uid: user.uid,
+          projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || null,
+          count: unresolved.length,
+          unresolved: unresolved.slice(0, 20),
+        });
+      }
       const next = {};
       for (const { cardId, imageMediaId, audioMediaId } of needs) {
         const imageUrl = imageMediaId ? urlByMediaId[imageMediaId] : null;
@@ -407,6 +457,93 @@ export default function DeckDetailPage() {
       setSelectedCard(null);
     } catch (error) {
       console.error("Error deleting card:", error);
+    }
+  };
+
+  const handleSaveEditDeck = async (e) => {
+    e?.preventDefault?.();
+    if (!deck || !editDeckTitle.trim()) return;
+    setSavingDeck(true);
+    try {
+      await updateDeck(user.uid, deckId, {
+        title: editDeckTitle.trim(),
+        description: editDeckDescription.trim(),
+      });
+      setDeck((prev) =>
+        prev
+          ? { ...prev, title: editDeckTitle.trim(), description: editDeckDescription.trim() }
+          : prev
+      );
+      exitDeckEditMode();
+    } catch (error) {
+      console.error("Error updating deck:", error);
+    } finally {
+      setSavingDeck(false);
+    }
+  };
+
+  const enterDeckEditMode = () => {
+    if (enterEditModeRafRef.current != null) {
+      cancelAnimationFrame(enterEditModeRafRef.current);
+      enterEditModeRafRef.current = null;
+    }
+    setEditDeckTitle(deck?.title ?? "");
+    setEditDeckDescription(deck?.description ?? "");
+    // Defer turning on edit mode until after this pointer gesture completes; otherwise the
+    // same tap can "click" the Done (submit) button that replaces Edit at the same screen position.
+    enterEditModeRafRef.current = requestAnimationFrame(() => {
+      enterEditModeRafRef.current = requestAnimationFrame(() => {
+        enterEditModeRafRef.current = null;
+        setDeckEditMode(true);
+        setBulkSelectMode(true);
+      });
+    });
+  };
+
+  const exitDeckEditMode = () => {
+    if (enterEditModeRafRef.current != null) {
+      cancelAnimationFrame(enterEditModeRafRef.current);
+      enterEditModeRafRef.current = null;
+    }
+    setDeckEditMode(false);
+    setBulkSelectMode(false);
+    setSelectedCardIds(new Set());
+    setEditDeckTitle(deck?.title ?? "");
+    setEditDeckDescription(deck?.description ?? "");
+  };
+
+  const toggleBulkSelectCard = (cardId) => {
+    setSelectedCardIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(cardId)) next.delete(cardId);
+      else next.add(cardId);
+      return next;
+    });
+  };
+
+  const selectAllFilteredCards = () => {
+    setSelectedCardIds(new Set(filteredCards.map((c) => c.cardId)));
+  };
+
+  const clearBulkSelection = () => {
+    setSelectedCardIds(new Set());
+    setBulkSelectMode(false);
+  };
+
+  const handleBulkDeleteCards = async () => {
+    if (selectedCardIds.size === 0) return;
+    setBulkDeleting(true);
+    try {
+      for (const cardId of selectedCardIds) {
+        await deleteCard(user.uid, cardId, deckId);
+      }
+      setShowBulkDeleteModal(false);
+      setSelectedCardIds(new Set());
+      setBulkSelectMode(false);
+    } catch (error) {
+      console.error("Error bulk deleting cards:", error);
+    } finally {
+      setBulkDeleting(false);
     }
   };
 
@@ -588,7 +725,7 @@ export default function DeckDetailPage() {
     downloadBlob(blob, `${safeTitle}.csv`);
   };
 
-  const handleExportXLSX = () => {
+  const handleExportXLSX = async () => {
     setShowExportMenu(false);
     if (isProduction && !aiEntitled) {
       alert("Pro subscription required to export as Excel (.xlsx).");
@@ -603,10 +740,13 @@ export default function DeckDetailPage() {
       alert("No data to export.");
       return;
     }
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Cards");
-    const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Cards");
+    if (rows.length > 0) {
+      worksheet.columns = Object.keys(rows[0]).map((key) => ({ header: key, key }));
+      rows.forEach((row) => worksheet.addRow(row));
+    }
+    const buf = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
     const safeTitle = (deck?.title || "deck").replace(/[^\w\s-]/g, "").slice(0, 50);
     downloadBlob(blob, `${safeTitle}.xlsx`);
@@ -1963,6 +2103,106 @@ export default function DeckDetailPage() {
     setFileToAILoading(true);
     console.log("[file-to-ai] submit start", { fileName: fileToAIFile.name, templateId: fileToAITemplateId, deckId, maxCards: fileToAIMaxCards });
     try {
+      const refIds = fileToAIReferenceCardIds;
+      const deckCards = (cards || []).filter((c) => c.deckId === deckId);
+      const deckCardsForExamples =
+        refIds.size > 0 ? deckCards.filter((c) => refIds.has(c.cardId)).slice(0, 10) : [];
+      const isQuizBlockType = (type) =>
+        type === "quizSingleSelect" || type === "quizMultiSelect" || type === "quizTextAnswer" || type === 8 || type === 9 || type === 10;
+      const parseBlockConfig = (configJson) => {
+        if (configJson == null || configJson === "") return {};
+        if (typeof configJson === "string") {
+          try {
+            const x = JSON.parse(configJson);
+            return x && typeof x === "object" ? x : {};
+          } catch { return {}; }
+        }
+        return typeof configJson === "object" ? configJson : {};
+      };
+      const serializeQuizForExample = (config, blockType) => {
+        if (!config || typeof config !== "object") return "(empty)";
+        const q = config.question != null ? String(config.question).trim() : "";
+        const questionPart = q || "(no question)";
+        const opts = Array.isArray(config.options) ? config.options : [];
+        const optionsStr = opts.length ? opts.map((x) => String(x ?? "").trim()).filter(Boolean).join(" | ") : "";
+        if (isQuizBlockType(blockType) && (blockType === "quizTextAnswer" || blockType === 10)) {
+          const ans = config.correctAnswer != null ? String(config.correctAnswer).trim() : "";
+          return ans ? `Q: ${questionPart} | correctAnswer: ${ans}` : `Q: ${questionPart}`;
+        }
+        if (opts.length) {
+          const idx = config.correctAnswerIndex ?? config.correctIndex;
+          const indices = config.correctAnswerIndices ?? config.correctIndices;
+          const multi = Array.isArray(indices) && indices.length > 0;
+          if (multi) {
+            return `Q: ${questionPart} | options: ${optionsStr} | correctIndices: [${indices.join(",")}]`;
+          }
+          const i = typeof idx === "number" && idx >= 0 && idx < opts.length ? idx : 0;
+          return `Q: ${questionPart} | options: ${optionsStr} | correctIndex: ${i}`;
+        }
+        return questionPart || "(empty)";
+      };
+      const templateBlockIdList = (template.blocks || []).map((b) => b.blockId);
+      const templateBlockById = new Map((template.blocks || []).map((b) => [b.blockId, b]));
+      const mainBlockIdForExample = template.mainBlockId ?? template.blocks?.[0]?.blockId ?? null;
+      const subBlockIdForExample = template.subBlockId ?? template.blocks?.[1]?.blockId ?? null;
+      const exampleCards = deckCardsForExamples.map((card) => {
+        const o = {};
+        const getCardText = (blockId) => {
+          const v = (card.values || []).find((x) => x.blockId === blockId);
+          return v?.text != null ? String(v.text).trim() : "";
+        };
+        templateBlockIdList.forEach((blockId) => {
+          const v = (card.values || []).find((x) => x.blockId === blockId);
+          if (v?.text != null && String(v.text).trim()) {
+            o[blockId] = String(v.text).trim();
+          } else {
+            const b = (card.blocksSnapshot || []).find((x) => x.blockId === blockId);
+            const templateBlock = templateBlockById.get(blockId);
+            if (templateBlock && isQuizBlockType(templateBlock.type)) {
+              let quizDisplay = "";
+              if (b && isQuizBlockType(b.type)) {
+                const config = parseBlockConfig(b.configJson);
+                quizDisplay = serializeQuizForExample(config, b.type);
+              }
+              if (!quizDisplay || quizDisplay === "(empty)") {
+                const phrase = mainBlockIdForExample ? getCardText(mainBlockIdForExample) : "";
+                const meaning = subBlockIdForExample ? getCardText(subBlockIdForExample) : "";
+                o[blockId] = phrase || meaning
+                  ? `Q: What does "${phrase || "..."}" mean? | options: ${meaning || "correct"} | correctIndex: 0`
+                  : "Q: (question) | options: (option A) | (option B) | correctIndex: 0";
+              } else {
+                o[blockId] = quizDisplay;
+              }
+            } else {
+              o[blockId] = "(empty)";
+            }
+          }
+        });
+        return o;
+      });
+      const mainIdForAvoid = template.mainBlockId ?? template.blocks?.[0]?.blockId ?? null;
+      const avoidMainPhrases =
+        mainIdForAvoid && deckCards.length > 0
+          ? [
+              ...new Set(
+                deckCards
+                  .map((card) => {
+                    const mainBlk = (card.blocksSnapshot || []).find((x) => x.blockId === mainIdForAvoid);
+                    if (mainBlk && isQuizBlockType(mainBlk.type)) {
+                      const q = parseBlockConfig(mainBlk.configJson).question;
+                      return q != null && String(q).trim() ? String(q).trim() : null;
+                    }
+                    const v = (card.values || []).find((x) => x.blockId === mainIdForAvoid);
+                    const t = v?.text != null ? String(v.text).trim() : "";
+                    return t || null;
+                  })
+                  .filter(Boolean)
+              ),
+            ]
+          : [];
+      const exampleCardsLabel =
+        refIds.size > 0 ? "Reference cards (selected for style examples):" : "Example cards from this deck:";
+
       const headers = {};
       if (isProduction && user) {
         const token = await user.getIdToken();
@@ -1974,6 +2214,9 @@ export default function DeckDetailPage() {
       formData.append("templateId", template.templateId);
       formData.append("uid", user.uid);
       formData.append("maxCards", String(fileToAIMaxCards));
+      if (exampleCards.length > 0) formData.append("exampleCards", JSON.stringify(exampleCards));
+      if (avoidMainPhrases.length > 0) formData.append("avoidMainPhrases", JSON.stringify(avoidMainPhrases));
+      if (exampleCardsLabel) formData.append("exampleCardsLabel", exampleCardsLabel);
       const res = await fetch("/api/cards/file-to-ai", {
         method: "POST",
         headers,
@@ -2050,6 +2293,7 @@ export default function DeckDetailPage() {
     setFileToAIDevPromptOpen(true);
     setFileToAIPreviewPrompt(null);
     setFileToAIPreviewCardIndex(null);
+    setFileToAIReferenceCardIds(new Set());
     if (fileToAIFileInputRef.current) fileToAIFileInputRef.current.value = "";
   };
 
@@ -2065,6 +2309,106 @@ export default function DeckDetailPage() {
     setFileToAIPreviewPrompt(null);
     console.log("[file-to-ai preview] start", { fileName: fileToAIFile.name, type: fileToAIFile.type, templateId: fileToAITemplateId, deckId });
     try {
+      const refIds = fileToAIReferenceCardIds;
+      const deckCards = (cards || []).filter((c) => c.deckId === deckId);
+      const deckCardsForExamples =
+        refIds.size > 0 ? deckCards.filter((c) => refIds.has(c.cardId)).slice(0, 10) : [];
+      const isQuizBlockType = (type) =>
+        type === "quizSingleSelect" || type === "quizMultiSelect" || type === "quizTextAnswer" || type === 8 || type === 9 || type === 10;
+      const parseBlockConfig = (configJson) => {
+        if (configJson == null || configJson === "") return {};
+        if (typeof configJson === "string") {
+          try {
+            const x = JSON.parse(configJson);
+            return x && typeof x === "object" ? x : {};
+          } catch { return {}; }
+        }
+        return typeof configJson === "object" ? configJson : {};
+      };
+      const serializeQuizForExample = (config, blockType) => {
+        if (!config || typeof config !== "object") return "(empty)";
+        const q = config.question != null ? String(config.question).trim() : "";
+        const questionPart = q || "(no question)";
+        const opts = Array.isArray(config.options) ? config.options : [];
+        const optionsStr = opts.length ? opts.map((x) => String(x ?? "").trim()).filter(Boolean).join(" | ") : "";
+        if (isQuizBlockType(blockType) && (blockType === "quizTextAnswer" || blockType === 10)) {
+          const ans = config.correctAnswer != null ? String(config.correctAnswer).trim() : "";
+          return ans ? `Q: ${questionPart} | correctAnswer: ${ans}` : `Q: ${questionPart}`;
+        }
+        if (opts.length) {
+          const idx = config.correctAnswerIndex ?? config.correctIndex;
+          const indices = config.correctAnswerIndices ?? config.correctIndices;
+          const multi = Array.isArray(indices) && indices.length > 0;
+          if (multi) {
+            return `Q: ${questionPart} | options: ${optionsStr} | correctIndices: [${indices.join(",")}]`;
+          }
+          const i = typeof idx === "number" && idx >= 0 && idx < opts.length ? idx : 0;
+          return `Q: ${questionPart} | options: ${optionsStr} | correctIndex: ${i}`;
+        }
+        return questionPart || "(empty)";
+      };
+      const templateBlockIdList = (template.blocks || []).map((b) => b.blockId);
+      const templateBlockById = new Map((template.blocks || []).map((b) => [b.blockId, b]));
+      const mainBlockIdForExample = template.mainBlockId ?? template.blocks?.[0]?.blockId ?? null;
+      const subBlockIdForExample = template.subBlockId ?? template.blocks?.[1]?.blockId ?? null;
+      const exampleCards = deckCardsForExamples.map((card) => {
+        const o = {};
+        const getCardText = (blockId) => {
+          const v = (card.values || []).find((x) => x.blockId === blockId);
+          return v?.text != null ? String(v.text).trim() : "";
+        };
+        templateBlockIdList.forEach((blockId) => {
+          const v = (card.values || []).find((x) => x.blockId === blockId);
+          if (v?.text != null && String(v.text).trim()) {
+            o[blockId] = String(v.text).trim();
+          } else {
+            const b = (card.blocksSnapshot || []).find((x) => x.blockId === blockId);
+            const templateBlock = templateBlockById.get(blockId);
+            if (templateBlock && isQuizBlockType(templateBlock.type)) {
+              let quizDisplay = "";
+              if (b && isQuizBlockType(b.type)) {
+                const config = parseBlockConfig(b.configJson);
+                quizDisplay = serializeQuizForExample(config, b.type);
+              }
+              if (!quizDisplay || quizDisplay === "(empty)") {
+                const phrase = mainBlockIdForExample ? getCardText(mainBlockIdForExample) : "";
+                const meaning = subBlockIdForExample ? getCardText(subBlockIdForExample) : "";
+                o[blockId] = phrase || meaning
+                  ? `Q: What does "${phrase || "..."}" mean? | options: ${meaning || "correct"} | correctIndex: 0`
+                  : "Q: (question) | options: (option A) | (option B) | correctIndex: 0";
+              } else {
+                o[blockId] = quizDisplay;
+              }
+            } else {
+              o[blockId] = "(empty)";
+            }
+          }
+        });
+        return o;
+      });
+      const mainIdForAvoid = template.mainBlockId ?? template.blocks?.[0]?.blockId ?? null;
+      const avoidMainPhrases =
+        mainIdForAvoid && deckCards.length > 0
+          ? [
+              ...new Set(
+                deckCards
+                  .map((card) => {
+                    const mainBlk = (card.blocksSnapshot || []).find((x) => x.blockId === mainIdForAvoid);
+                    if (mainBlk && isQuizBlockType(mainBlk.type)) {
+                      const q = parseBlockConfig(mainBlk.configJson).question;
+                      return q != null && String(q).trim() ? String(q).trim() : null;
+                    }
+                    const v = (card.values || []).find((x) => x.blockId === mainIdForAvoid);
+                    const t = v?.text != null ? String(v.text).trim() : "";
+                    return t || null;
+                  })
+                  .filter(Boolean)
+              ),
+            ]
+          : [];
+      const exampleCardsLabel =
+        refIds.size > 0 ? "Reference cards (selected for style examples):" : "Example cards from this deck:";
+
       const headers = {};
       if (isProduction && user) {
         const token = await user.getIdToken();
@@ -2077,15 +2421,20 @@ export default function DeckDetailPage() {
       formData.append("uid", user.uid);
       formData.append("maxCards", String(fileToAIMaxCards));
       formData.append("preview", "true");
+      if (exampleCards.length > 0) formData.append("exampleCards", JSON.stringify(exampleCards));
+      if (avoidMainPhrases.length > 0) formData.append("avoidMainPhrases", JSON.stringify(avoidMainPhrases));
+      if (exampleCardsLabel) formData.append("exampleCardsLabel", exampleCardsLabel);
       const res = await fetch("/api/cards/file-to-ai", {
         method: "POST",
         headers,
         body: formData,
       });
       const data = await res.json().catch(() => ({}));
-      console.log("[file-to-ai preview] response", { status: res.status, ok: res.ok, hasDevPrompt: !!data._devPrompt, error: data.error });
+      const serverError = data?.error || data?.message;
+      console.log("[file-to-ai preview] response", { status: res.status, ok: res.ok, hasDevPrompt: !!data._devPrompt, error: serverError });
       if (!res.ok) {
-        throw new Error(data.error || data.message || "Preview failed");
+        const message = serverError || (res.status === 422 ? "Could not extract text from this file." : res.status === 403 ? "Subscription required to use AI features." : `Preview failed (${res.status}).`);
+        throw new Error(message);
       }
       if (data._devPrompt) {
         setFileToAIPreviewPrompt(data._devPrompt);
@@ -2094,11 +2443,11 @@ export default function DeckDetailPage() {
         setShowPromptModal(true);
         console.log("[file-to-ai preview] prompt set", { systemLen: data._devPrompt.system?.length, userLen: data._devPrompt.user?.length });
       } else {
-        setFileToAIError("Preview did not return a prompt. Check server is running with NODE_ENV=development.");
+        setFileToAIError("Preview did not return a prompt. Try again or use Generate to create cards.");
       }
     } catch (err) {
       console.error("File to AI preview:", err);
-      setFileToAIError(err.message || "Preview failed");
+      setFileToAIError(err?.message || "Preview failed");
     } finally {
       setFileToAIPreviewLoading(false);
     }
@@ -2518,195 +2867,286 @@ export default function DeckDetailPage() {
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       <audio ref={deckAudioRef} className="hidden" />
-      {/* Header */}
-      <div className="mb-8">
+      {/* Header — modern deck hero + actions */}
+      <header className="mb-8">
         <Link
           href="/dashboard"
-          className="inline-flex items-center gap-1 text-white/50 hover:text-white mb-4 transition-colors"
+          className="inline-flex items-center gap-2 text-sm text-white/50 hover:text-white mb-6 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Decks
         </Link>
 
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-white mb-2">{deck.title}</h1>
-            {deck.description && (
-              <p className="text-white/60">{deck.description}</p>
-            )}
-            <p className="text-white/40 text-sm mt-2">
-              {cards.length} {cards.length === 1 ? "card" : "cards"}
-            </p>
-            {/* Default template setting */}
-            {templates.length > 0 && (
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-                <Settings className="w-4 h-4 text-white/40" />
-                <label className="text-white/60 text-sm">Default template:</label>
-                <select
-                  value={
-                    deck.defaultTemplateId &&
-                    templates.some((t) => t.templateId === deck.defaultTemplateId)
-                      ? deck.defaultTemplateId
-                      : ""
-                  }
-                  onChange={async (e) => {
-                    const templateId = e.target.value || null;
-                    try {
-                      await updateDeck(user.uid, deckId, { defaultTemplateId: templateId });
-                      setDeck((prev) => (prev ? { ...prev, defaultTemplateId: templateId } : prev));
-                    } catch (err) {
-                      console.error("Failed to update default template:", err);
-                    }
+        {/* Deck hero: view mode (title/desc) or edit mode (form + bulk select) */}
+        <div className="p-6 sm:p-8 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              {deckEditMode ? (
+                <form
+                  id="deck-edit-form"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void handleSaveEditDeck(e);
                   }}
-                  className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-accent/50"
                 >
-                  <option value="">Most used in deck</option>
-                  {templates.map((t) => (
-                    <option key={t.templateId} value={t.templateId}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
-                <span className="text-white/40 text-xs">
-                  Used when adding cards or generating with AI
+                  <input
+                    data-deck-title-input
+                    type="text"
+                    value={editDeckTitle}
+                    onChange={(e) => setEditDeckTitle(e.target.value)}
+                    placeholder="Deck title"
+                    className="w-full text-2xl sm:text-3xl font-semibold text-white tracking-tight bg-transparent border-0 border-b border-white/20 focus:border-white/40 focus:outline-none pb-1 transition-colors placeholder-white/30"
+                    required
+                  />
+                  <textarea
+                    value={editDeckDescription}
+                    onChange={(e) => setEditDeckDescription(e.target.value)}
+                    placeholder="No description"
+                    rows={2}
+                    className="mt-2 w-full text-white/70 text-sm sm:text-base leading-relaxed bg-transparent border-0 border-b border-white/20 focus:border-white/40 focus:outline-none resize-none placeholder-white/40 italic pb-1 transition-colors"
+                  />
+                </form>
+              ) : (
+                <>
+                  <h1 className="text-2xl sm:text-3xl font-semibold text-white tracking-tight">
+                    {deck.title}
+                  </h1>
+                  <p className={`mt-2 text-white/70 text-sm sm:text-base leading-relaxed ${!deck.description ? "text-white/40 italic" : ""}`}>
+                    {deck.description || "No description"}
+                  </p>
+                </>
+              )}
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <span className="inline-flex items-center rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white/80">
+                  {cards.length} {cards.length === 1 ? "card" : "cards"}
                 </span>
               </div>
-            )}
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Link
-              href={`/dashboard/deck/${deckId}/study`}
-              className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
-            >
-              <Play className="w-5 h-5" />
-              <span className="hidden sm:inline">Study</span>
-            </Link>
-            <button
-              onClick={() => setShowImportModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-amber-600/90 hover:bg-amber-500 text-white rounded-lg transition-colors font-medium"
-              title="CSV, Excel, or Anki — map columns to your template (AI for quiz/audio)"
-            >
-              <Table2 className="w-5 h-5" />
-              <span className="hidden sm:inline">Import from table</span>
-            </button>
-            <div className="relative" ref={exportMenuRef}>
-              <button
-                type="button"
-                onClick={() => setShowExportMenu((v) => !v)}
-                disabled={cards.length === 0}
-                title={cards.length === 0 ? "Add cards to export" : "Export deck"}
-                className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors disabled:opacity-50 disabled:pointer-events-none"
-              >
-                <Download className="w-5 h-5" />
-                <span className="hidden sm:inline">Export as</span>
-                <ChevronDown className="w-4 h-4 opacity-70" />
-              </button>
-              {showExportMenu && (
-                <div className="absolute left-0 top-full mt-1 py-1 min-w-[120px] bg-black/95 border border-white/20 rounded-lg shadow-xl z-50">
-                  <button
-                    type="button"
-                    onClick={handleExportCSV}
-                    className="flex items-center gap-2 w-full px-4 py-2 text-left text-white hover:bg-white/10 text-sm"
-                  >
-                    <FileSpreadsheet className="w-4 h-4" />
-                    CSV
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleExportXLSX}
-                    disabled={isProduction && !aiEntitled}
-                    title={isProduction && !aiEntitled ? "Pro subscription required" : undefined}
-                    className="flex items-center gap-2 w-full px-4 py-2 text-left text-white hover:bg-white/10 text-sm disabled:opacity-50"
-                  >
-                    <FileSpreadsheet className="w-4 h-4" />
-                    XLSX
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleExportAPKG}
-                    disabled={exportApkgLoading || (isProduction && !aiEntitled)}
-                    title={isProduction && !aiEntitled ? "Pro subscription required" : undefined}
-                    className="flex items-center gap-2 w-full px-4 py-2 text-left text-white hover:bg-white/10 text-sm disabled:opacity-50"
-                  >
-                    <FileSpreadsheet className="w-4 h-4" />
-                    {exportApkgLoading ? "Exporting…" : "Anki (.apkg)"}
-                  </button>
-                </div>
-              )}
             </div>
-            {isProduction && !aiEntitled ? (
-              <Link
-                href="/dashboard/subscription"
-                className="flex items-center gap-2 px-4 py-2 bg-amber-600/70 hover:bg-amber-600 text-white rounded-lg transition-colors font-medium"
-                title="Upgrade to Pro to use AI"
-              >
-                <Sparkles className="w-5 h-5" />
-                Create card with AI (Pro)
-              </Link>
-            ) : (
-              <button
-                type="button"
-                disabled={cards.length === 0}
-                title={cards.length === 0 ? "Add at least one card manually so AI can use them as examples" : undefined}
-                onClick={async () => {
-                  setAddWithAIError(null);
-                  setAddWithAIDevPrompt(null);
-                  setAddWithAISuccess(null);
-                  setAddWithAIGeneratedCards([]);
-                  setAddWithAISelectedIndices(new Set());
-                  let list = templates;
-                  if (user) {
-                    try {
-                      list = await getTemplates(user.uid);
-                      setTemplates(list);
-                    } catch {
-                      /* keep cached templates */
-                    }
-                  }
-                  setAddWithAITemplateId(
-                    effectiveDefaultTemplateId || list[0]?.templateId || "",
-                  );
-                  setShowAddWithAIModal(true);
-                }}
-                className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition-colors font-medium disabled:opacity-50 disabled:pointer-events-none"
-              >
-                <Sparkles className="w-5 h-5" />
-                Create card with AI
-              </button>
-            )}
-            <button
-              type="button"
-              disabled={!aiEntitled}
-              title={
-                !aiEntitled
-                  ? "Pro required for AI features"
-                  : "Upload a document or image — AI builds draft cards (PDF, Word, or image)"
-              }
-              onClick={() => {
-                setFileToAIError(null);
-                setFileToAIFile(null);
-                setFileToAITemplateId(effectiveDefaultTemplateId || templates[0]?.templateId || "");
-                setShowFileToAIModal(true);
-              }}
-              className="flex items-center gap-2 px-4 py-2 bg-amber-600/90 hover:bg-amber-500 text-white rounded-lg transition-colors font-medium disabled:opacity-50 disabled:pointer-events-none"
-            >
-              <FileText className="w-5 h-5" />
-              Generate from doc/img
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setAddCardTemplateId(effectiveDefaultTemplateId || templates[0]?.templateId || "");
-                setShowAddCardModal(true);
-              }}
-              className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent/90 text-white rounded-lg transition-colors font-medium"
-            >
-              <Plus className="w-5 h-5" />
-              Add Card
-            </button>
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              {deckEditMode ? (
+                <button
+                  type="button"
+                  disabled={!editDeckTitle.trim() || savingDeck}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-white/15 bg-white/[0.04] text-white/90 font-medium text-sm hover:bg-white/10 hover:border-white/25 transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none"
+                  title="Save deck and exit edit mode"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    void handleSaveEditDeck(e);
+                  }}
+                >
+                  {savingDeck ? "Saving…" : "Done"}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={enterDeckEditMode}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-white/15 bg-white/[0.04] text-white/90 font-medium text-sm hover:bg-white/10 hover:border-white/25 transition-all duration-200"
+                  title="Edit deck title, description, or select cards to delete"
+                >
+                  <Edit2 className="w-4 h-4" />
+                  Edit
+                </button>
+              )}
+              <div className="relative" ref={exportMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setShowExportMenu((v) => !v)}
+                  disabled={cards.length === 0}
+                  title={cards.length === 0 ? "Add cards to export" : "Export deck"}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-white/15 bg-white/[0.04] text-white/90 font-medium text-sm hover:bg-white/10 hover:border-white/25 disabled:opacity-50 disabled:pointer-events-none transition-all duration-200"
+                >
+                  <Download className="w-4 h-4" />
+                  Export
+                  <ChevronDown className="w-4 h-4 opacity-70" />
+                </button>
+                {showExportMenu && (
+                  <div className="absolute left-0 top-full mt-1 py-1 min-w-[140px] bg-zinc-900 border border-white/15 rounded-xl shadow-xl z-50">
+                    <button
+                      type="button"
+                      onClick={handleExportCSV}
+                      className="flex items-center gap-2 w-full px-4 py-2.5 text-left text-white hover:bg-white/10 text-sm"
+                    >
+                      <FileSpreadsheet className="w-4 h-4" />
+                      CSV
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleExportXLSX}
+                      disabled={isProduction && !aiEntitled}
+                      title={isProduction && !aiEntitled ? "Pro required" : undefined}
+                      className="flex items-center gap-2 w-full px-4 py-2.5 text-left text-white hover:bg-white/10 text-sm disabled:opacity-50"
+                    >
+                      <FileSpreadsheet className="w-4 h-4" />
+                      XLSX
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleExportAPKG}
+                      disabled={exportApkgLoading || (isProduction && !aiEntitled)}
+                      title={isProduction && !aiEntitled ? "Pro required" : undefined}
+                      className="flex items-center gap-2 w-full px-4 py-2.5 text-left text-white hover:bg-white/10 text-sm disabled:opacity-50"
+                    >
+                      <FileSpreadsheet className="w-4 h-4" />
+                      {exportApkgLoading ? "Exporting…" : "Anki (.apkg)"}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+
+        {/* Action toolbar */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href={`/dashboard/deck/${deckId}/study`}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-white/15 bg-white/[0.04] text-white/90 font-medium text-sm hover:bg-white/10 hover:border-white/25 transition-all duration-200"
+          >
+            <Play className="w-4 h-4" />
+            Study
+          </Link>
+          <button
+            type="button"
+            onClick={() => {
+              setAddCardTemplateId(effectiveDefaultTemplateId || templates[0]?.templateId || "");
+              setShowAddCardModal(true);
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-white/15 bg-white/[0.04] text-white/90 font-medium text-sm hover:bg-white/10 hover:border-white/25 transition-all duration-200"
+          >
+            <Plus className="w-4 h-4" />
+            Add card
+          </button>
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-white/15 bg-white/[0.04] text-white/90 font-medium text-sm hover:bg-white/10 hover:border-white/25 transition-all duration-200"
+            title="CSV, Excel, or Anki — AI for quiz & audio"
+          >
+            <Table2 className="w-4 h-4" />
+            Import
+            <Sparkles className="w-3.5 h-3.5 text-white/50" />
+          </button>
+          {isProduction && !aiEntitled ? (
+            <Link
+              href="/dashboard/subscription"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-amber-600/90 hover:bg-amber-600 text-white font-medium text-sm shadow-md shadow-amber-600/15 transition-all duration-200"
+              title="Upgrade to Pro"
+            >
+              <Sparkles className="w-4 h-4" />
+              AI (Pro)
+            </Link>
+          ) : (
+            <button
+              type="button"
+              disabled={cards.length === 0}
+              title={cards.length === 0 ? "Add at least one card first" : undefined}
+              onClick={async () => {
+                setAddWithAIError(null);
+                setAddWithAIDevPrompt(null);
+                setAddWithAISuccess(null);
+                setAddWithAIGeneratedCards([]);
+                setAddWithAISelectedIndices(new Set());
+                let list = templates;
+                if (user) {
+                  try {
+                    list = await getTemplates(user.uid);
+                    setTemplates(list);
+                  } catch {
+                    /* keep cached */
+                  }
+                }
+                setAddWithAITemplateId(effectiveDefaultTemplateId || list[0]?.templateId || "");
+                setShowAddWithAIModal(true);
+              }}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-white/15 bg-white/[0.04] text-white/90 font-medium text-sm hover:bg-white/10 hover:border-white/25 transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none"
+            >
+              <Sparkles className="w-4 h-4 text-white/60" />
+              Create with AI
+            </button>
+          )}
+          <button
+            type="button"
+            disabled={!aiEntitled}
+            title={!aiEntitled ? "Pro required" : "Generate from document or image — uses AI"}
+            onClick={() => {
+              setFileToAIError(null);
+              setFileToAIFile(null);
+              setFileToAITemplateId(effectiveDefaultTemplateId || templates[0]?.templateId || "");
+              setShowFileToAIModal(true);
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-white/15 bg-white/[0.04] text-white/90 font-medium text-sm hover:bg-white/10 hover:border-white/25 transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none"
+          >
+            <FileText className="w-4 h-4" />
+            From doc/image
+            <Sparkles className="w-3.5 h-3.5 text-white/50" />
+          </button>
+        </div>
+
+        {/* Default template — compact settings row */}
+        {templates.length > 0 && (
+          <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
+            <Settings className="w-4 h-4 text-white/40 shrink-0" />
+            <span className="text-white/50">Default template</span>
+            <select
+              value={
+                deck.defaultTemplateId &&
+                templates.some((t) => t.templateId === deck.defaultTemplateId)
+                  ? deck.defaultTemplateId
+                  : ""
+              }
+              onChange={async (e) => {
+                const templateId = e.target.value || null;
+                try {
+                  await updateDeck(user.uid, deckId, { defaultTemplateId: templateId });
+                  setDeck((prev) => (prev ? { ...prev, defaultTemplateId: templateId } : prev));
+                } catch (err) {
+                  console.error("Failed to update default template:", err);
+                }
+              }}
+              className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-white/90 text-sm focus:outline-none focus:ring-2 focus:ring-white/20"
+            >
+              <option value="">Most used in deck</option>
+              {templates.map((t) => (
+                <option key={t.templateId} value={t.templateId}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+      </header>
+
+      {/* Bulk selection bar */}
+      {bulkSelectMode && filteredCards.length > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-3 px-4 py-3 bg-white/5 border border-white/10 rounded-xl">
+          <span className="text-white/80 text-sm font-medium">
+            {selectedCardIds.size} selected
+          </span>
+          <button
+            type="button"
+            onClick={selectAllFilteredCards}
+            className="text-sm text-accent hover:text-accent/80 transition-colors"
+          >
+            Select all
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedCardIds(new Set())}
+            className="text-sm text-white/60 hover:text-white transition-colors"
+          >
+            Clear selection
+          </button>
+          <div className="flex-1" />
+          <button
+            type="button"
+            onClick={() => setShowBulkDeleteModal(true)}
+            disabled={selectedCardIds.size === 0}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-red-500 hover:bg-red-400 text-white text-sm font-medium shadow-lg shadow-red-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+          >
+            <Trash2 className="w-4 h-4" />
+            Delete selected
+          </button>
+        </div>
+      )}
 
       {/* Search Bar */}
       {cards.length > 0 && (
@@ -2738,10 +3178,11 @@ export default function DeckDetailPage() {
             <div className="flex items-center justify-center gap-3 flex-wrap">
               <button
                 onClick={() => setShowImportModal(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600/90 hover:bg-amber-500 text-white rounded-lg transition-colors font-medium"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl border border-white/15 bg-white/[0.04] text-white/90 font-medium text-sm hover:bg-white/10 hover:border-white/25 transition-all duration-200"
               >
                 <Table2 className="w-5 h-5" />
                 Import from table
+                <Sparkles className="w-4 h-4 text-white/50" />
               </button>
               {aiEntitled && (
                 <button
@@ -2752,10 +3193,11 @@ export default function DeckDetailPage() {
                     setFileToAITemplateId(effectiveDefaultTemplateId || templates[0]?.templateId || "");
                     setShowFileToAIModal(true);
                   }}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600/90 hover:bg-amber-500 text-white rounded-lg transition-colors font-medium"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl border border-white/15 bg-white/[0.04] text-white/90 font-medium text-sm hover:bg-white/10 hover:border-white/25 transition-all duration-200"
                 >
                   <FileText className="w-5 h-5" />
                   Generate from doc/img
+                  <Sparkles className="w-4 h-4 text-white/50" />
                 </button>
               )}
               <button
@@ -2764,7 +3206,7 @@ export default function DeckDetailPage() {
                   setAddCardTemplateId(effectiveDefaultTemplateId || templates[0]?.templateId || "");
                   setShowAddCardModal(true);
                 }}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent/90 text-white rounded-lg transition-colors"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl border border-white/15 bg-white/[0.04] text-white/90 font-medium text-sm hover:bg-white/10 hover:border-white/25 transition-all duration-200"
               >
                 <Plus className="w-5 h-5" />
                 Add Card
@@ -2779,11 +3221,34 @@ export default function DeckDetailPage() {
               key={card.cardId}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="relative group"
+              className={
+                bulkSelectMode
+                  ? "relative group flex items-stretch bg-white/5 border border-white/10 rounded-xl overflow-hidden"
+                  : "relative group"
+              }
             >
+              {bulkSelectMode && (
+                <div
+                  className="flex items-center pl-4 shrink-0"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedCardIds.has(card.cardId)}
+                    onChange={() => toggleBulkSelectCard(card.cardId)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-5 h-5 rounded border-white/30 bg-white/5 text-accent focus:ring-accent"
+                  />
+                </div>
+              )}
               <Link
-                href={`/dashboard/deck/${deckId}/card/${card.cardId}`}
-                className="block p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-colors"
+                href={bulkSelectMode ? "#" : `/dashboard/deck/${deckId}/card/${card.cardId}`}
+                onClick={bulkSelectMode ? (e) => { e.preventDefault(); toggleBulkSelectCard(card.cardId); } : undefined}
+                className={
+                  bulkSelectMode
+                    ? "flex-1 min-w-0 block p-4 hover:bg-white/5 transition-colors cursor-pointer"
+                    : "block p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-colors"
+                }
               >
                 <div className="flex gap-3 items-stretch min-h-[3rem]">
                   <div className="flex-1 min-w-0 flex flex-col justify-center">
@@ -2917,15 +3382,44 @@ export default function DeckDetailPage() {
             <div className="flex gap-3">
               <button
                 onClick={() => setShowDeleteModal(false)}
-                className="flex-1 px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg transition-colors"
+                className="flex-1 px-4 py-2.5 rounded-2xl border border-white/15 bg-white/[0.04] text-white/90 font-medium text-sm hover:bg-white/10 hover:border-white/25 transition-all duration-200"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDeleteCard}
-                className="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
+                className="flex-1 px-4 py-2.5 rounded-2xl bg-red-500 hover:bg-red-400 text-white font-medium text-sm shadow-lg shadow-red-500/20 transition-all duration-200"
               >
                 Delete
+              </button>
+            </div>
+          </Modal>
+        )}
+      </AnimatePresence>
+
+      {/* Bulk Delete Confirmation Modal */}
+      <AnimatePresence>
+        {showBulkDeleteModal && (
+          <Modal onClose={() => setShowBulkDeleteModal(false)}>
+            <h2 className="text-xl font-bold text-white mb-4">Delete selected cards</h2>
+            <p className="text-white/70 mb-6">
+              Are you sure you want to delete {selectedCardIds.size} card{selectedCardIds.size !== 1 ? "s" : ""}? This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowBulkDeleteModal(false)}
+                className="flex-1 px-4 py-2.5 rounded-2xl border border-white/15 bg-white/[0.04] text-white/90 font-medium text-sm hover:bg-white/10 hover:border-white/25 transition-all duration-200"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleBulkDeleteCards}
+                disabled={bulkDeleting}
+                className="flex-1 px-4 py-2.5 rounded-2xl bg-red-500 hover:bg-red-400 text-white font-medium text-sm shadow-lg shadow-red-500/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+              >
+                {bulkDeleting ? "Deleting…" : "Delete"}
               </button>
             </div>
           </Modal>
@@ -2999,7 +3493,7 @@ export default function DeckDetailPage() {
                 <button
                   type="button"
                   onClick={() => setShowAddCardModal(false)}
-                  className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
+                  className="px-4 py-2.5 rounded-2xl border border-white/15 bg-white/[0.04] text-white/90 font-medium text-sm hover:bg-white/10 hover:border-white/25 transition-all duration-200"
                 >
                   Cancel
                 </button>
@@ -3015,7 +3509,7 @@ export default function DeckDetailPage() {
                     }
                   }}
                   disabled={addCardMode === "template" && templates.length === 0}
-                  className="px-4 py-2 bg-accent hover:bg-accent/90 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                  className="px-4 py-2.5 rounded-2xl bg-accent hover:bg-accent/90 text-white font-medium text-sm shadow-lg shadow-accent/20 transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none disabled:shadow-none"
                 >
                   Add Card
                 </button>
@@ -3199,7 +3693,7 @@ export default function DeckDetailPage() {
                       type="button"
                       onClick={closeAddWithAIModal}
                       disabled={!!addWithAIProgress}
-                      className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                      className="px-4 py-2.5 rounded-2xl border border-white/15 bg-white/[0.04] text-white/90 font-medium text-sm hover:bg-white/10 hover:border-white/25 transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none"
                     >
                       Cancel all
                     </button>
@@ -3207,7 +3701,7 @@ export default function DeckDetailPage() {
                       type="button"
                       onClick={handleAddSelectedCardsToDeck}
                       disabled={addWithAISelectedIndices.size === 0 || !!addWithAIProgress}
-                      className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                      className="px-4 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-white font-medium text-sm shadow-lg shadow-amber-500/25 transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none disabled:shadow-none"
                     >
                       {addWithAIGeneratedCards[0]?.blocksSnapshot?.some(
                         (b) => b.type === "audio" || b.type === 7 || b.type === "7"
@@ -3259,7 +3753,7 @@ export default function DeckDetailPage() {
                     <button
                       type="button"
                       onClick={closeAddWithAIModal}
-                      className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
+                      className="px-4 py-2.5 rounded-2xl border border-white/15 bg-white/[0.04] text-white/90 font-medium text-sm hover:bg-white/10 hover:border-white/25 transition-all duration-200"
                     >
                       Close
                     </button>
@@ -3270,7 +3764,7 @@ export default function DeckDetailPage() {
                           router.push(`/dashboard/deck/${deckId}/card/${addWithAISuccess.lastCardId}`);
                           closeAddWithAIModal();
                         }}
-                        className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-medium transition-colors"
+                        className="px-4 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-white font-medium text-sm shadow-lg shadow-amber-500/25 transition-all duration-200"
                       >
                         Go to card
                       </button>
@@ -3281,7 +3775,7 @@ export default function DeckDetailPage() {
                         router.push(`/dashboard/deck/${deckId}`);
                         closeAddWithAIModal();
                       }}
-                      className="px-4 py-2 bg-accent hover:bg-accent/90 text-white rounded-lg font-medium transition-colors"
+                      className="px-4 py-2.5 rounded-2xl bg-accent hover:bg-accent/90 text-white font-medium text-sm shadow-lg shadow-accent/20 transition-all duration-200"
                     >
                       Go to deck
                     </button>
@@ -3355,14 +3849,10 @@ export default function DeckDetailPage() {
                       </select>
                     </div>
                     {cards.length > 0 && (
-                      <div>
-                        <label className="text-white/70 text-sm block mb-1">
-                          Reference cards (optional)
-                        </label>
-                        <p className="text-white/50 text-xs mb-2">
-                          Select cards to use as style examples.
-                        </p>
-                        <div className="max-h-40 overflow-y-auto rounded-lg border border-white/10 bg-white/5 p-2 space-y-1">
+                      <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
+                        <p className="text-sm font-medium text-white/90 mb-0.5">Reference cards</p>
+                        <p className="text-xs text-white/50 mb-3">Optional — pick cards to match style and tone.</p>
+                        <div className="max-h-44 overflow-y-auto space-y-2 pr-1 -mr-1">
                           {cards.slice(0, 20).map((card) => {
                             const preview = getCardPreview(card);
                             const label = [preview.main, preview.sub].filter(Boolean).join(" — ") || "Empty card";
@@ -3370,8 +3860,17 @@ export default function DeckDetailPage() {
                             return (
                               <label
                                 key={card.cardId}
-                                className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-white/5 cursor-pointer text-sm text-white/90"
+                                className={`flex items-center gap-3 py-2.5 px-3 rounded-xl border cursor-pointer transition-all duration-200 ${
+                                  checked
+                                    ? "border-amber-500/50 bg-amber-500/10 text-white"
+                                    : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/15 text-white/90"
+                                }`}
                               >
+                                <span className={`shrink-0 w-4 h-4 rounded-md border flex items-center justify-center transition-colors ${
+                                  checked ? "border-amber-400 bg-amber-500" : "border-white/30 bg-white/5"
+                                }`}>
+                                  {checked && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}
+                                </span>
                                 <input
                                   type="checkbox"
                                   checked={checked}
@@ -3383,9 +3882,9 @@ export default function DeckDetailPage() {
                                       return next;
                                     });
                                   }}
-                                  className="rounded border-white/30 bg-white/5 text-amber-500 focus:ring-amber-500"
+                                  className="sr-only"
                                 />
-                                <span className="truncate flex-1" title={label}>
+                                <span className="truncate flex-1 text-sm min-w-0" title={label}>
                                   {label}
                                 </span>
                               </label>
@@ -3393,13 +3892,16 @@ export default function DeckDetailPage() {
                           })}
                         </div>
                         {cards.length > 20 && (
-                          <p className="text-white/40 text-xs mt-1">Showing first 20 cards</p>
+                          <p className="text-white/40 text-xs mt-2">Showing first 20 of {cards.length}</p>
                         )}
                       </div>
                     )}
                   </div>
                   {addWithAIProgress && (
-                    <p className="text-amber-400/90 text-sm mb-4">{addWithAIProgress}</p>
+                    <div className="flex items-center gap-2 text-amber-400/90 text-sm py-2">
+                      <span className="animate-spin rounded-full h-4 w-4 border-2 border-amber-400/50 border-t-amber-400" />
+                      <span>{addWithAIProgress}</span>
+                    </div>
                   )}
                   {addWithAIError && (
                     <p className="text-red-400 text-sm mb-4">{addWithAIError}</p>
@@ -3451,7 +3953,7 @@ export default function DeckDetailPage() {
                       type="button"
                       onClick={closeAddWithAIModal}
                       disabled={addWithAIGenerating}
-                      className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors disabled:opacity-50"
+                      className="px-4 py-2.5 rounded-2xl border border-white/15 bg-white/[0.04] text-white/90 font-medium text-sm hover:bg-white/10 hover:border-white/25 transition-all duration-200 disabled:opacity-50"
                     >
                       Cancel
                     </button>
@@ -3463,7 +3965,7 @@ export default function DeckDetailPage() {
                         if (window.confirm(msg)) handleAddCardWithAI();
                       }}
                       disabled={addWithAIGenerating || !addWithAITemplateId}
-                      className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-white font-medium text-sm shadow-lg shadow-amber-500/25 transition-all duration-200 disabled:opacity-50 disabled:shadow-none"
                     >
                       {addWithAIGenerating ? (
                         <>
@@ -3490,27 +3992,28 @@ export default function DeckDetailPage() {
         {showFileToAIModal && deck && (
           <Modal onClose={() => !fileToAILoading && closeFileToAIModal()}>
             <div className="flex flex-col max-h-[85vh] min-h-0 overflow-y-auto">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-amber-400" />
+              <div className="flex items-center justify-between pb-4 mb-2 border-b border-white/10">
+                <h2 className="text-lg font-semibold text-white flex items-center gap-2.5">
+                  <span className="flex items-center justify-center w-9 h-9 rounded-xl bg-amber-500/15 text-amber-400">
+                    <FileText className="w-5 h-5" />
+                  </span>
                   Generate from doc/img
                 </h2>
                 <button
                   type="button"
                   onClick={() => !fileToAILoading && closeFileToAIModal()}
-                  className="p-1 hover:bg-white/10 rounded transition-colors"
+                  className="p-2 rounded-xl hover:bg-white/10 text-white/60 hover:text-white transition-colors"
                 >
-                  <X className="w-5 h-5 text-white/50" />
+                  <X className="w-5 h-5" />
                 </button>
               </div>
 
               {fileToAILoading ? (
-                <div className="py-12 text-center">
-                  <div className="w-16 h-16 mx-auto mb-4 relative">
-                    <div className="absolute inset-0 rounded-full border-4 border-white/10" />
-                    <div className="absolute inset-0 rounded-full border-4 border-amber-500 border-t-transparent animate-spin" />
+                <div className="py-14 text-center">
+                  <div className="w-14 h-14 mx-auto mb-4 rounded-2xl border-2 border-white/10 flex items-center justify-center">
+                    <span className="animate-spin rounded-full h-8 w-8 border-2 border-amber-500/30 border-t-amber-500" />
                   </div>
-                  <p className="text-white text-lg mb-2">Generating cards from file...</p>
+                  <p className="text-white font-medium mb-1">Generating cards from file…</p>
                   <p className="text-white/50 text-sm">This may take a moment.</p>
                 </div>
               ) : fileToAISuccessResult ? (
@@ -3812,7 +4315,7 @@ export default function DeckDetailPage() {
                       type="button"
                       onClick={closeFileToAIModal}
                       disabled={!!addWithAIProgress}
-                      className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors disabled:opacity-50"
+                      className="px-4 py-2.5 rounded-2xl border border-white/15 bg-white/[0.04] text-white/90 font-medium text-sm hover:bg-white/10 hover:border-white/25 transition-all duration-200 disabled:opacity-50"
                     >
                       Done
                     </button>
@@ -3820,7 +4323,7 @@ export default function DeckDetailPage() {
                       type="button"
                       onClick={handleAddSelectedCardsToDeck}
                       disabled={addWithAISelectedIndices.size === 0 || !!addWithAIProgress}
-                      className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-white font-medium text-sm shadow-lg shadow-amber-500/25 transition-all duration-200 disabled:opacity-50 disabled:shadow-none"
                     >
                       <Sparkles className="w-4 h-4" />
                       Add selected ({addWithAISelectedIndices.size}) to deck
@@ -3829,14 +4332,12 @@ export default function DeckDetailPage() {
                 </>
               ) : (
                 <>
-                  <p className="text-white/60 text-sm mb-4">
+                  <p className="text-white/60 text-sm mb-5">
                     From document or image — AI drafts cards for your template. PDF, Word, or image only. For CSV/Excel/Anki use Import from table.
                   </p>
-                  <div className="space-y-3 mb-4">
-                    <div>
-                      <label className="text-white/70 text-sm block mb-1">
-                        File (PDF, DOCX, or image)
-                      </label>
+                  <div className="space-y-4 mb-5">
+                    <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
+                      <p className="text-sm font-medium text-white/90 mb-2">File</p>
                       <div
                         role="button"
                         tabIndex={0}
@@ -3847,10 +4348,10 @@ export default function DeckDetailPage() {
                         onKeyDown={(e) => {
                           if (e.key === "Enter" || e.key === " ") fileToAIFileInputRef.current?.click();
                         }}
-                        className={`flex flex-col items-center justify-center py-6 border-2 border-dashed rounded-xl cursor-pointer transition-all ${
+                        className={`flex flex-col items-center justify-center py-8 border-2 border-dashed rounded-xl cursor-pointer transition-all duration-200 ${
                           fileToAIDragging
                             ? "border-amber-500 bg-amber-500/10"
-                            : "border-white/20 hover:border-amber-500/50 hover:bg-white/5"
+                            : "border-white/15 hover:border-amber-500/40 hover:bg-white/[0.04]"
                         } ${fileToAILoading ? "pointer-events-none opacity-60" : ""}`}
                       >
                         <input
@@ -3894,64 +4395,111 @@ export default function DeckDetailPage() {
                         )}
                       </div>
                     </div>
-                    <div>
-                      <label className="text-white/70 text-sm block mb-1">Template</label>
-                      <select
-                        value={fileToAITemplateId}
-                        onChange={(e) => setFileToAITemplateId(e.target.value)}
-                        disabled={fileToAILoading}
-                        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-amber-500/50"
-                      >
-                        {templates.map((t) => (
-                          <option key={t.templateId} value={t.templateId}>
-                            {t.name} ({t.blocks?.length ?? 0} blocks)
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    {fileToAITemplateId && (() => {
-                      const selectedTemplate = templates.find((t) => t.templateId === fileToAITemplateId);
-                      const blocks = selectedTemplate?.blocks || [];
-                      if (blocks.length === 0) return null;
-                      const blockTypeLabel = (type) => {
-                        const names = { header1: "Header 1", header2: "Header 2", header3: "Header 3", text: "Text", quote: "Quote", hiddenText: "Hidden", image: "Image", audio: "Audio", quizSingleSelect: "Quiz (single)", quizMultiSelect: "Quiz (multi)", quizTextAnswer: "Quiz (text)", divider: "Divider", space: "Space" };
-                        return names[type] || (typeof type === "number" ? ["Header 1", "Header 2", "Header 3", "Text", "Quote", "Hidden", "Image", "Audio", "Quiz (multi)", "Quiz (single)", "Quiz (text)", "Divider", "Space"][type] : type);
-                      };
-                      return (
-                        <div>
-                          <span className="text-white/50 text-xs">Template format</span>
-                          <div className="mt-1 flex flex-wrap gap-1.5">
-                            {blocks.map((b) => (
-                              <span
-                                key={b.blockId}
-                                className="inline-flex items-center rounded-md bg-white/10 px-2 py-0.5 text-xs text-white/80"
-                              >
-                                {b.label && String(b.label).trim() ? b.label : blockTypeLabel(b.type)}
-                              </span>
-                            ))}
+                    <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4 space-y-4">
+                      <div>
+                        <p className="text-sm font-medium text-white/90 mb-2">Template</p>
+                        <select
+                          value={fileToAITemplateId}
+                          onChange={(e) => setFileToAITemplateId(e.target.value)}
+                          disabled={fileToAILoading}
+                          className="w-full rounded-xl bg-white/[0.06] border border-white/10 px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/50 transition-shadow"
+                        >
+                          {templates.map((t) => (
+                            <option key={t.templateId} value={t.templateId}>
+                              {t.name} ({t.blocks?.length ?? 0} blocks)
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      {fileToAITemplateId && (() => {
+                        const selectedTemplate = templates.find((t) => t.templateId === fileToAITemplateId);
+                        const blocks = selectedTemplate?.blocks || [];
+                        if (blocks.length === 0) return null;
+                        const blockTypeLabel = (type) => {
+                          const names = { header1: "Header 1", header2: "Header 2", header3: "Header 3", text: "Text", quote: "Quote", hiddenText: "Hidden", image: "Image", audio: "Audio", quizSingleSelect: "Quiz (single)", quizMultiSelect: "Quiz (multi)", quizTextAnswer: "Quiz (text)", divider: "Divider", space: "Space" };
+                          return names[type] || (typeof type === "number" ? ["Header 1", "Header 2", "Header 3", "Text", "Quote", "Hidden", "Image", "Audio", "Quiz (multi)", "Quiz (single)", "Quiz (text)", "Divider", "Space"][type] : type);
+                        };
+                        return (
+                          <div>
+                            <p className="text-xs text-white/50 mb-1.5">Template format</p>
+                            <div className="flex flex-wrap gap-2">
+                              {blocks.map((b) => (
+                                <span
+                                  key={b.blockId}
+                                  className="inline-flex items-center rounded-lg bg-white/10 px-2.5 py-1 text-xs text-white/80"
+                                >
+                                  {b.label && String(b.label).trim() ? b.label : blockTypeLabel(b.type)}
+                                </span>
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })()}
-                    <div>
-                      <label className="text-white/70 text-sm block mb-1">Max cards to generate</label>
-                      <select
-                        value={fileToAIMaxCards}
-                        onChange={(e) => setFileToAIMaxCards(Number(e.target.value))}
-                        disabled={fileToAILoading}
-                        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-amber-500/50"
-                      >
-                        {[5, 10, 15, 20, 30].map((n) => (
-                          <option key={n} value={n}>
-                            Up to {n} cards
-                          </option>
-                        ))}
-                      </select>
+                        );
+                      })()}
+                      <div>
+                        <p className="text-sm font-medium text-white/90 mb-2">Max cards</p>
+                        <select
+                          value={fileToAIMaxCards}
+                          onChange={(e) => setFileToAIMaxCards(Number(e.target.value))}
+                          disabled={fileToAILoading}
+                          className="w-full rounded-xl bg-white/[0.06] border border-white/10 px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/50 transition-shadow"
+                        >
+                          {[5, 10, 15, 20, 30].map((n) => (
+                            <option key={n} value={n}>
+                              Up to {n} cards
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
+                    {cards.length > 0 && (
+                      <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
+                        <p className="text-sm font-medium text-white/90 mb-0.5">Reference cards</p>
+                        <p className="text-xs text-white/50 mb-3">Optional — pick cards to match style and tone.</p>
+                        <div className="max-h-44 overflow-y-auto space-y-2 pr-1 -mr-1">
+                          {cards.slice(0, 20).map((card) => {
+                            const preview = getCardPreview(card);
+                            const label = [preview.main, preview.sub].filter(Boolean).join(" — ") || "Empty card";
+                            const checked = fileToAIReferenceCardIds.has(card.cardId);
+                            return (
+                              <label
+                                key={card.cardId}
+                                className={`flex items-center gap-3 py-2.5 px-3 rounded-xl border cursor-pointer transition-all duration-200 ${
+                                  checked
+                                    ? "border-amber-500/50 bg-amber-500/10 text-white"
+                                    : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/15 text-white/90"
+                                }`}
+                              >
+                                <span className={`shrink-0 w-4 h-4 rounded-md border flex items-center justify-center transition-colors ${
+                                  checked ? "border-amber-400 bg-amber-500" : "border-white/30 bg-white/5"
+                                }`}>
+                                  {checked && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}
+                                </span>
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={() => {
+                                    setFileToAIReferenceCardIds((prev) => {
+                                      const next = new Set(prev);
+                                      if (next.has(card.cardId)) next.delete(card.cardId);
+                                      else next.add(card.cardId);
+                                      return next;
+                                    });
+                                  }}
+                                  className="sr-only"
+                                />
+                                <span className="truncate flex-1 text-sm min-w-0" title={label}>
+                                  {label}
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                        {cards.length > 20 && (
+                          <p className="text-white/40 text-xs mt-2">Showing first 20 of {cards.length}</p>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  {fileToAIError && (
-                    <p className="text-red-400 text-sm mb-4">{fileToAIError}</p>
-                  )}
                   {isDev && (
                     <div className="mb-4 flex flex-wrap gap-2 items-center">
                       <button
@@ -4003,12 +4551,17 @@ export default function DeckDetailPage() {
                       )}
                     </div>
                   )}
-                  <div className="flex gap-2 justify-end">
+                  {fileToAIError && (
+                    <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-red-300/90 text-sm">
+                      {fileToAIError}
+                    </div>
+                  )}
+                  <div className="flex gap-3 justify-end pt-2">
                     <button
                       type="button"
                       onClick={closeFileToAIModal}
                       disabled={fileToAILoading}
-                      className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors disabled:opacity-50"
+                      className="px-5 py-2.5 rounded-xl border border-white/15 bg-white/5 text-white/90 text-sm font-medium hover:bg-white/10 hover:border-white/20 transition-all disabled:opacity-50"
                     >
                       Cancel
                     </button>
@@ -4016,11 +4569,11 @@ export default function DeckDetailPage() {
                       type="button"
                       onClick={handleFileToAISubmit}
                       disabled={fileToAILoading || !fileToAIFile || !fileToAITemplateId}
-                      className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                      className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-white text-sm font-medium shadow-lg shadow-amber-500/20 transition-all disabled:opacity-50 disabled:pointer-events-none disabled:shadow-none"
                     >
                       {fileToAILoading ? (
                         <>
-                          <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                          <span className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white" />
                           Extracting & generating…
                         </>
                       ) : (
@@ -4799,7 +5352,7 @@ export default function DeckDetailPage() {
                         </p>
                         <button
                           onClick={resetImport}
-                          className="px-6 py-2 bg-accent hover:bg-accent/90 text-white rounded-lg transition-colors"
+                          className="px-6 py-2.5 rounded-2xl bg-accent hover:bg-accent/90 text-white font-medium text-sm shadow-lg shadow-accent/20 transition-all duration-200"
                         >
                           Done
                         </button>
@@ -4829,7 +5382,7 @@ export default function DeckDetailPage() {
                         <button
                           onClick={handleImport}
                           disabled={!canProceedToNextStep() || importUseAILoading}
-                          className="flex items-center gap-2 px-6 py-2 bg-accent hover:bg-accent/90 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="flex items-center gap-2 px-6 py-2.5 rounded-2xl bg-accent hover:bg-accent/90 text-white font-medium text-sm shadow-lg shadow-accent/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
                         >
                           <Upload className="w-4 h-4" />
                           Import {getSelectedRowCount()} Cards
@@ -4838,7 +5391,7 @@ export default function DeckDetailPage() {
                         <button
                           onClick={nextStep}
                           disabled={!canProceedToNextStep()}
-                          className="flex items-center gap-1 px-4 py-2 bg-accent hover:bg-accent/90 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="flex items-center gap-1 px-4 py-2.5 rounded-2xl bg-accent hover:bg-accent/90 text-white font-medium text-sm shadow-lg shadow-accent/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
                         >
                           Continue
                           <ChevronRight className="w-4 h-4" />

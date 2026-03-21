@@ -10,6 +10,7 @@ import {
   updateDeck,
   deleteDeck,
   getCardCount,
+  getTemplates,
 } from "@/utils/firestore";
 import Link from "next/link";
 
@@ -24,7 +25,14 @@ export default function DashboardPage() {
   const [selectedDeck, setSelectedDeck] = useState(null);
   const [newDeckTitle, setNewDeckTitle] = useState("");
   const [newDeckDescription, setNewDeckDescription] = useState("");
+  const [newDeckDefaultTemplateId, setNewDeckDefaultTemplateId] = useState("");
+  const [createModalTemplates, setCreateModalTemplates] = useState([]);
   const [actionMenuDeckId, setActionMenuDeckId] = useState(null);
+
+  useEffect(() => {
+    if (!user || !showCreateModal) return;
+    getTemplates(user.uid).then(setCreateModalTemplates);
+  }, [user, showCreateModal]);
 
   useEffect(() => {
     if (!user) return;
@@ -52,10 +60,12 @@ export default function DashboardPage() {
       await createDeck(
         user.uid,
         newDeckTitle.trim(),
-        newDeckDescription.trim()
+        newDeckDescription.trim(),
+        newDeckDefaultTemplateId || null
       );
       setNewDeckTitle("");
       setNewDeckDescription("");
+      setNewDeckDefaultTemplateId("");
       setShowCreateModal(false);
     } catch (error) {
       console.error("Error creating deck:", error);
@@ -259,7 +269,12 @@ export default function DashboardPage() {
       {/* Create Deck Modal */}
       <AnimatePresence>
         {showCreateModal && (
-          <Modal onClose={() => setShowCreateModal(false)}>
+          <Modal
+            onClose={() => {
+              setShowCreateModal(false);
+              setNewDeckDefaultTemplateId("");
+            }}
+          >
             <h2 className="text-xl font-bold text-white mb-4">
               Create New Deck
             </h2>
@@ -278,7 +293,7 @@ export default function DashboardPage() {
                   required
                 />
               </div>
-              <div className="mb-6">
+              <div className="mb-4">
                 <label className="block text-white/70 text-sm mb-2">
                   Description
                 </label>
@@ -290,10 +305,35 @@ export default function DashboardPage() {
                   className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 focus:outline-none focus:border-accent resize-none"
                 />
               </div>
+              <div className="mb-6">
+                <label className="block text-white/70 text-sm mb-2">
+                  Default template
+                </label>
+                <select
+                  value={newDeckDefaultTemplateId}
+                  onChange={(e) =>
+                    setNewDeckDefaultTemplateId(e.target.value)
+                  }
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-accent"
+                >
+                  <option value="">None</option>
+                  {createModalTemplates.map((t) => (
+                    <option key={t.templateId} value={t.templateId}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-white/50 text-xs mt-1">
+                  New cards in this deck will use this template by default.
+                </p>
+              </div>
               <div className="flex gap-3">
                 <button
                   type="button"
-                  onClick={() => setShowCreateModal(false)}
+                  onClick={() => {
+                    setShowCreateModal(false);
+                    setNewDeckDefaultTemplateId("");
+                  }}
                   className="flex-1 px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg transition-colors"
                 >
                   Cancel

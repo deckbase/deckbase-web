@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
 /**
  * Spreadsheet Parser Service for Web
@@ -105,13 +105,13 @@ export const parseFile = async (file) => {
 /**
  * Parse spreadsheet from bytes
  */
-export const parseBytes = (bytes, fileName, fileType) => {
+export const parseBytes = async (bytes, fileName, fileType) => {
   switch (fileType) {
     case SpreadsheetFileType.csv:
       return parseCsv(bytes, fileName);
     case SpreadsheetFileType.xls:
     case SpreadsheetFileType.xlsx:
-      return parseExcel(bytes, fileName);
+      return await parseExcel(bytes, fileName);
     default:
       throw new Error("Unsupported file type");
   }
@@ -175,58 +175,39 @@ const parseCsv = (bytes, fileName) => {
 /**
  * Parse Excel from bytes
  */
-const parseExcel = (bytes, fileName) => {
-  const workbook = XLSX.read(bytes, { type: "array" });
+const parseExcel = async (bytes, fileName) => {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(bytes.buffer ?? bytes);
 
-  if (workbook.SheetNames.length === 0) {
-    return new SpreadsheetData({
-      headers: [],
-      rows: [],
-      fileName,
-    });
+  if (workbook.worksheets.length === 0) {
+    return new SpreadsheetData({ headers: [], rows: [], fileName });
   }
 
-  const sheetName = workbook.SheetNames[0];
-  const sheet = workbook.Sheets[sheetName];
-
-  // Convert to array of arrays
-  const data = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+  const ws = workbook.worksheets[0];
+  const sheetName = ws.name;
+  const data = [];
+  ws.eachRow((row) => {
+    data.push(row.values.slice(1).map((cell) => (cell ?? "").toString()));
+  });
 
   if (data.length === 0) {
-    return new SpreadsheetData({
-      headers: [],
-      rows: [],
-      fileName,
-      sheetName,
-    });
+    return new SpreadsheetData({ headers: [], rows: [], fileName, sheetName });
   }
 
-  // First row is headers
-  const headers = data[0].map((cell) => (cell ?? "").toString());
+  const headers = data[0];
+  const nonEmptyRows = data.slice(1).filter((row) => row.some((cell) => cell));
 
-  // Remaining rows are data
-  const rows = data.slice(1).map((row) =>
-    row.map((cell) => (cell ?? "").toString())
-  );
-
-  // Filter out completely empty rows
-  const nonEmptyRows = rows.filter((row) => row.some((cell) => cell));
-
-  return new SpreadsheetData({
-    headers,
-    rows: nonEmptyRows,
-    fileName,
-    sheetName,
-  });
+  return new SpreadsheetData({ headers, rows: nonEmptyRows, fileName, sheetName });
 };
 
 /**
  * Get available sheet names from an Excel file
  */
-export const getSheetNames = (bytes) => {
+export const getSheetNames = async (bytes) => {
   try {
-    const workbook = XLSX.read(bytes, { type: "array" });
-    return workbook.SheetNames;
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(bytes.buffer ?? bytes);
+    return workbook.worksheets.map((ws) => ws.name);
   } catch {
     return [];
   }
@@ -235,35 +216,26 @@ export const getSheetNames = (bytes) => {
 /**
  * Parse a specific sheet from an Excel file
  */
-export const parseExcelSheet = (bytes, fileName, sheetName) => {
-  const workbook = XLSX.read(bytes, { type: "array" });
+export const parseExcelSheet = async (bytes, fileName, sheetName) => {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(bytes.buffer ?? bytes);
 
-  if (!workbook.SheetNames.includes(sheetName)) {
+  const ws = workbook.getWorksheet(sheetName);
+  if (!ws) {
     throw new Error(`Sheet not found: ${sheetName}`);
   }
 
-  const sheet = workbook.Sheets[sheetName];
-  const data = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+  const data = [];
+  ws.eachRow((row) => {
+    data.push(row.values.slice(1).map((cell) => (cell ?? "").toString()));
+  });
 
   if (data.length === 0) {
-    return new SpreadsheetData({
-      headers: [],
-      rows: [],
-      fileName,
-      sheetName,
-    });
+    return new SpreadsheetData({ headers: [], rows: [], fileName, sheetName });
   }
 
-  const headers = data[0].map((cell) => (cell ?? "").toString());
-  const rows = data.slice(1).map((row) =>
-    row.map((cell) => (cell ?? "").toString())
-  );
-  const nonEmptyRows = rows.filter((row) => row.some((cell) => cell));
+  const headers = data[0];
+  const nonEmptyRows = data.slice(1).filter((row) => row.some((cell) => cell));
 
-  return new SpreadsheetData({
-    headers,
-    rows: nonEmptyRows,
-    fileName,
-    sheetName,
-  });
+  return new SpreadsheetData({ headers, rows: nonEmptyRows, fileName, sheetName });
 };

@@ -12,6 +12,7 @@ import {
   limit,
   onSnapshot,
   deleteDoc,
+  writeBatch,
   Timestamp,
 } from "firebase/firestore";
 import {
@@ -20,6 +21,7 @@ import {
   uploadBytesResumable,
   getDownloadURL,
   deleteObject,
+  listAll,
 } from "firebase/storage";
 import { db, storage } from "@/utils/firebase";
 import { v4 as uuidv4 } from "uuid";
@@ -35,6 +37,64 @@ const getCardsCollection = (uid) =>
 const getTemplatesCollection = (uid) =>
   collection(db, "users", uid, "templates");
 const getMediaCollection = (uid) => collection(db, "users", uid, "media");
+const MEDIA_EXTENSION_CANDIDATES = [
+  "mp3",
+  "m4a",
+  "aac",
+  "wav",
+  "ogg",
+  "webm",
+  "mp4",
+  "jpg",
+  "jpeg",
+  "png",
+  "gif",
+  "webp",
+];
+
+const toReadableStorageError = (error) => ({
+  code: error?.code || null,
+  message: error?.message || String(error),
+});
+
+async function resolveDownloadUrlFromPath(storagePath) {
+  const storageRef = ref(storage, storagePath);
+  const url = await getDownloadURL(storageRef);
+  return { downloadUrl: url, resolvedStoragePath: storagePath };
+}
+
+async function resolveDownloadUrlByMediaId(uid, mediaId) {
+  const attemptedPaths = [];
+  for (const ext of MEDIA_EXTENSION_CANDIDATES) {
+    const candidate = `users/${uid}/media/${mediaId}.${ext}`;
+    attemptedPaths.push(candidate);
+    try {
+      const resolved = await resolveDownloadUrlFromPath(candidate);
+      return { ...resolved, attemptedPaths };
+    } catch {
+      // Keep trying known extensions; final error is logged by caller.
+    }
+  }
+
+  // Optional last fallback: list all objects under users/{uid}/media and prefix-match mediaId.
+  // This is heavier than deterministic extension probing, so we only run it if all guesses failed.
+  try {
+    const mediaRootRef = ref(storage, `users/${uid}/media`);
+    const listResult = await listAll(mediaRootRef);
+    const matched = listResult.items.find((itemRef) =>
+      itemRef.fullPath.startsWith(`users/${uid}/media/${mediaId}.`)
+    );
+    if (matched?.fullPath) {
+      attemptedPaths.push(matched.fullPath);
+      const resolved = await resolveDownloadUrlFromPath(matched.fullPath);
+      return { ...resolved, attemptedPaths };
+    }
+  } catch {
+    // Best-effort fallback only.
+  }
+
+  return { downloadUrl: null, resolvedStoragePath: null, attemptedPaths };
+}
 
 // ============== USER PROFILE ==============
 
@@ -64,391 +124,14 @@ export const updateUserProfile = async (uid, updates) => {
   await updateDoc(ref, payload);
 };
 
-// Wizard data lives under wizard/{uid}/...
-const getWizardProgressRef = (uid) =>
-  doc(db, "wizard", uid, "progress", "wizard");
-
-// ============== WIZARD PROGRESS (TCG) ==============
-
-const defaultWizardProgress = () => ({
-  xp: 0,
-  level: 1,
-  current_streak: 0,
-  last_active_date: null, // YYYY-MM-DD
-  rolling_accuracy: 100,
-  recent_answers: [], // last 30: true/false
-  momentum_score: 50,
-  updated_at: Timestamp.now(),
-});
-
-export const getWizardProgress = async (uid) => {
-  const ref = getWizardProgressRef(uid);
-  const snap = await getDoc(ref);
-  if (snap.exists()) {
-    const d = snap.data();
-    return {
-      xp: d.xp ?? 0,
-      level: d.level ?? 1,
-      currentStreak: d.current_streak ?? 0,
-      lastActiveDate: d.last_active_date ?? null,
-      rollingAccuracy: d.rolling_accuracy ?? 100,
-      recentAnswers: Array.isArray(d.recent_answers) ? d.recent_answers : [],
-      momentumScore: d.momentum_score ?? 50,
-      updatedAt: d.updated_at?.toMillis?.() ?? Date.now(),
-    };
-  }
-  return null;
-};
-
-export const setWizardProgress = async (uid, data) => {
-  const ref = getWizardProgressRef(uid);
-  const payload = {
-    xp: data.xp ?? 0,
-    level: data.level ?? 1,
-    current_streak: data.currentStreak ?? 0,
-    last_active_date: data.lastActiveDate ?? null,
-    rolling_accuracy: data.rollingAccuracy ?? 100,
-    recent_answers: Array.isArray(data.recentAnswers) ? data.recentAnswers : [],
-    momentum_score: data.momentumScore ?? 50,
-    updated_at: Timestamp.now(),
-  };
-  await setDoc(ref, payload, { merge: true });
-  return payload;
-};
-
-export const initWizardProgressIfNeeded = async (uid) => {
-  const existing = await getWizardProgress(uid);
-  if (existing) return existing;
-  const def = defaultWizardProgress();
-  await setDoc(getWizardProgressRef(uid), def);
-  return {
-    xp: 0,
-    level: 1,
-    currentStreak: 0,
-    lastActiveDate: null,
-    rollingAccuracy: 100,
-    recentAnswers: [],
-    momentumScore: 50,
-    updatedAt: Date.now(),
-  };
-};
-
-// ============== WIZARD DECKS (wizard/{uid}/decks — separate from flashcards) ==============
-
-const getWizardDecksCollection = (uid) =>
-  collection(db, "wizard", uid, "decks");
-
-/** Subcollection: wizard/{uid}/decks/{wizardDeckId}/entries — doc id = card_id or concept_{id}. */
-const getWizardDeckEntriesCollection = (uid, wizardDeckId) =>
-  collection(db, "wizard", uid, "decks", wizardDeckId, "entries");
-
-/** wizard/{uid}/concepts — AI-generated concept cards. */
-const getWizardConceptsCollection = (uid) =>
-  collection(db, "wizard", uid, "concepts");
-
-/** Legacy flat wizard_deck (migrated to users/{uid}/wizard_deck). Used only for migration (read, write to wizard decks). */
-const getLegacyWizardDeckCollection = (uid) =>
-  collection(db, "users", uid, "wizard_deck");
-
-/**
- * Migrate legacy wizard_deck into a new "Default" wizard deck. Call when user has no wizard_decks.
- * Returns the created default deck id.
- */
-async function migrateLegacyWizardDeck(uid) {
-  const legacyRef = getLegacyWizardDeckCollection(uid);
-  const q = query(legacyRef, orderBy("added_at", "desc"));
-  const snapshot = await getDocs(q);
-  if (snapshot.empty) return null;
-
-  const defaultDeckId = uuidv4();
-  const now = Timestamp.now();
-  await setDoc(doc(getWizardDecksCollection(uid), defaultDeckId), {
-    wizard_deck_id: defaultDeckId,
-    title: "Default",
-    description: "Migrated from your previous Wizard deck.",
-    created_at: now,
-    source_type: "imported",
-  });
-
-  for (const d of snapshot.docs) {
-    const data = d.data();
-    const entryRef = doc(getWizardDeckEntriesCollection(uid, defaultDeckId), d.id);
-    await setDoc(entryRef, {
-      card_id: d.id,
-      deck_id: data.deck_id ?? null,
-      added_at: data.added_at ?? now,
-      source_type: data.source_type ?? "import",
-    });
-  }
-  return defaultDeckId;
-}
-
-/** List wizard decks. If none exist, migrates legacy wizard_deck and returns at least one. */
-export const getWizardDecks = async (uid) => {
-  const col = getWizardDecksCollection(uid);
-  const snapshot = await getDocs(query(col, orderBy("created_at", "desc")));
-  let decks = snapshot.docs.map((d) => {
-    const data = d.data();
-    return {
-      wizardDeckId: d.id,
-      title: data.title ?? "Untitled",
-      description: data.description ?? "",
-      createdAt: data.created_at?.toMillis?.() ?? Date.now(),
-      sourceType: data.source_type ?? "created",
-    };
-  });
-
-  if (decks.length === 0) {
-    const defaultId = await migrateLegacyWizardDeck(uid);
-    if (defaultId) {
-      decks = [{ wizardDeckId: defaultId, title: "Default", description: "Migrated from your previous Wizard deck.", createdAt: Date.now(), sourceType: "imported" }];
-    }
-  }
-  return decks;
-};
-
-/** Get one wizard deck by id. */
-export const getWizardDeck = async (uid, wizardDeckId) => {
-  const ref = doc(getWizardDecksCollection(uid), wizardDeckId);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) return null;
-  const data = snap.data();
-  return {
-    wizardDeckId: snap.id,
-    title: data.title ?? "Untitled",
-    description: data.description ?? "",
-    createdAt: data.created_at?.toMillis?.() ?? Date.now(),
-    sourceType: data.source_type ?? "created",
-  };
-};
-
-/** Create a new wizard deck (empty). */
-export const createWizardDeck = async (uid, title, sourceType = "created", description = "") => {
-  const wizardDeckId = uuidv4();
-  const now = Timestamp.now();
-  const finalTitle = (title || "").trim() || "New Wizard Deck";
-  const finalDesc = (description || "").trim();
-  await setDoc(doc(getWizardDecksCollection(uid), wizardDeckId), {
-    wizard_deck_id: wizardDeckId,
-    title: finalTitle,
-    description: finalDesc,
-    created_at: now,
-    source_type: sourceType,
-  });
-  return { wizardDeckId, title: finalTitle, description: finalDesc, createdAt: now.toMillis(), sourceType };
-};
-
-/** Get entries for one wizard deck (card_id or concept_id, deck_id, added_at). */
-export const getWizardDeckEntries = async (uid, wizardDeckId) => {
-  const q = query(
-    getWizardDeckEntriesCollection(uid, wizardDeckId),
-    orderBy("added_at", "desc")
-  );
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map((d) => {
-    const data = d.data();
-    const isConcept = d.id.startsWith("concept_");
-    return {
-      id: d.id,
-      cardId: isConcept ? null : d.id,
-      conceptId: isConcept ? (data.concept_id ?? d.id.replace(/^concept_/, "")) : null,
-      deckId: data.deck_id ?? null,
-      addedAt: data.added_at?.toMillis?.() ?? Date.now(),
-      sourceType: data.source_type ?? (isConcept ? "concept" : "import"),
-      title: data.title ?? null,
-      description: data.description ?? null,
-    };
-  });
-};
-
-/** Add a flashcard card to a wizard deck. Optional title/description (from import mapping). */
-export const addToWizardDeck = async (uid, wizardDeckId, cardId, deckId, sourceType = "import", extras = {}) => {
-  const ref = doc(getWizardDeckEntriesCollection(uid, wizardDeckId), cardId);
-  const docData = {
-    card_id: cardId,
-    deck_id: deckId,
-    added_at: Timestamp.now(),
-    source_type: sourceType,
-  };
-  if (extras.title != null) docData.title = extras.title;
-  if (extras.description != null) docData.description = extras.description;
-  await setDoc(ref, docData);
-};
-
-/** Add all cards from a flashcard deck into a wizard deck. */
-export const addDeckToWizardDeck = async (uid, wizardDeckId, flashcardDeckId) => {
-  const cards = await getCards(uid, flashcardDeckId);
-  for (const card of cards) {
-    await addToWizardDeck(uid, wizardDeckId, card.cardId, flashcardDeckId, "import");
-  }
-  return cards.length;
-};
-
-/** Create a new card for Wizard only (prompt/answer) and add it to the wizard deck. */
-export const createCardForWizard = async (uid, wizardDeckId, prompt, correctAnswer) => {
-  const cardId = uuidv4();
-  const promptBlockId = uuidv4();
-  const answerBlockId = uuidv4();
-  const now = Timestamp.now();
-  const blocksSnapshot = [
-    { blockId: promptBlockId, type: "header1", label: "Question", required: false },
-    { blockId: answerBlockId, type: "hiddenText", label: "Answer", required: false },
-  ];
-  const values = [
-    { blockId: promptBlockId, type: "text", text: (prompt || "").trim() || "New card" },
-    { blockId: answerBlockId, type: "text", text: (correctAnswer || "").trim() || "" },
-  ];
-  const blocksSnapshotData = blocksSnapshot.map(transformBlockToFirestore);
-  const valuesData = values.map(transformValueToFirestore);
-  const card = {
-    card_id: cardId,
-    deck_id: null,
-    template_id: null,
-    blocks_snapshot: blocksSnapshotData,
-    values: valuesData,
-    blocks_snapshot_json: JSON.stringify(blocksSnapshotData),
-    values_json: JSON.stringify(valuesData),
-    main_block_id: promptBlockId,
-    sub_block_id: answerBlockId,
-    created_at: now,
-    updated_at: now,
-    is_deleted: false,
-    srs_state: 1,
-    srs_step: 0,
-    srs_due: Date.now(),
-    srs_last_review: null,
-    review_count: 0,
-  };
-  await setDoc(doc(getCardsCollection(uid), cardId), card);
-  await addToWizardDeck(uid, wizardDeckId, cardId, null, "created");
-  return transformCardFromFirestore(card);
-};
-
-/** Add a concept to a wizard deck. */
-export const addConceptToWizardDeck = async (uid, wizardDeckId, conceptId) => {
-  const entryId = `concept_${conceptId}`;
-  const ref = doc(getWizardDeckEntriesCollection(uid, wizardDeckId), entryId);
-  await setDoc(ref, {
-    concept_id: conceptId,
-    card_id: null,
-    deck_id: null,
-    added_at: Timestamp.now(),
-    source_type: "concept",
-  });
-};
-
-/** Remove a card from a wizard deck. */
-export const removeFromWizardDeck = async (uid, wizardDeckId, cardIdOrEntryId) => {
-  const ref = doc(getWizardDeckEntriesCollection(uid, wizardDeckId), cardIdOrEntryId);
-  await deleteDoc(ref);
-};
-
-/** Delete a wizard deck and all its entries. */
-export const deleteWizardDeck = async (uid, wizardDeckId) => {
-  const entriesCol = getWizardDeckEntriesCollection(uid, wizardDeckId);
-  const snapshot = await getDocs(entriesCol);
-  for (const d of snapshot.docs) {
-    await deleteDoc(doc(entriesCol, d.id));
-  }
-  await deleteDoc(doc(getWizardDecksCollection(uid), wizardDeckId));
-};
-
-/** Update a wizard deck's title and/or description. */
-export const updateWizardDeck = async (uid, wizardDeckId, updates) => {
-  const ref = doc(getWizardDecksCollection(uid), wizardDeckId);
-  const data = {};
-  if (updates.title != null) data.title = String(updates.title).trim() || "Untitled";
-  if (updates.description != null) data.description = String(updates.description).trim();
-  if (Object.keys(data).length === 0) return;
-  await updateDoc(ref, data);
-};
-
-/** Create an AI-generated concept (wizard/{uid}/concepts/{conceptId}). */
-export const createConcept = async (uid, data) => {
-  const conceptId = data.conceptId ?? uuidv4();
-  const now = Timestamp.now();
-  const docData = {
-    concept_id: conceptId,
-    title: data.title ?? "",
-    description: data.description ?? "",
-    rarity_score: data.rarityScore ?? 50,
-    rarity_tier: data.rarityTier ?? "common",
-    card_type: data.cardType ?? "MONSTER",
-    atk: data.atk ?? 0,
-    def: data.def ?? 0,
-    effect_text: data.effectText ?? "",
-    trigger_type: data.triggerType ?? "TYPED",
-    image_url: data.imageUrl ?? "",
-    ai_complexity_score: data.aiComplexityScore ?? null,
-    created_at: now,
-  };
-  await setDoc(doc(getWizardConceptsCollection(uid), conceptId), docData);
-  return { conceptId, ...docData, createdAt: now.toMillis() };
-};
-
-/** Get one concept by id. */
-export const getConcept = async (uid, conceptId) => {
-  const ref = doc(getWizardConceptsCollection(uid), conceptId);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) return null;
-  const d = snap.data();
-  return {
-    conceptId: snap.id,
-    title: d.title ?? "",
-    description: d.description ?? "",
-    rarityScore: d.rarity_score ?? 50,
-    rarityTier: d.rarity_tier ?? "common",
-    cardType: d.card_type ?? "MONSTER",
-    atk: d.atk ?? 0,
-    def: d.def ?? 0,
-    effectText: d.effect_text ?? "",
-    triggerType: d.trigger_type ?? "TYPED",
-    imageUrl: d.image_url ?? "",
-    aiComplexityScore: d.ai_complexity_score ?? null,
-    createdAt: d.created_at?.toMillis?.() ?? Date.now(),
-  };
-};
-
-/** Get full card/concept list for one wizard deck. Cards are flashcard objects; concepts are normalized for battle. */
-export const getWizardDeckCards = async (uid, wizardDeckId) => {
-  const entries = await getWizardDeckEntries(uid, wizardDeckId);
-  const result = [];
-  for (const entry of entries) {
-    if (entry.conceptId) {
-      const concept = await getConcept(uid, entry.conceptId);
-      if (!concept) continue;
-      result.push({
-        cardId: entry.id,
-        isConcept: true,
-        concept,
-        title: concept.title,
-        description: concept.description,
-        rarity_tier: concept.rarityTier,
-        rarity_score: concept.rarityScore,
-        atk: concept.atk,
-        def: concept.def,
-        effect_text: concept.effectText,
-        trigger_type: concept.triggerType,
-        prompt: concept.title,
-        correctAnswers: concept.description ? [concept.description] : [],
-        challengeType: concept.triggerType === "MCQ" ? "mcq" : "text",
-      });
-    } else if (entry.cardId) {
-      const card = await getCard(uid, entry.cardId);
-      if (card && !card.isDeleted) {
-        card.entryId = entry.id;
-        if (entry.title != null) card.title = entry.title;
-        if (entry.description != null) card.description = entry.description;
-        result.push(card);
-      }
-    }
-  }
-  return result;
-};
-
 // ============== DECK OPERATIONS ==============
 
-export const createDeck = async (uid, title, description = "") => {
+export const createDeck = async (
+  uid,
+  title,
+  description = "",
+  defaultTemplateId = null,
+) => {
   const deckId = uuidv4();
   const now = Timestamp.now();
 
@@ -459,6 +142,9 @@ export const createDeck = async (uid, title, description = "") => {
     created_at: now,
     updated_at: now,
     is_deleted: false,
+    ...(defaultTemplateId != null && defaultTemplateId !== ""
+      ? { default_template_id: defaultTemplateId }
+      : {}),
   };
 
   await setDoc(doc(getDecksCollection(uid), deckId), deck);
@@ -510,14 +196,48 @@ export const updateDeck = async (uid, deckId, updates) => {
     updateData.description = updates.description;
   if (updates.defaultTemplateId !== undefined)
     updateData.default_template_id = updates.defaultTemplateId || null;
-  if (updates.isDeleted !== undefined)
+  if (updates.isDeleted !== undefined) {
     updateData.is_deleted = updates.isDeleted;
+    updateData.deleted_at = updates.isDeleted ? Timestamp.now() : null;
+  }
 
   await setDoc(deckRef, updateData, { merge: true });
 };
 
+const FIRESTORE_BATCH_MAX_WRITES = 500;
+
 export const deleteDeck = async (uid, deckId) => {
   await updateDeck(uid, deckId, { isDeleted: true });
+
+  const now = Timestamp.now();
+  const cardsQ = query(
+    getCardsCollection(uid),
+    where("deck_id", "==", deckId),
+  );
+  const snapshot = await getDocs(cardsQ);
+  const refsToSoftDelete = [];
+  snapshot.docs.forEach((d) => {
+    const data = d.data();
+    if (data.is_deleted === true) return;
+    refsToSoftDelete.push(d.ref);
+  });
+
+  for (let i = 0; i < refsToSoftDelete.length; i += FIRESTORE_BATCH_MAX_WRITES) {
+    const batch = writeBatch(db);
+    const chunk = refsToSoftDelete.slice(i, i + FIRESTORE_BATCH_MAX_WRITES);
+    chunk.forEach((ref) => {
+      batch.set(
+        ref,
+        {
+          is_deleted: true,
+          deleted_at: now,
+          updated_at: now,
+        },
+        { merge: true },
+      );
+    });
+    await batch.commit();
+  }
 };
 
 // ============== CARD OPERATIONS ==============
@@ -722,6 +442,7 @@ export const deleteCard = async (uid, cardId, deckId) => {
     cardRef,
     {
       is_deleted: true,
+      deleted_at: now,
       updated_at: now,
     },
     { merge: true },
@@ -847,8 +568,10 @@ export const updateTemplate = async (uid, templateId, updates) => {
     updateData.main_block_id = updates.mainBlockId ?? null;
   if (updates.subBlockId !== undefined)
     updateData.sub_block_id = updates.subBlockId ?? null;
-  if (updates.isDeleted !== undefined)
+  if (updates.isDeleted !== undefined) {
     updateData.is_deleted = updates.isDeleted;
+    updateData.deleted_at = updates.isDeleted ? Timestamp.now() : null;
+  }
 
   // Increment version on update
   const existing = await getTemplate(uid, templateId);
@@ -970,8 +693,104 @@ export const getMedia = async (uid, mediaId) => {
   const mediaRef = doc(getMediaCollection(uid), mediaId);
   const mediaSnap = await getDoc(mediaRef);
   if (mediaSnap.exists()) {
-    return transformMediaFromFirestore(mediaSnap.data());
+    const data = mediaSnap.data();
+    const transformed = transformMediaFromFirestore(data);
+    const storagePath =
+      transformed.storagePath ||
+      data?.storagePath ||
+      data?.storage_path ||
+      data?.path ||
+      data?.file_path ||
+      data?.media_path ||
+      null;
+    let downloadUrl =
+      transformed.downloadUrl ||
+      data?.downloadUrl ||
+      data?.download_url ||
+      null;
+    let resolvedStoragePath = storagePath;
+    let attemptedPaths = [];
+
+    if (!downloadUrl && storagePath) {
+      try {
+        const resolved = await resolveDownloadUrlFromPath(storagePath);
+        downloadUrl = resolved.downloadUrl;
+        resolvedStoragePath = resolved.resolvedStoragePath;
+        attemptedPaths = [storagePath];
+      } catch (error) {
+        attemptedPaths = [storagePath];
+        console.warn("[media.resolve] getDownloadURL by storagePath failed", {
+          uid,
+          mediaId,
+          projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || null,
+          storagePath,
+          error: toReadableStorageError(error),
+        });
+      }
+    }
+
+    if (!downloadUrl) {
+      const fallback = await resolveDownloadUrlByMediaId(uid, mediaId);
+      downloadUrl = fallback.downloadUrl;
+      resolvedStoragePath = fallback.resolvedStoragePath || resolvedStoragePath;
+      attemptedPaths = attemptedPaths.concat(fallback.attemptedPaths || []);
+    }
+
+    if (!downloadUrl) {
+      console.warn("[media.resolve] unresolved media download URL", {
+        uid,
+        mediaId,
+        projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || null,
+        storagePath,
+        attemptedPaths,
+      });
+    } else if (attemptedPaths.length > 0) {
+      console.info("[media.resolve] resolved with fallback", {
+        uid,
+        mediaId,
+        projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || null,
+        resolvedStoragePath,
+        attemptedPaths,
+      });
+    }
+
+    return {
+      ...transformed,
+      storagePath: resolvedStoragePath || transformed.storagePath || null,
+      downloadUrl: downloadUrl || transformed.downloadUrl || null,
+      attemptedStoragePaths: attemptedPaths,
+    };
   }
+
+  // No Firestore media doc — still try Storage (mobile may upload bytes without writing metadata).
+  const storageOnly = await resolveDownloadUrlByMediaId(uid, mediaId);
+  if (storageOnly.downloadUrl) {
+    console.info("[media.resolve] no Firestore media doc; resolved URL from Storage only", {
+      uid,
+      mediaId,
+      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || null,
+      resolvedStoragePath: storageOnly.resolvedStoragePath,
+    });
+    return {
+      mediaId,
+      storagePath: storageOnly.resolvedStoragePath,
+      downloadUrl: storageOnly.downloadUrl,
+      type: undefined,
+      fileSize: undefined,
+      mimeType: undefined,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      isDeleted: false,
+      attemptedStoragePaths: storageOnly.attemptedPaths || [],
+    };
+  }
+
+  console.warn("[media.resolve] no Firestore media doc and Storage path lookup failed", {
+    uid,
+    mediaId,
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || null,
+    attemptedPaths: storageOnly.attemptedPaths,
+  });
   return null;
 };
 
@@ -992,6 +811,7 @@ export const deleteMedia = async (uid, mediaId, storagePath) => {
     mediaRef,
     {
       is_deleted: true,
+      deleted_at: Timestamp.now(),
       updated_at: Timestamp.now(),
     },
     { merge: true },
@@ -1040,6 +860,8 @@ const transformDeckFromFirestore = (data) => {
     data.created_at?.toMillis?.() || data.created_at || Date.now();
   const updatedAt =
     data.updated_at?.toMillis?.() || data.updated_at || Date.now();
+  const deletedAt =
+    data.deleted_at?.toMillis?.() || data.deleted_at || null;
 
   return {
     deckId: data.deck_id,
@@ -1048,6 +870,7 @@ const transformDeckFromFirestore = (data) => {
     defaultTemplateId: data.default_template_id || null,
     createdAt,
     updatedAt,
+    deletedAt,
     isDeleted: data.is_deleted || false,
   };
 };
@@ -1093,10 +916,14 @@ function parseCardContentFromJson(data) {
       }
     } catch (e) {
       console.warn("[parseCardContentFromJson] READ JSON parse failed", e.message);
-      blocksSnapshot = (data.blocks_snapshot || []).map(transformBlockFromFirestore);
+      blocksSnapshot = (data.blocks_snapshot || []).map((b) =>
+        transformBlockFromFirestore(normalizeBlockForTransform(b)),
+      );
     }
   } else {
-    blocksSnapshot = (data.blocks_snapshot || []).map(transformBlockFromFirestore);
+    blocksSnapshot = (data.blocks_snapshot || []).map((b) =>
+      transformBlockFromFirestore(normalizeBlockForTransform(b)),
+    );
   }
   if (data.values_json) {
     try {
@@ -1105,10 +932,14 @@ function parseCardContentFromJson(data) {
         transformValueFromFirestore(normalizeValueForTransform(v)),
       );
     } catch (_) {
-      values = (data.values || []).map(transformValueFromFirestore);
+      values = (data.values || []).map((v) =>
+        transformValueFromFirestore(normalizeValueForTransform(v)),
+      );
     }
   } else {
-    values = (data.values || []).map(transformValueFromFirestore);
+    values = (data.values || []).map((v) =>
+      transformValueFromFirestore(normalizeValueForTransform(v)),
+    );
   }
   return { blocksSnapshot, values };
 }
@@ -1118,6 +949,8 @@ const transformCardFromFirestore = (data) => {
     data.created_at?.toMillis?.() || data.created_at || Date.now();
   const updatedAt =
     data.updated_at?.toMillis?.() || data.updated_at || Date.now();
+  const deletedAt =
+    data.deleted_at?.toMillis?.() || data.deleted_at || null;
 
   const { blocksSnapshot, values } = parseCardContentFromJson(data);
 
@@ -1140,6 +973,7 @@ const transformCardFromFirestore = (data) => {
       : null,
     createdAt,
     updatedAt,
+    deletedAt,
     isDeleted: data.is_deleted || false,
     // SRS fields
     srsState: data.srs_state ?? 1,
@@ -1248,13 +1082,13 @@ const transformBlockToFirestore = (block) => {
 };
 
 const transformValueFromFirestore = (data) => ({
-  blockId: data.block_id,
+  blockId: data.block_id ?? data.blockId,
   type: data.type,
   text: data.text,
   items: data.items,
-  mediaIds: data.media_ids,
-  originalMediaIds: data.original_media_ids,
-  correctAnswers: data.correct_answers,
+  mediaIds: data.media_ids ?? data.mediaIds,
+  originalMediaIds: data.original_media_ids ?? data.originalMediaIds,
+  correctAnswers: data.correct_answers ?? data.correctAnswers,
 });
 
 const transformValueToFirestore = (value) => {
@@ -1290,6 +1124,8 @@ const transformTemplateFromFirestore = (data) => {
     data.created_at?.toMillis?.() || data.created_at || Date.now();
   const updatedAt =
     data.updated_at?.toMillis?.() || data.updated_at || Date.now();
+  const deletedAt =
+    data.deleted_at?.toMillis?.() || data.deleted_at || null;
   // Normalize blocks (mobile may store blocks as JSON string with camelCase)
   const rawBlocks = ensureArray(data.blocks);
   const blocks = rawBlocks.map((b) =>
@@ -1316,6 +1152,7 @@ const transformTemplateFromFirestore = (data) => {
     subBlockId: data.sub_block_id ?? data.subBlockId ?? null,
     createdAt,
     updatedAt,
+    deletedAt,
     isDeleted: data.is_deleted ?? false,
   };
 };
@@ -1325,6 +1162,8 @@ const transformMediaFromFirestore = (data) => {
     data.created_at?.toMillis?.() || data.created_at || Date.now();
   const updatedAt =
     data.updated_at?.toMillis?.() || data.updated_at || Date.now();
+  const deletedAt =
+    data.deleted_at?.toMillis?.() || data.deleted_at || null;
 
   return {
     mediaId: data.media_id,
@@ -1335,6 +1174,7 @@ const transformMediaFromFirestore = (data) => {
     mimeType: data.mime_type,
     createdAt,
     updatedAt,
+    deletedAt,
     isDeleted: data.is_deleted || false,
   };
 };

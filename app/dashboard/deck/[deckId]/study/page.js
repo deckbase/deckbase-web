@@ -566,9 +566,23 @@ export default function StudySessionPage() {
           const media = await getMedia(user.uid, mediaId);
           if (media && isMounted) {
             setMediaCache((prev) => ({ ...prev, [mediaId]: media }));
+          } else {
+            console.warn("[StudyMediaResolve] media missing", {
+              cardId: currentCard?.cardId || null,
+              mediaId,
+              uid: user.uid,
+              projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || null,
+            });
           }
         } catch (mediaError) {
-          console.error("Error loading media:", mediaError);
+          console.error("[StudyMediaResolve] getMedia failed", {
+            cardId: currentCard?.cardId || null,
+            mediaId,
+            uid: user.uid,
+            projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || null,
+            errorCode: mediaError?.code || null,
+            errorMessage: mediaError?.message || String(mediaError),
+          });
         }
       }
     };

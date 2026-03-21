@@ -16,7 +16,7 @@
 | **Rankings pulse** | ✅ DataForSEO SERP API, top 100, domain + keyword list |
 | **SERP opportunity mapping** | ✅ Done in UI: merge volume + rankings, flag “Yes” (high volume, not top 10) |
 | **Technical audit** | ✅ Firecrawl scrape + title, description, H1/H2, word count, issues |
-| **Claude in codebase** | ✅ `@anthropic-ai/sdk` used elsewhere (cards, wizard); can add Haiku for SEO |
+| **Claude in codebase** | ✅ `@anthropic-ai/sdk` used elsewhere (cards); can add Haiku for SEO |
 
 ---
 
