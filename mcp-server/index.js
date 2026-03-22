@@ -11,6 +11,8 @@ import { readFile, readdir } from "fs/promises";
 import { createInterface } from "readline";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
+import { formatMcpTemplateBlockCatalogForChat } from "../lib/mcp-template-blocks.js";
+import { formatDeckbaseBlockSchemasForChat } from "../lib/mcp-block-schemas.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
@@ -83,9 +85,38 @@ async function handleToolsList() {
         },
       },
       {
+        name: "list_template_block_types",
+        description:
+          "List all template block types for create_template. Show the user the list so they can pick multiple in order, then pass block_types.",
+        inputSchema: { type: "object", properties: {} },
+      },
+      {
+        name: "list_block_schemas",
+        description:
+          "JSON shapes for each block type (block definition + value + configJson). For MCP/mobile clients.",
+        inputSchema: { type: "object", properties: {} },
+      },
+      {
         name: "list_decks",
         description: "List the user's flashcard decks. Requires hosted MCP with API key.",
         inputSchema: { type: "object", properties: {} },
+      },
+      {
+        name: "list_templates",
+        description: "List card templates (templateId for create_card). Requires hosted MCP with API key.",
+        inputSchema: { type: "object", properties: {} },
+      },
+      {
+        name: "get_template_schema",
+        description:
+          "After picking a template: exact blockIds, configJson, valuesExample, create_card hints. Requires hosted MCP. Args: templateId or deckId (default template).",
+        inputSchema: {
+          type: "object",
+          properties: {
+            templateId: { type: "string" },
+            deckId: { type: "string" },
+          },
+        },
       },
       {
         name: "create_deck",
@@ -98,11 +129,66 @@ async function handleToolsList() {
       },
       {
         name: "create_card",
-        description: "Create a simple flashcard with front content only (back not supported). Requires hosted MCP with API key.",
+        description:
+          "Create a card from a template. Omit templateId to use the deck default (list_decks.defaultTemplateId). Requires hosted MCP with API key.",
         inputSchema: {
           type: "object",
-          properties: { deckId: { type: "string" }, front: { type: "string" } },
-          required: ["deckId", "front"],
+          properties: {
+            deckId: { type: "string" },
+            templateId: { type: "string" },
+            front: { type: "string" },
+            block_text: { type: "object" },
+          },
+          required: ["deckId"],
+        },
+      },
+      {
+        name: "create_cards",
+        description:
+          "Bulk create cards (same deck + template). Max 50 per request. Requires hosted MCP with API key.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            deckId: { type: "string" },
+            templateId: { type: "string" },
+            cards: { type: "array" },
+          },
+          required: ["deckId", "cards"],
+        },
+      },
+      {
+        name: "export_deck",
+        description:
+          "Export a deck as JSON (metadata and cards). export_type: full (default) or values_only. Requires hosted MCP with API key.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            deckId: { type: "string" },
+            max_cards: { type: "number", description: "Optional; default 2000, max 5000" },
+            export_type: {
+              type: "string",
+              description: 'Optional: "full" or "values_only"',
+            },
+          },
+          required: ["deckId"],
+        },
+      },
+      {
+        name: "create_template",
+        description:
+          "Create a flashcard template (block layout). Requires hosted MCP with API key.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            name: { type: "string" },
+            description: { type: "string" },
+            block_types: {
+              type: "array",
+              description: "Ordered type keys or numeric ids; use list_template_block_types first",
+            },
+            blocks: { type: "array", items: { type: "object" } },
+          },
+          required: ["name"],
         },
       },
     ],
@@ -121,7 +207,22 @@ async function handleToolCall(name, args) {
     if (content == null) return { content: [{ type: "text", text: `Doc not found: ${path}` }], isError: true };
     return { content: [{ type: "text", text: content }] };
   }
-  if (name === "list_decks" || name === "create_deck" || name === "create_card") {
+  if (name === "list_template_block_types") {
+    return { content: [{ type: "text", text: formatMcpTemplateBlockCatalogForChat() }] };
+  }
+  if (name === "list_block_schemas") {
+    return { content: [{ type: "text", text: formatDeckbaseBlockSchemasForChat() }] };
+  }
+  if (
+    name === "list_decks" ||
+    name === "list_templates" ||
+    name === "get_template_schema" ||
+    name === "create_deck" ||
+    name === "create_card" ||
+    name === "create_cards" ||
+    name === "export_deck" ||
+    name === "create_template"
+  ) {
     return { content: [{ type: "text", text: HOSTED_ONLY_MSG }], isError: true };
   }
   return { content: [{ type: "text", text: `Unknown tool: ${name}` }], isError: true };

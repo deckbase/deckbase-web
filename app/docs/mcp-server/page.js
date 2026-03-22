@@ -85,12 +85,30 @@ export default function McpServerDocPage() {
             or <code className={M.code}>deckbase://docs/public/MCP.md</code>). Only docs in{" "}
             <code className={M.code}>docs/public/</code> are served.
           </li>
+          <li>
+            <strong className="font-mono text-neutral-100">list_template_block_types</strong> — List
+            all template block type keys and numeric ids (text, media, quiz, layout). No parameters.
+            Use this so you can show the user what to pick; they choose multiple types in order, then you
+            pass that list as <code className={M.code}>block_types</code> to{" "}
+            <code className={M.code}>create_template</code>. Static data (no user Firestore reads).
+          </li>
+          <li>
+            <strong className="font-mono text-neutral-100">list_block_schemas</strong> — Returns JSON
+            shapes for every block type: typical <code className={M.code}>blocksSnapshot</code> entry,
+            matching <code className={M.code}>values</code> entry, and{" "}
+            <code className={M.code}>configJson</code> fields for quiz/image/audio. No parameters. Use for
+            mobile, MCP, or any client building or
+            parsing cards; pair with <code className={M.code}>export_deck</code> for real examples.
+          </li>
         </ul>
         <h3 className={`${M.h3} mb-2`}>Decks and cards (hosted only; require API key)</h3>
         <ul className={`space-y-2 ${M.bodyMuted}`}>
           <li>
             <strong className="font-mono text-neutral-100">list_decks</strong> — List the user&apos;s
-            flashcard decks (deckId, title, description). No parameters.
+            flashcard decks (<code className={M.code}>deckId</code>, title, description, optional{" "}
+            <code className={M.code}>defaultTemplateId</code>). No parameters. When{" "}
+            <code className={M.code}>defaultTemplateId</code> is set, <code className={M.code}>create_card</code>{" "}
+            can omit <code className={M.code}>templateId</code>.
           </li>
           <li>
             <strong className="font-mono text-neutral-100">create_deck</strong> — Create a new deck.
@@ -99,15 +117,80 @@ export default function McpServerDocPage() {
             <code className={M.code}>deckId</code>.
           </li>
           <li>
-            <strong className="font-mono text-neutral-100">create_card</strong> — Create a simple
-            flashcard with front content only (back not supported). Parameters:{" "}
-            <code className={M.code}>deckId</code>, <code className={M.code}>front</code> (both
-            required). Returns <code className={M.code}>cardId</code>.
+            <strong className="font-mono text-neutral-100">list_templates</strong> — List templates (
+            <code className={M.code}>templateId</code>, name, description). No parameters. If the list is
+            empty, use <code className={M.code}>create_template</code> before{" "}
+            <code className={M.code}>create_card</code>.
+          </li>
+          <li>
+            <strong className="font-mono text-neutral-100">get_template_schema</strong> — After the user
+            picks a template, returns exact JSON for that layout: each{" "}
+            <code className={M.code}>blockId</code>, type, <code className={M.code}>configJson</code>,{" "}
+            <code className={M.code}>valuesExample</code>, and hints for{" "}
+            <code className={M.code}>create_card</code> (<code className={M.code}>block_text</code> keys).
+            Parameters: <code className={M.code}>templateId</code> from{" "}
+            <code className={M.code}>list_templates</code>, or <code className={M.code}>deckId</code> only to
+            use the deck&apos;s default template.
+          </li>
+          <li>
+            <strong className="font-mono text-neutral-100">create_card</strong> — Create a new card using
+            a template&apos;s fields. <code className={M.code}>deckId</code> required.{" "}
+            <code className={M.code}>templateId</code> optional: if omitted, uses the deck&apos;s{" "}
+            <code className={M.code}>defaultTemplateId</code> from <code className={M.code}>list_decks</code>{" "}
+            (set in the dashboard); if the deck has no default, pass <code className={M.code}>templateId</code>{" "}
+            from <code className={M.code}>list_templates</code>. Optional <code className={M.code}>front</code>{" "}
+            and <code className={M.code}>block_text</code>. Validates <code className={M.code}>block_text</code>{" "}
+            keys, required text blocks, and that at least one text field is filled when the template has text
+            blocks. Returns <code className={M.code}>cardId</code>, <code className={M.code}>templateId</code>{" "}
+            used, and <code className={M.code}>usedDeckDefault</code>.
+          </li>
+          <li>
+            <strong className="font-mono text-neutral-100">create_cards</strong> — Create multiple
+            cards in one request (same <code className={M.code}>deckId</code>, template resolution, and
+            validation as <code className={M.code}>create_card</code>). Parameters:{" "}
+            <code className={M.code}>deckId</code>
+            , optional <code className={M.code}>templateId</code>, required non-empty{" "}
+            <code className={M.code}>cards</code> array; each element may include{" "}
+            <code className={M.code}>front</code> and <code className={M.code}>block_text</code> like a
+            single <code className={M.code}>create_card</code> call. Max 50 cards per request. If one
+            card fails, the response lists <code className={M.code}>created</code> so far and{" "}
+            <code className={M.code}>failedAt</code>; earlier cards may already exist in Firestore.
+          </li>
+          <li>
+            <strong className="font-mono text-neutral-100">export_deck</strong> — Export deck
+            metadata and cards as JSON. Parameters: <code className={M.code}>deckId</code> (required),
+            optional <code className={M.code}>max_cards</code> (default 2000, cap 5000), optional{" "}
+            <code className={M.code}>export_type</code>: <code className={M.code}>full</code> (default:
+            each card includes <code className={M.code}>blocksSnapshot</code> and{" "}
+            <code className={M.code}>values</code>) or <code className={M.code}>values_only</code>{" "}
+            (<code className={M.code}>values</code> only, smaller payload). Response includes{" "}
+            <code className={M.code}>truncated</code> and <code className={M.code}>exportType</code>.
+          </li>
+          <li>
+            <strong className="font-mono text-neutral-100">create_template</strong> — Create a
+            flashcard template (block layout for new cards). Parameters:{" "}
+            <code className={M.code}>name</code> (required), optional{" "}
+            <code className={M.code}>description</code>, optional{" "}
+            <code className={M.code}>block_types</code> (ordered list of type keys or 0–12 ids from{" "}
+            <code className={M.code}>list_template_block_types</code>; mutually exclusive with{" "}
+            <code className={M.code}>blocks</code>), optional <code className={M.code}>blocks</code>{" "}
+            (full block objects; omit both for default Question + Answer), optional{" "}
+            <code className={M.code}>rendering</code> (<code className={M.code}>frontBlockIds</code> /{" "}
+            <code className={M.code}>backBlockIds</code>), optional{" "}
+            <code className={M.code}>mainBlockId</code> / <code className={M.code}>subBlockId</code>.
+            Returns <code className={M.code}>templateId</code> and block ids.
           </li>
         </ul>
         <p className={`${M.bodyMuted} mt-3`}>
-          Deck and card tools (list_decks, create_deck, create_card) require the hosted MCP endpoint
-          with an API key.
+          The hosted MCP endpoint requires an API key on every request. Tools that read your data (
+          <code className={M.code}>list_decks</code>, <code className={M.code}>list_templates</code>,{" "}
+          <code className={M.code}>get_template_schema</code>, <code className={M.code}>create_deck</code>,{" "}
+          <code className={M.code}>create_card</code>, <code className={M.code}>create_cards</code>,{" "}
+          <code className={M.code}>export_deck</code>, <code className={M.code}>create_template</code>)
+          need that key;{" "}
+          <code className={M.code}>list_template_block_types</code> and{" "}
+          <code className={M.code}>list_block_schemas</code> only return static reference data (no user
+          Firestore reads) but still use the same auth on hosted.
         </p>
       </section>
 
@@ -130,22 +213,33 @@ export default function McpServerDocPage() {
       </section>
 
       <section id="example" className="scroll-mt-28">
-        <h2 className={M.h2}>Example: create a deck and add a card (hosted)</h2>
+        <h2 className={M.h2}>Example: deck, template, and card (hosted)</h2>
         <ol className={`${M.bodyMuted} list-inside list-decimal space-y-2`}>
           <li>
             Configure your client with the MCP URL and{" "}
             <code className={M.code}>Authorization: Bearer YOUR_API_KEY</code>.
           </li>
           <li>
-            Call <strong className="font-mono text-neutral-100">create_deck</strong> with{" "}
-            <code className={M.code}>title</code> (e.g. &quot;Spanish verbs&quot;) and optional{" "}
-            <code className={M.code}>description</code>.
+            Call <strong className="font-mono text-neutral-100">list_templates</strong>. If the list is
+            empty, use <strong className="font-mono text-neutral-100">list_template_block_types</strong>{" "}
+            and <strong className="font-mono text-neutral-100">create_template</strong> first, then list
+            again.
           </li>
           <li>
-            Use the returned <code className={M.code}>deckId</code> and call{" "}
-            <strong className="font-mono text-neutral-100">create_card</strong> with{" "}
-            <code className={M.code}>deckId</code> and <code className={M.code}>front</code> (e.g.
-            &quot;What is &apos;to run&apos; in Spanish?&quot;). Only the front is supported.
+            Call <strong className="font-mono text-neutral-100">get_template_schema</strong> with the
+            chosen <code className={M.code}>templateId</code> (or <code className={M.code}>deckId</code> only
+            if the deck default is the right layout) so clients know exact{" "}
+            <code className={M.code}>blockId</code> keys for <code className={M.code}>block_text</code>.
+          </li>
+          <li>
+            Call <strong className="font-mono text-neutral-100">create_deck</strong> with a{" "}
+            <code className={M.code}>title</code> and optional <code className={M.code}>description</code>.
+          </li>
+          <li>
+            Call <strong className="font-mono text-neutral-100">create_card</strong> with{" "}
+            <code className={M.code}>deckId</code> and optionally <code className={M.code}>templateId</code>{" "}
+            (omit if the deck has a default template). Optionally <code className={M.code}>front</code> or{" "}
+            <code className={M.code}>block_text</code> to pre-fill text fields.
           </li>
         </ol>
       </section>
@@ -164,9 +258,10 @@ export default function McpServerDocPage() {
             key only (no Firebase token).
           </li>
           <li>
-            <strong className="text-neutral-100">Card shape:</strong> create_card builds a minimal
-            flashcard with front content only (back not supported) and writes via Firestore. Decks and
-            cards appear in the dashboard and sync to the mobile app.
+            <strong className="text-neutral-100">Card shape:</strong> create_card copies the selected
+            template&apos;s block layout into a new card (empty values by default; optional{" "}
+            <code className={M.code}>front</code> / <code className={M.code}>block_text</code>). Data is
+            stored in Firestore and syncs to the dashboard and mobile app.
           </li>
         </ul>
       </section>

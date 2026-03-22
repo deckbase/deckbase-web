@@ -19,22 +19,28 @@ API keys are created in the dashboard (Pro/VIP). MCP is available for Pro and VI
 
 | Tool | Description | Parameters |
 |------|-------------|------------|
-| **list_docs** | List all Markdown files in the project `docs/` folder | — |
-| **read_doc** | Read a doc by path or filename | `path` (e.g. `STATE_BASED_SYNC_MOBILE.md` or `docs/features/MCP.md`) |
+| **list_docs** | List public Markdown files (`docs/public/` on hosted catalog) | — |
+| **read_doc** | Read a doc by path | `path` |
+| **list_template_block_types** | Block type ids for `create_template` / `block_types` | — |
+| **list_block_schemas** | JSON shapes per block type (`blocksSnapshot`, `values`, `configJson`) | — |
 
-### Decks and cards (hosted only; require API key)
+### Decks, templates, and cards (hosted only; require API key)
 
 | Tool | Description | Parameters |
 |------|-------------|------------|
-| **list_decks** | List the user's flashcard decks (deckId, title, description) | — |
+| **list_decks** | List decks (`deckId`, title, description, optional `defaultTemplateId`) | — |
+| **list_templates** | List templates (`templateId`, name, description). Empty → create_template first. | — |
+| **get_template_schema** | Exact layout JSON for one template (`blockId`s, `valuesExample`, create_card hints). | `templateId` or `deckId` (default template) |
 | **create_deck** | Create a new flashcard deck | `title` (required), `description` (optional) |
-| **create_card** | Create a simple flashcard with front content only (back not supported) | `deckId`, `front` (both required) |
+| **create_card** | New card from a template’s layout | `deckId` (required); `templateId` optional if deck has `defaultTemplateId`; optional `front`, `block_text` |
+| **create_cards** | Bulk create cards (same template rules) | `deckId`, `cards` (array, max 50); optional `templateId` |
+| **export_deck** | Export deck + cards JSON | `deckId`; optional `max_cards`; optional `export_type`: `full` (default) or `values_only` (omit per-card `blocksSnapshot`) |
 
-- **list_decks** returns an array of `{ deckId, title, description }`. Use `deckId` with **create_card**.
+- **list_decks** / **list_templates** supply ids for **create_card**; omit `templateId` when the deck has a default template. After choosing a template, **get_template_schema** gives exact `blockId` → string shapes for **block_text**.
 - **create_deck** returns `{ deckId, title, description }`.
-- **create_card** returns `{ cardId, deckId, front }`. Only the front (one side) is supported; back is not used.
+- **create_card** returns `{ cardId, deckId, templateId, usedDeckDefault }`. The server validates payloads: `block_text` keys must be real template `blockId`s; required text blocks must be filled; if the template has text blocks, at least one must have non-empty content (`front` and/or `block_text`). **create_cards** enforces the same per card.
 
-If you call **list_decks**, **create_deck**, or **create_card** via the local stdio server (no API key), the server returns a message that these tools are only available when using the hosted MCP endpoint with an API key.
+If you call these hosted-only tools via the local stdio server (no API key), the server returns a message that they are only available when using the hosted MCP endpoint with an API key.
 
 ---
 
@@ -47,11 +53,13 @@ The server also exposes MCP **resources** for docs:
 
 ---
 
-## Example: create a deck and add a card (hosted)
+## Example: deck, template, and card (hosted)
 
 1. Configure your client with the MCP URL and `Authorization: Bearer YOUR_API_KEY`.
-2. Call **create_deck** with `title` (e.g. `"Spanish verbs"`) and optional `description`.
-3. Use the returned `deckId` and call **create_card** with `deckId`, `front` (e.g. `"What is 'to run' in Spanish?"`), and `back` (e.g. `"correr"`).
+2. Call **list_templates**; if empty, **create_template** then list again.
+3. Call **get_template_schema** with `templateId` (or `deckId` for default) for exact JSON.
+4. Call **create_deck** with `title` (e.g. `"Spanish verbs"`) and optional `description`.
+5. Call **create_card** with `deckId` and optional `templateId` (use deck default when set).
 
 ---
 
@@ -60,7 +68,7 @@ The server also exposes MCP **resources** for docs:
 - **Protocol:** MCP `2024-11-05`
 - **Server name:** `deckbase-mcp`
 - **Hosted:** JSON-RPC 2.0 over POST; auth is API key only (no Firebase token).
-- **Card shape:** create_card builds a minimal flashcard with two blocks (question + answer) and writes via Firestore Admin. Decks and cards appear in the user's dashboard and sync to the mobile app.
+- **Card shape:** create_card copies the selected template’s blocks into a new card via Firestore Admin. Decks and cards appear in the user's dashboard and sync to the mobile app.
 
 See also:
 
