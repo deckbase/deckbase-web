@@ -253,7 +253,7 @@ async function handleToolsList() {
       {
         name: "create_template",
         description:
-          "Create a flashcard template (block layout). voice_id required when layout includes audio and blocks lack defaultVoiceId. Requires hosted MCP with API key.",
+          "Create a flashcard template (block layout). If layout includes audio: ask the user for voice first, then pass voice_id OR audio_language + audio_gender (same as create_card). Requires hosted MCP with API key.",
         inputSchema: {
           type: "object",
           properties: {
@@ -264,7 +264,9 @@ async function handleToolsList() {
               description: "Ordered type keys or numeric ids; use list_template_block_types first",
             },
             blocks: { type: "array", items: { type: "object" } },
-            voice_id: { type: "string", description: "ElevenLabs voice id from list_elevenlabs_voices when template has audio" },
+            voice_id: { type: "string", description: "Curated ElevenLabs voice id when template has audio" },
+            audio_language: { type: "string", description: "ISO 639 with audio_gender when voice_id omitted" },
+            audio_gender: { type: "string", description: "female | male with audio_language" },
           },
           required: ["name"],
         },
@@ -272,7 +274,7 @@ async function handleToolsList() {
       {
         name: "update_template",
         description:
-          "Update template metadata and/or block layout. Same voice_id rules as create_template. Requires hosted MCP with API key.",
+          "Update template metadata and/or block layout. Same voice_id / audio_language + audio_gender rules as create_template. Requires hosted MCP with API key.",
         inputSchema: {
           type: "object",
           properties: {
@@ -282,6 +284,8 @@ async function handleToolsList() {
             block_types: { type: "array" },
             blocks: { type: "array" },
             voice_id: { type: "string" },
+            audio_language: { type: "string" },
+            audio_gender: { type: "string" },
           },
           required: ["templateId"],
         },

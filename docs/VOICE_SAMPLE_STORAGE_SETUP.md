@@ -30,10 +30,16 @@ From the repo root, with the same env you use in production:
 
 ```bash
 npm run seed:voice-samples
+# alias: npm run sync:voice-samples
 # or: node --env-file=.env.prod scripts/seed-voice-samples.js
 ```
 
-The script uploads one MP3 per curated `voice_id` using the same **per-language phrase**, model, and path as `app/api/elevenlabs/voice-sample/route.js`. It skips files that already exist. After seeding, first user plays hit Storage immediately.
+Optional flags:
+
+- **`--force`** — overwrite objects that already exist (re-download from ElevenLabs).
+- **`--fail-fast`** — stop on the first ElevenLabs or Storage error (default is to continue and report failures at the end).
+
+The script uploads one MP3 per curated `voice_id` using the same **per-language phrase**, model, and path as `app/api/elevenlabs/voice-sample/route.js`. By default it **skips** files that already exist. After seeding, first user plays hit Storage immediately.
 
 ## IAM for the Admin service account
 

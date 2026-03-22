@@ -48,4 +48,6 @@ next-env.d.ts
 google-services.json
 # Google service account key (GA4 / Search Console) — do not commit
 deckbase-prod-43772307f763.json
+# Firebase Admin SDK JSON keys (never commit)
+*firebase-adminsdk*.json
 .env*.local

@@ -284,7 +284,7 @@ To **pre-seed** all curated clips in your bucket (optional), run **`npm run seed
 | Gender | Name | Voice ID | Accent | Best For |
 |--------|------|----------|--------|----------|
 | Female | Warm Turkish Female | `FDs1ZX5J4e4f2c2erxtW` | Istanbul | Narration, YouTube, audiobooks, conversational |
-| Male | Yunus - Charismatic Turkish Male | `Q5n6GDIjpN0pLOlycRFT` | Istanbul | Narration, ads, podcasts, storytelling |
+| Male | Ismail - Calm, Soothing Narrator | `bKzPIaBn2Q715Nv8nEwW` | Istanbul | Narration, documentaries, audiobooks |
 
 ---
 
@@ -339,6 +339,6 @@ To **pre-seed** all curated clips in your bucket (optional), run **`npm run seed
 | Spanish | `es` | `rnktyBnYiJ9gGJSNsJZn` | `VvYiNBPylZtUh8Bf6u8l` |
 | Swedish | `sv` | `4Ct5uMEndw4cJ7q0Jx0l` | `ouhIFI5XkmBelRRcJe51` |
 | Tamil | `ta` | `IC6fkbI5BN65xFmhUCbY` | `yrFqUM5ku2rYJCdiBKFU` |
-| Turkish | `tr` | `FDs1ZX5J4e4f2c2erxtW` | `Q5n6GDIjpN0pLOlycRFT` |
+| Turkish | `tr` | `FDs1ZX5J4e4f2c2erxtW` | `bKzPIaBn2Q715Nv8nEwW` |
 | Ukrainian | `uk` | `5erHrdsmUNM63rFLhYiV` | `0CH1jv2shWMGGZ3uM0rX` |
 | Vietnamese | `vi` | `D0dFzCacaMgMGjIksFuH` | `7clfgAuss1M0JUYGlh1t` |

@@ -9,6 +9,7 @@
 - [Premium](https://www.deckbase.co/premium)
 - [Download](https://www.deckbase.co/download)
 - [MCP integration](https://www.deckbase.co/mcp)
+- [MCP for flashcards (resources guide)](https://www.deckbase.co/resources/mcp)
 - [Documentation](https://www.deckbase.co/docs)
 
 ## About
