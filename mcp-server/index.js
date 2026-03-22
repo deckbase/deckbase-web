@@ -100,8 +100,18 @@ async function handleToolsList() {
       {
         name: "list_elevenlabs_voices",
         description:
-          "ElevenLabs TTS voice ids (group, label, id) for attach_audio_to_card voice_id and template defaultVoiceId. No API key required.",
-        inputSchema: { type: "object", properties: {} },
+          "ElevenLabs TTS voice ids from the Deckbase curated catalog (multilingual; docs/api/ELEVENLABS_VOICES.md). Optional: language (ISO code), gender (female|male), search (substring). Returns languageOptions, filtersApplied, totalVoicesInCatalog.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            language: {
+              type: "string",
+              description: "Optional ISO 639 code (e.g. en, uk, ja).",
+            },
+            gender: { type: "string", enum: ["female", "male"] },
+            search: { type: "string", description: "Optional filter on label, group, id, or language code." },
+          },
+        },
       },
       {
         name: "list_decks",
@@ -152,7 +162,7 @@ async function handleToolsList() {
       {
         name: "create_card",
         description:
-          "Create a card from a template. Omit templateId to use the deck default. voice_id from list_elevenlabs_voices when get_template_schema.voice_id_required_for_tts is true. Optional generate_audio (default true). Requires hosted MCP with API key.",
+          "Create a card from a template. Omit templateId to use the deck default. When generate_audio is true and the template has audio: pass voice_id OR audio_language + audio_gender (ask the user first). Optional generate_audio (default true). Requires hosted MCP with API key.",
         inputSchema: {
           type: "object",
           properties: {
@@ -162,6 +172,8 @@ async function handleToolsList() {
             block_text: { type: "object" },
             generate_audio: { type: "boolean" },
             voice_id: { type: "string" },
+            audio_language: { type: "string" },
+            audio_gender: { type: "string", enum: ["female", "male"] },
           },
           required: ["deckId"],
         },
@@ -186,13 +198,15 @@ async function handleToolsList() {
       {
         name: "create_cards",
         description:
-          "Bulk create cards (same deck + template). Optional top-level voice_id and generate_audio; per-card overrides. Max 50 per request. Requires hosted MCP with API key.",
+          "Bulk create cards (same deck + template). Optional top-level voice_id, audio_language, audio_gender, generate_audio; per-card overrides. Max 50 per request. Requires hosted MCP with API key.",
         inputSchema: {
           type: "object",
           properties: {
             deckId: { type: "string" },
             templateId: { type: "string" },
             voice_id: { type: "string" },
+            audio_language: { type: "string" },
+            audio_gender: { type: "string", enum: ["female", "male"] },
             generate_audio: { type: "boolean" },
             cards: { type: "array" },
           },
@@ -202,19 +216,21 @@ async function handleToolsList() {
       {
         name: "attach_audio_to_card",
         description:
-          "ElevenLabs TTS: add or replace audio on an existing card’s audio block. Required: deckId, cardId, voice_id (ask user; use list_elevenlabs_voices). Optional block_id, text, replace_existing. Requires hosted MCP with API key.",
+          "ElevenLabs TTS: add or replace audio on an existing card’s audio block. Required: deckId, cardId. Pass voice_id OR audio_language + audio_gender (ask user first). Optional block_id, text, replace_existing. Requires hosted MCP with API key.",
         inputSchema: {
           type: "object",
           properties: {
             deckId: { type: "string" },
             cardId: { type: "string" },
             voice_id: { type: "string" },
+            audio_language: { type: "string" },
+            audio_gender: { type: "string", enum: ["female", "male"] },
             block_id: { type: "string" },
             text: { type: "string" },
             replace_existing: { type: "boolean" },
             generate_audio: { type: "boolean" },
           },
-          required: ["deckId", "cardId", "voice_id"],
+          required: ["deckId", "cardId"],
         },
       },
       {
@@ -293,9 +309,17 @@ async function handleToolCall(name, args) {
     return { content: [{ type: "text", text: formatDeckbaseBlockSchemasForChat() }] };
   }
   if (name === "list_elevenlabs_voices") {
-    return {
-      content: [{ type: "text", text: JSON.stringify(getElevenlabsVoicesMcpPayload(), null, 2) }],
-    };
+    try {
+      const payload = await getElevenlabsVoicesMcpPayload(args ?? {});
+      return {
+        content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+      };
+    } catch (e) {
+      return {
+        content: [{ type: "text", text: `Error listing voices: ${e?.message || e}` }],
+        isError: true,
+      };
+    }
   }
   if (
     name === "list_decks" ||

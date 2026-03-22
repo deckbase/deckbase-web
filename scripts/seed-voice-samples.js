@@ -7,25 +7,23 @@
  *
  * Requires: FIREBASE_STORAGE_BUCKET (or NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET),
  *           FIREBASE_ADMIN_* and ELEVENLABS_API_KEY.
- * After running, the voice-sample API will find files in Storage and stop calling ElevenLabs.
+ * Seeds every curated voice id from lib/elevenlabs-voices.js (same paths as GET /api/elevenlabs/voice-sample).
+ * After running, the voice-sample API will hit Storage first and skip ElevenLabs for those voices.
  */
 
 const path = require("path");
+const { pathToFileURL } = require("url");
 require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
 require("dotenv").config({ path: path.join(__dirname, "..", ".env.prod") });
 
-const SAMPLE_PHRASE = "Hello, this is a sample of this voice.";
-const STORAGE_PREFIX = "tts-samples";
-const VOICE_IDS = [
-  "dtSEyYGNJqjrtBArPCVZ",
-  "XW70ikSsadUbinwLMZ5w",
-  "goT3UYdM9bhm0n2lmKQx",
-  "S9EGwlCtMF7VXtENq79v",
-  "ouFAjcjtdrVBT9bRFhFQ",
-  "w9rPM8AIZle60Nbpw7nl",
-];
-
 async function main() {
+  const {
+    ELEVENLABS_VOICES,
+    getElevenlabsSamplePhraseForVoiceId,
+    ELEVENLABS_VOICE_SAMPLE_STORAGE_PREFIX,
+    ELEVENLABS_VOICE_SAMPLE_MODEL_ID,
+  } = await import(pathToFileURL(path.join(__dirname, "../lib/elevenlabs-voices.js")).href);
+  const VOICE_IDS = ELEVENLABS_VOICES.map((v) => v.id);
   const bucketName =
     process.env.FIREBASE_STORAGE_BUCKET ||
     process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
@@ -56,7 +54,7 @@ async function main() {
   console.log("Bucket:", bucket.name);
 
   for (const voiceId of VOICE_IDS) {
-    const filePath = `${STORAGE_PREFIX}/${voiceId}.mp3`;
+    const filePath = `${ELEVENLABS_VOICE_SAMPLE_STORAGE_PREFIX}/${voiceId}.mp3`;
     const file = bucket.file(filePath);
     try {
       const [exists] = await file.exists();
@@ -76,8 +74,8 @@ async function main() {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        text: SAMPLE_PHRASE,
-        model_id: "eleven_multilingual_v2",
+        text: getElevenlabsSamplePhraseForVoiceId(voiceId),
+        model_id: ELEVENLABS_VOICE_SAMPLE_MODEL_ID,
         voice_settings: { stability: 0.5, similarity_boost: 0.75 },
       }),
     });
@@ -87,10 +85,20 @@ async function main() {
     }
     const buffer = Buffer.from(await res.arrayBuffer());
     await file.save(buffer, { metadata: { contentType: "audio/mpeg" } });
+    try {
+      await file.makePublic();
+    } catch (e) {
+      console.warn("makePublic failed (URLs may still work if bucket allows public read):", e?.message);
+    }
     console.log("Saved:", filePath);
   }
 
-  console.log("Done. Check Firebase Console → Storage →", bucketName, "→ tts-samples/");
+  console.log(
+    "Done. Check Firebase Console → Storage →",
+    bucketName,
+    "→",
+    ELEVENLABS_VOICE_SAMPLE_STORAGE_PREFIX,
+  );
 }
 
 main().catch((err) => {

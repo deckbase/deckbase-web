@@ -38,7 +38,7 @@ import {
   BlockType,
 } from "@/utils/firestore";
 import { v4 as uuidv4 } from "uuid";
-import { ELEVENLABS_VOICES } from "@/lib/elevenlabs-voices";
+import ElevenlabsVoicePicker from "@/components/ElevenlabsVoicePicker";
 import { parseAudioBlockConfig } from "@/lib/audio-block-config";
 import { CROP_ASPECT_OPTIONS, DEFAULT_CROP_ASPECT, getCropAspectFromConfig } from "@/lib/image-block-config";
 
@@ -967,20 +967,19 @@ function AudioBlockSettings({ config, onConfigChange, otherTextBlocks = [] }) {
     <div className="mt-3 pt-3 border-t border-white/10 space-y-4">
       <div>
         <label className="text-white/70 text-sm block mb-2">Default AI voice (Generate with AI)</label>
-        <select
+        <p className="text-white/40 text-xs mb-2">
+          Choose a voice from the Deckbase list (curated multilingual voices; see{" "}
+          <code className="text-white/55">docs/api/ELEVENLABS_VOICES.md</code>
+          ). TTS still requires <code className="text-white/55">ELEVENLABS_API_KEY</code> on the server.
+        </p>
+        <ElevenlabsVoicePicker
+          allowEmpty
           value={defaultVoiceId}
-          onChange={(e) =>
-            onConfigChange({ ...config, defaultVoiceId: e.target.value || null })
+          onChange={(id) =>
+            onConfigChange({ ...config, defaultVoiceId: id || null })
           }
-          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50"
-        >
-          <option value="">— None (use first in list) —</option>
-          {ELEVENLABS_VOICES.map((v) => (
-            <option key={v.id} value={v.id}>
-              {v.label} ({v.group})
-            </option>
-          ))}
-        </select>
+          size="md"
+        />
       </div>
       <div>
         <label className="text-white/70 text-sm block mb-2">Default block to copy text from</label>

@@ -48,13 +48,14 @@ In production, send `X-API-Key: <DECKBASE_API_KEY>` (same key as add-with-ai). D
 
 No auth. Returns the list of available voices.
 
-**Response (200):**
+**Response (200):** Curated multilingual list (male/female per language); see `docs/api/ELEVENLABS_VOICES.md`.
 ```json
 {
   "voices": [
-    { "group": "American", "label": "American Male", "id": "dtSEyYGNJqjrtBArPCVZ" },
+    { "group": "English", "label": "English (female)", "id": "owHnXhz2H7U5Cv31srDU", "gender": "female", "language": "en" },
     ...
-  ]
+  ],
+  "source": "static_curated"
 }
 ```
 
@@ -69,7 +70,7 @@ No auth. Returns the list of available voices.
 ```json
 {
   "text": "Text to convert to speech",
-  "voice_id": "dtSEyYGNJqjrtBArPCVZ"
+  "voice_id": "owHnXhz2H7U5Cv31srDU"
 }
 ```
 
@@ -81,7 +82,7 @@ No auth. Returns the list of available voices.
 
 ## 3. Voice sample (cached)
 
-**GET** `/api/elevenlabs/voice-sample?voice_id=dtSEyYGNJqjrtBArPCVZ`  
+**GET** `/api/elevenlabs/voice-sample?voice_id=owHnXhz2H7U5Cv31srDU`  
 **Headers:** `Authorization: Bearer <API key>` (same as TTS).
 
 Returns `{ "url": "<public-url>" }`. Pro/VIP required in production. Server needs `FIREBASE_STORAGE_BUCKET` and Firebase Admin for cache.

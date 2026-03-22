@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import { getAdminBucket, isAdminConfigured } from "@/utils/firebase-admin";
 import { requireElevenLabsAuth } from "@/lib/elevenlabs-auth";
-
-const SAMPLE_PHRASE = "Hello, this is a sample of this voice.";
-const STORAGE_PATH_PREFIX = "tts-samples";
+import {
+  ELEVENLABS_VOICES,
+  getElevenlabsSamplePhraseForVoiceId,
+  ELEVENLABS_VOICE_SAMPLE_STORAGE_PREFIX,
+  ELEVENLABS_VOICE_SAMPLE_MODEL_ID,
+} from "@/lib/elevenlabs-voices";
 
 /** Public URL for an object (no expiry). We make the object public, no getSignedUrl. */
 function publicUrl(bucketName, objectPath) {
@@ -14,20 +17,22 @@ function publicUrl(bucketName, objectPath) {
   return `https://storage.googleapis.com/${bucketName}/${encoded}`;
 }
 
-// Allowed voice IDs (whitelist so we only cache known voices)
-const ALLOWED_VOICE_IDS = new Set([
-  "dtSEyYGNJqjrtBArPCVZ",
-  "XW70ikSsadUbinwLMZ5w",
-  "goT3UYdM9bhm0n2lmKQx",
-  "S9EGwlCtMF7VXtENq79v",
-  "ouFAjcjtdrVBT9bRFhFQ",
-  "w9rPM8AIZle60Nbpw7nl",
-]);
+/** Curated ids when ElevenLabs key is unavailable (same as lib/elevenlabs-voices). */
+const ALLOWED_VOICE_IDS = new Set(ELEVENLABS_VOICES.map((v) => v.id));
+
+function isVoiceIdAllowed(voiceId) {
+  if (!voiceId) return false;
+  if (ALLOWED_VOICE_IDS.has(voiceId)) return true;
+  if (process.env.ELEVENLABS_API_KEY?.trim()) {
+    return /^[a-zA-Z0-9_-]{8,80}$/.test(voiceId);
+  }
+  return false;
+}
 
 /**
  * GET /api/elevenlabs/voice-sample?voice_id=xxx
  *
- * 1. Check Storage first (tts-samples/{voiceId}.mp3).
+ * 1. Check Storage first ({prefix}/{voiceId}.mp3; native-language sample text per voice).
  * 2. If file exists → return its public URL (do NOT call ElevenLabs).
  * 3. If file missing → call ElevenLabs once, save buffer to Storage, make public, return URL.
  * Subsequent requests for same voice_id will hit step 2 and never call ElevenLabs again.
@@ -40,9 +45,14 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const voiceId = searchParams.get("voice_id")?.trim();
 
-  if (!voiceId || !ALLOWED_VOICE_IDS.has(voiceId)) {
+  if (!voiceId || !isVoiceIdAllowed(voiceId)) {
     return NextResponse.json(
-      { error: "Missing or invalid voice_id" },
+      {
+        error: "Missing or invalid voice_id",
+        hint: process.env.ELEVENLABS_API_KEY?.trim()
+          ? "Use a voice id from GET /api/elevenlabs/voices or ElevenLabs."
+          : "Only curated voice ids are allowed until ELEVENLABS_API_KEY is set on the server.",
+      },
       { status: 400 },
     );
   }
@@ -68,7 +78,7 @@ export async function GET(request) {
   }
 
   try {
-    const path = `${STORAGE_PATH_PREFIX}/${voiceId}.mp3`;
+    const path = `${ELEVENLABS_VOICE_SAMPLE_STORAGE_PREFIX}/${voiceId}.mp3`;
     const file = bucket.file(path);
 
     // 1) Always check Storage first — if file exists we never call ElevenLabs
@@ -106,8 +116,8 @@ export async function GET(request) {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            text: SAMPLE_PHRASE,
-            model_id: "eleven_multilingual_v2",
+            text: getElevenlabsSamplePhraseForVoiceId(voiceId),
+            model_id: ELEVENLABS_VOICE_SAMPLE_MODEL_ID,
             voice_settings: { stability: 0.5, similarity_boost: 0.75 },
           }),
         },
