@@ -96,20 +96,22 @@ url = "${mcpUrl}"`;
 
   const claudeCodeCommand = `claude mcp add --transport http deckbase ${mcpUrl}`;
 
-  // Cursor one-click install: config is the server entry (base64), see https://cursor.com/docs/mcp/install-links
+  // Cursor one-click install: `config` must be THIS SERVER'S entry only (url + headers OR command + args).
+  // The `name=deckbase` query sets the key in mcpServers — do NOT nest under "deckbase" again.
+  // See https://cursor.com/docs/mcp/install-links
   const cursorInstallConfig = {
-    deckbase: {
-      url: mcpUrl,
-      headers: {
-        Authorization: "Bearer YOUR_API_KEY",
-      },
+    url: mcpUrl,
+    headers: {
+      Authorization: "Bearer YOUR_API_KEY",
     },
   };
   const configJson = JSON.stringify(cursorInstallConfig);
   const configBase64 =
     typeof window !== "undefined"
       ? btoa(configJson)
-      : (typeof Buffer !== "undefined" ? Buffer.from(configJson).toString("base64") : "");
+      : typeof Buffer !== "undefined"
+        ? Buffer.from(configJson, "utf8").toString("base64")
+        : "";
   const cursorInstallUrl = `cursor://anysphere.cursor-deeplink/mcp/install?name=deckbase&config=${encodeURIComponent(configBase64)}`;
 
   return (

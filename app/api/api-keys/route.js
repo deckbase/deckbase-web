@@ -1,7 +1,7 @@
 /**
  * API key management. Auth: Firebase ID token or API key (Bearer).
- * POST: create key (body: { label? }), returns { key, id, label, createdAt } - key shown once.
- * GET: list keys for user, returns { keys: [{ id, label, createdAt, lastUsedAt }] }.
+ * POST: create key (body: { name? | label? } — same field; name preferred), returns { key, id, label, name, createdAt } - key shown once.
+ * GET: list keys for user, returns { keys: [{ id, label, name, createdAt, lastUsedAt }] }.
  */
 
 import { NextResponse } from "next/server";
@@ -41,11 +41,19 @@ export async function POST(request) {
   } catch {
     // no body is ok
   }
-  const label = typeof body.label === "string" ? body.label.trim() : "";
+  const displayName =
+    typeof body.name === "string"
+      ? body.name.trim()
+      : typeof body.label === "string"
+        ? body.label.trim()
+        : "";
 
   try {
-    const result = await createApiKey(uid, label || undefined);
-    return NextResponse.json(result);
+    const result = await createApiKey(uid, displayName || undefined);
+    return NextResponse.json({
+      ...result,
+      name: result.label,
+    });
   } catch (e) {
     console.error("[api-keys] create failed", e);
     return NextResponse.json(

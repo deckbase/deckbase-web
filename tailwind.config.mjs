@@ -21,7 +21,7 @@ export default {
         tiempos: ["TiemposFine-Regular", "serif"],
         tiemposBold: ["TiemposFine-Semibold", "serif"],
         ubuntu: ["Ubuntu", "sans-serif"],
-        inter: ["Inter", "sans-serif"],
+        inter: ["var(--font-inter)", "ui-sans-serif", "system-ui", "sans-serif"],
       },
       colors: {
         bg: "#ffffff",

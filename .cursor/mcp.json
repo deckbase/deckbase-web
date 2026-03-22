@@ -1,10 +1,5 @@
 {
   "mcpServers": {
-    "deckbase": {
-      "command": "node",
-      "args": ["mcp-server/index.js"],
-      "cwd": "${workspaceFolder}"
-    },
     "firebase": {
       "command": "npx",
       "args": [

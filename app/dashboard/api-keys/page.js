@@ -11,7 +11,8 @@ export default function ApiKeysPage() {
   const { isPro } = useRevenueCat();
   const [apiKeys, setApiKeys] = useState([]);
   const [newKey, setNewKey] = useState(null);
-  const [label, setLabel] = useState("");
+  /** Display name for the key (stored as `label` in Firestore) */
+  const [keyName, setKeyName] = useState("");
   const [creating, setCreating] = useState(false);
   const [revokingId, setRevokingId] = useState(null);
   const [copied, setCopied] = useState(false);
@@ -62,7 +63,9 @@ export default function ApiKeysPage() {
       const res = await fetch("/api/api-keys", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ label: label.trim() || "API key" }),
+        body: JSON.stringify({
+          name: keyName.trim() || undefined,
+        }),
       });
       if (res.status === 401) {
         setError("Session expired. Please log out and log back in.");
@@ -73,8 +76,13 @@ export default function ApiKeysPage() {
         throw new Error(JSON.parse(t)?.error || t);
       }
       const data = await res.json();
-      setNewKey({ key: data.key, id: data.id, label: data.label, createdAt: data.createdAt });
-      setLabel("");
+      setNewKey({
+        key: data.key,
+        id: data.id,
+        name: data.name ?? data.label,
+        createdAt: data.createdAt,
+      });
+      setKeyName("");
       fetchApiKeys();
     } catch (e) {
       setError(e.message || "Failed to create API key");
@@ -165,12 +173,16 @@ export default function ApiKeysPage() {
             </p>
             <form onSubmit={handleCreate} className="flex flex-wrap items-end gap-3">
               <div className="flex-1 min-w-[200px]">
-                <label className="block text-sm font-medium text-white/70 mb-1.5">Label (optional)</label>
+                <label htmlFor="api-key-name" className="block text-sm font-medium text-white/70 mb-1.5">
+                  Name <span className="text-white/40 font-normal">(optional)</span>
+                </label>
                 <input
+                  id="api-key-name"
                   type="text"
-                  value={label}
-                  onChange={(e) => setLabel(e.target.value)}
-                  placeholder="e.g. Cursor, Mobile app"
+                  value={keyName}
+                  onChange={(e) => setKeyName(e.target.value)}
+                  placeholder="e.g. Cursor, Claude Code, CI"
+                  autoComplete="off"
                   className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-white placeholder-white/30 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
                   maxLength={100}
                 />
@@ -187,7 +199,14 @@ export default function ApiKeysPage() {
 
             {newKey && (
               <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4">
-                <p className="text-amber-200 text-sm font-medium mb-2">Copy this key now. We won&apos;t show it again.</p>
+                <p className="text-amber-200 text-sm font-medium mb-1">
+                  Copy this key now. We won&apos;t show it again.
+                </p>
+                {newKey.name && (
+                  <p className="text-white/60 text-xs mb-2">
+                    Name: <span className="text-white/80">{newKey.name}</span>
+                  </p>
+                )}
                 <div className="flex flex-wrap items-center gap-2">
                   <code className="text-white/90 text-sm break-all flex-1 min-w-0 bg-black/20 px-2 py-1 rounded">
                     {newKey.key}
@@ -221,7 +240,7 @@ export default function ApiKeysPage() {
                       className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/5 px-4 py-3"
                     >
                       <div className="min-w-0">
-                        <span className="font-medium text-white/90">{k.label}</span>
+                        <span className="font-medium text-white/90">{k.name ?? k.label}</span>
                         <p className="text-white/50 text-xs mt-0.5">
                           Created {k.createdAt ? new Date(k.createdAt).toLocaleString() : "—"}
                           {k.lastUsedAt ? ` · Last used ${new Date(k.lastUsedAt).toLocaleString()}` : ""}

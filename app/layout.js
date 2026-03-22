@@ -1,6 +1,21 @@
 import "./globals.css";
+import { Inter } from "next/font/google";
 import LayoutClient from "@/components/LayoutClient";
 import { SITE_URL, absoluteUrl } from "@/lib/site-url";
+
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+  variable: "--font-inter",
+});
+
+const firebaseAuthRaw = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN?.trim();
+const firebaseAuthOrigin = firebaseAuthRaw
+  ? firebaseAuthRaw.startsWith("http://") || firebaseAuthRaw.startsWith("https://")
+    ? firebaseAuthRaw
+    : `https://${firebaseAuthRaw}`
+  : null;
 
 // ✅ Export metadata for SEO - this runs on the server
 export const metadata = {
@@ -153,13 +168,19 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <head>
+        <link rel="preconnect" href="https://identitytoolkit.googleapis.com" />
+        <link rel="preconnect" href="https://firestore.googleapis.com" />
+        {firebaseAuthOrigin ? (
+          <link rel="preconnect" href={firebaseAuthOrigin} crossOrigin="anonymous" />
+        ) : null}
+        <link rel="dns-prefetch" href="https://connect.facebook.net" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </head>
       <body
-        className="text-gray-900 min-h-screen flex flex-col bg-black"
+        className={`${inter.variable} ${inter.className} text-gray-900 min-h-screen flex flex-col bg-black`}
         suppressHydrationWarning
       >
         <LayoutClient>{children}</LayoutClient>

@@ -18,6 +18,12 @@ const securityHeaders = [
 
 const nextConfig = {
   reactStrictMode: true,
+  compiler: {
+    removeConsole: process.env.NODE_ENV === "production" ? { exclude: ["error"] } : false,
+  },
+  experimental: {
+    optimizePackageImports: ["lucide-react", "framer-motion"],
+  },
   allowedDevOrigins: ["dev.deckbase.co"],
   async headers() {
     return [
