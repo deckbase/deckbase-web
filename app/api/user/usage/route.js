@@ -11,7 +11,7 @@ import {
 /**
  * GET /api/user/usage
  * Auth: Bearer <Firebase ID token>
- * Returns: { aiUsed, aiLimit, ttsUsed, ttsLimit, storageUsed, storageLimit, isPro, tier } for the current user.
+ * Returns: { aiUsed, aiLimit, ttsUsed, ttsLimit, mcpUsed, storageUsed, storageLimit, isPro, tier } for the current user.
  * tier = 'free' | 'basic' | 'pro'. Limits: Basic 250 AI / 30K TTS / 2GB; Pro 600 AI / 50K TTS / 20GB.
  */
 export async function GET(request) {
@@ -22,6 +22,7 @@ export async function GET(request) {
       aiLimit: AI_GENERATIONS_LIMIT_PRO,
       ttsUsed: 0,
       ttsLimit: TTS_CHARS_LIMIT_PRO,
+      mcpUsed: 0,
       storageUsed: 0,
       storageLimit: 20 * 1024 * 1024 * 1024,
       isPro: true,
@@ -70,6 +71,7 @@ export async function GET(request) {
       aiLimit,
       ttsUsed: usage?.ttsChars ?? 0,
       ttsLimit,
+      mcpUsed: usage?.mcpRequests ?? 0,
       storageUsed,
       storageLimit,
       isPro,

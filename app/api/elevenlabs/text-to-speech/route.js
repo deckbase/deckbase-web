@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { ELEVENLABS_SERVER_FALLBACK_VOICE_ID } from "@/lib/elevenlabs-voices";
 import { requireElevenLabsAuth } from "@/lib/elevenlabs-auth";
 import { isBasicOrProOrVip } from "@/lib/revenuecat-server";
 import { checkTTSLimit, incrementTTSChars } from "@/lib/usage-limits";
@@ -16,7 +17,7 @@ export async function POST(request) {
 
     const apiKey = process.env.ELEVENLABS_API_KEY;
     const defaultVoiceId =
-      process.env.ELEVENLABS_DEFAULT_VOICE_ID || "21m00Tcm4TlvDq8ikWAM"; // Rachel if not set
+      process.env.ELEVENLABS_DEFAULT_VOICE_ID || ELEVENLABS_SERVER_FALLBACK_VOICE_ID; // Rachel if not set
 
     if (!apiKey) {
       return NextResponse.json(

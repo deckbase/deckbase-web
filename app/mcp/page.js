@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Cpu, ChevronDown, ChevronUp, Copy, Check } from "lucide-react";
 import { useState, useCallback } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { siCursor } from "simple-icons";
 
 /** Render a simple-icons icon as an inline SVG (currentColor). */
@@ -94,7 +95,8 @@ export default function McpPage() {
   const codexSnippet = `[mcp_servers.deckbase]
 url = "${mcpUrl}"`;
 
-  const claudeCodeCommand = `claude mcp add --transport http deckbase ${mcpUrl}`;
+  // Claude Code requires --header for Bearer auth (otherwise every request returns 401).
+  const claudeCodeCommand = `claude mcp add --transport http deckbase ${mcpUrl} --header "Authorization: Bearer YOUR_API_KEY"`;
 
   // Cursor one-click install: `config` must be THIS SERVER'S entry only (url + headers OR command + args).
   // The `name=deckbase` query sets the key in mcpServers — do NOT nest under "deckbase" again.
@@ -297,11 +299,22 @@ url = "${mcpUrl}"`;
             <PlatformIcon src="/icons/claude.svg" className="w-6 h-6 flex-shrink-0" />
             Claude Code
           </h2>
+          <p className="text-white/75 text-sm mb-4">
+            Create an API key in the{" "}
+            <Link href="/dashboard/api-keys" className="text-accent hover:underline">
+              dashboard (API keys)
+            </Link>
+            , then replace{" "}
+            <code className="px-1.5 py-0.5 rounded bg-white/15 font-mono text-sm">YOUR_API_KEY</code> in the command below with that key. Claude Code needs{" "}
+            <code className="px-1.5 py-0.5 rounded bg-white/15 font-mono text-sm">--header</code> (or{" "}
+            <code className="px-1.5 py-0.5 rounded bg-white/15 font-mono text-sm">-H</code>) so the token is sent on every request; without it you will get{" "}
+            <code className="px-1.5 py-0.5 rounded bg-white/15 font-mono text-sm">401</code>.
+          </p>
           <ol className="list-decimal list-inside space-y-3 text-white/85 text-sm sm:text-base mb-4">
             <li>
-              In your terminal, run:{" "}
+              In your terminal, run (one line):{" "}
               <span className="relative inline-block w-full mt-2">
-                <code className="block w-full py-3 pl-4 pr-14 rounded-xl bg-neutral-900/80 border border-white/15 text-white/90 font-mono text-sm overflow-x-auto">
+                <code className="block w-full py-3 pl-4 pr-14 rounded-xl bg-neutral-900/80 border border-white/15 text-white/90 font-mono text-sm overflow-x-auto whitespace-pre-wrap break-all">
                   {claudeCodeCommand}
                 </code>
                 <button
@@ -315,11 +328,18 @@ url = "${mcpUrl}"`;
               </span>
             </li>
             <li>
-              When prompted, configure the <code className="px-1.5 py-0.5 rounded bg-white/15 text-accent font-mono text-sm">Authorization</code> header with your API key (e.g. <code className="px-1.5 py-0.5 rounded bg-white/15 font-mono text-sm">Bearer YOUR_API_KEY</code>), if your client supports custom headers.
+              Optional: add <code className="px-1.5 py-0.5 rounded bg-white/15 font-mono text-sm">--scope project</code> or{" "}
+              <code className="px-1.5 py-0.5 rounded bg-white/15 font-mono text-sm">--scope user</code> before the URL if you want the server in shared or global config (default is <code className="px-1.5 py-0.5 rounded bg-white/15 font-mono text-sm">local</code>).
+            </li>
+            <li>
+              If you already added Deckbase without a header, run{" "}
+              <code className="px-1.5 py-0.5 rounded bg-white/15 font-mono text-sm">claude mcp remove deckbase</code> (or use{" "}
+              <code className="px-1.5 py-0.5 rounded bg-white/15 font-mono text-sm">claude mcp list</code>
+              ), then run the command above again.
             </li>
           </ol>
           <p className="text-white/70 text-sm">
-            Use <code className="px-1.5 py-0.5 rounded bg-white/15 font-mono text-sm">--scope local</code> (default), <code className="px-1.5 py-0.5 rounded bg-white/15 font-mono text-sm">--scope project</code> (shared via <code className="px-1.5 py-0.5 rounded bg-white/15 font-mono text-sm">.mcp.json</code>), or <code className="px-1.5 py-0.5 rounded bg-white/15 font-mono text-sm">--scope user</code> for all projects.
+            Do not commit real API keys. For project scope, prefer env-based config if your team uses a shared template without secrets.
           </p>
           </section>
 
@@ -411,11 +431,26 @@ url = "${mcpUrl}"`;
           </section>
 
           {/* ChatGPT */}
-          <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 sm:p-8">
+          <section id="chatgpt" className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 sm:p-8">
           <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
             <PlatformIcon src="/icons/chatgtp.webp" className="w-6 h-6 flex-shrink-0" />
             ChatGPT
           </h2>
+          <div className="rounded-lg border border-amber-500/35 bg-amber-500/10 p-4 mb-4">
+            <p className="text-amber-100/95 text-sm font-medium mb-1">API key is required</p>
+            <p className="text-white/70 text-sm leading-relaxed">
+              Deckbase&apos;s hosted MCP only accepts <code className="px-1 py-0.5 rounded bg-black/30 font-mono text-xs">Authorization: Bearer &lt;API key&gt;</code>. If ChatGPT&apos;s connector UI does <strong>not</strong> let you set custom headers, the connector cannot authenticate and <strong>will not work</strong> with Deckbase for decks and cards. There is no public unauthenticated mode.
+            </p>
+          </div>
+          <p className="text-white/80 text-sm sm:text-base mb-4">
+            If your ChatGPT connector <strong>does</strong> support custom headers (wording varies by release), use the URL below and set the header exactly to{" "}
+            <code className="px-1.5 py-0.5 rounded bg-white/15 font-mono text-sm">Authorization: Bearer YOUR_API_KEY</code>{" "}
+            (replace with a key from{" "}
+            <Link href="/dashboard/api-keys" className="text-accent hover:underline">
+              API keys
+            </Link>
+            ).
+          </p>
           <ol className="list-decimal list-inside space-y-3 text-white/85 text-sm sm:text-base mb-4">
             <li>
               Go to <strong>chatgpt.com/#settings/Connectors</strong> (requires login).
@@ -447,11 +482,16 @@ url = "${mcpUrl}"`;
               )}
             </button>
           </div>
-          <ol start={3} className="list-decimal list-inside space-y-3 text-white/85 text-sm sm:text-base">
+          <ol start={3} className="list-decimal list-inside space-y-3 text-white/85 text-sm sm:text-base mb-4">
             <li>
-              If the connector supports custom headers, add <code className="px-1.5 py-0.5 rounded bg-white/15 text-accent font-mono text-sm">Authorization: Bearer YOUR_API_KEY</code> with your API key.
+              In the connector settings, add the <code className="px-1.5 py-0.5 rounded bg-white/15 font-mono text-sm">Authorization</code> header if that option exists.
             </li>
           </ol>
+          <p className="text-white/70 text-sm border-t border-white/10 pt-4">
+            <strong className="text-white/85">If there is no header field:</strong> use{" "}
+            <strong className="text-white/85">Cursor</strong>, <strong className="text-white/85">Claude Code</strong>, or{" "}
+            <strong className="text-white/85">VS Code</strong> (sections on this page) — they all support passing your API key. OpenAI may add header support to Connectors later; we do not recommend putting secrets in the URL.
+          </p>
           </section>
 
           {/* Codex */}

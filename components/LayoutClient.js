@@ -23,7 +23,8 @@ export default function LayoutClient({ children }) {
   const isAuthRoute =
     pathname?.startsWith("/login") ||
     pathname?.startsWith("/register") ||
-    pathname?.startsWith("/forgot-password");
+    pathname?.startsWith("/forgot-password") ||
+    pathname?.startsWith("/mcp/oauth");
   const hideNavFooter =
     isAdminRoute || isPartnerRoute || isDashboardRoute || isAuthRoute;
 

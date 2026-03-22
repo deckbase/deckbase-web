@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Settings, BookOpenText, BarChart2, Smartphone } from "lucide-react";
+import { ArrowLeft, Settings, BookOpenText, BarChart2, Smartphone, Activity } from "lucide-react";
 
 export default function AdminPage() {
   return (
@@ -23,6 +23,21 @@ export default function AdminPage() {
         </div>
       </div>
       <div className="space-y-3">
+        <Link
+          href="/dashboard/admin/usage"
+          className="flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-colors group"
+        >
+          <div className="w-12 h-12 rounded-lg bg-accent/20 flex items-center justify-center group-hover:bg-accent/30 transition-colors">
+            <Activity className="w-6 h-6 text-accent" />
+          </div>
+          <div className="flex-1">
+            <h2 className="text-lg font-semibold text-white">Usage</h2>
+            <p className="text-white/50 text-sm">
+              Monthly AI, TTS, MCP requests, and cloud storage from GET /api/user/usage
+            </p>
+          </div>
+        </Link>
+
         <Link
           href="/dashboard/admin/seo"
           className="flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-colors group"

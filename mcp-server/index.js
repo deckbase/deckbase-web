@@ -13,6 +13,7 @@ import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { formatMcpTemplateBlockCatalogForChat } from "../lib/mcp-template-blocks.js";
 import { formatDeckbaseBlockSchemasForChat } from "../lib/mcp-block-schemas.js";
+import { getElevenlabsVoicesMcpPayload } from "../lib/elevenlabs-voices.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
@@ -97,6 +98,12 @@ async function handleToolsList() {
         inputSchema: { type: "object", properties: {} },
       },
       {
+        name: "list_elevenlabs_voices",
+        description:
+          "ElevenLabs TTS voice ids (group, label, id) for attach_audio_to_card voice_id and template defaultVoiceId. No API key required.",
+        inputSchema: { type: "object", properties: {} },
+      },
+      {
         name: "list_decks",
         description: "List the user's flashcard decks. Requires hosted MCP with API key.",
         inputSchema: { type: "object", properties: {} },
@@ -128,9 +135,24 @@ async function handleToolsList() {
         },
       },
       {
+        name: "update_deck",
+        description:
+          "Update deck title, description, default template. Requires hosted MCP with API key.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            deckId: { type: "string" },
+            title: { type: "string" },
+            description: { type: "string" },
+            default_template_id: { type: "string" },
+          },
+          required: ["deckId"],
+        },
+      },
+      {
         name: "create_card",
         description:
-          "Create a card from a template. Omit templateId to use the deck default (list_decks.defaultTemplateId). Requires hosted MCP with API key.",
+          "Create a card from a template. Omit templateId to use the deck default. voice_id from list_elevenlabs_voices when get_template_schema.voice_id_required_for_tts is true. Optional generate_audio (default true). Requires hosted MCP with API key.",
         inputSchema: {
           type: "object",
           properties: {
@@ -138,22 +160,61 @@ async function handleToolsList() {
             templateId: { type: "string" },
             front: { type: "string" },
             block_text: { type: "object" },
+            generate_audio: { type: "boolean" },
+            voice_id: { type: "string" },
           },
           required: ["deckId"],
         },
       },
       {
+        name: "update_card",
+        description:
+          "Update card values and/or blocks_snapshot, or merge front/block_text. Requires hosted MCP with API key.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            deckId: { type: "string" },
+            cardId: { type: "string" },
+            values: { type: "array" },
+            blocks_snapshot: { type: "array" },
+            front: { type: "string" },
+            block_text: { type: "object" },
+          },
+          required: ["deckId", "cardId"],
+        },
+      },
+      {
         name: "create_cards",
         description:
-          "Bulk create cards (same deck + template). Max 50 per request. Requires hosted MCP with API key.",
+          "Bulk create cards (same deck + template). Optional top-level voice_id and generate_audio; per-card overrides. Max 50 per request. Requires hosted MCP with API key.",
         inputSchema: {
           type: "object",
           properties: {
             deckId: { type: "string" },
             templateId: { type: "string" },
+            voice_id: { type: "string" },
+            generate_audio: { type: "boolean" },
             cards: { type: "array" },
           },
           required: ["deckId", "cards"],
+        },
+      },
+      {
+        name: "attach_audio_to_card",
+        description:
+          "ElevenLabs TTS: add or replace audio on an existing card’s audio block. Required: deckId, cardId, voice_id (ask user; use list_elevenlabs_voices). Optional block_id, text, replace_existing. Requires hosted MCP with API key.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            deckId: { type: "string" },
+            cardId: { type: "string" },
+            voice_id: { type: "string" },
+            block_id: { type: "string" },
+            text: { type: "string" },
+            replace_existing: { type: "boolean" },
+            generate_audio: { type: "boolean" },
+          },
+          required: ["deckId", "cardId", "voice_id"],
         },
       },
       {
@@ -176,7 +237,7 @@ async function handleToolsList() {
       {
         name: "create_template",
         description:
-          "Create a flashcard template (block layout). Requires hosted MCP with API key.",
+          "Create a flashcard template (block layout). voice_id required when layout includes audio and blocks lack defaultVoiceId. Requires hosted MCP with API key.",
         inputSchema: {
           type: "object",
           properties: {
@@ -187,8 +248,26 @@ async function handleToolsList() {
               description: "Ordered type keys or numeric ids; use list_template_block_types first",
             },
             blocks: { type: "array", items: { type: "object" } },
+            voice_id: { type: "string", description: "ElevenLabs voice id from list_elevenlabs_voices when template has audio" },
           },
           required: ["name"],
+        },
+      },
+      {
+        name: "update_template",
+        description:
+          "Update template metadata and/or block layout. Same voice_id rules as create_template. Requires hosted MCP with API key.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            templateId: { type: "string" },
+            name: { type: "string" },
+            description: { type: "string" },
+            block_types: { type: "array" },
+            blocks: { type: "array" },
+            voice_id: { type: "string" },
+          },
+          required: ["templateId"],
         },
       },
     ],
@@ -213,15 +292,24 @@ async function handleToolCall(name, args) {
   if (name === "list_block_schemas") {
     return { content: [{ type: "text", text: formatDeckbaseBlockSchemasForChat() }] };
   }
+  if (name === "list_elevenlabs_voices") {
+    return {
+      content: [{ type: "text", text: JSON.stringify(getElevenlabsVoicesMcpPayload(), null, 2) }],
+    };
+  }
   if (
     name === "list_decks" ||
     name === "list_templates" ||
     name === "get_template_schema" ||
     name === "create_deck" ||
+    name === "update_deck" ||
     name === "create_card" ||
+    name === "update_card" ||
     name === "create_cards" ||
+    name === "attach_audio_to_card" ||
     name === "export_deck" ||
-    name === "create_template"
+    name === "create_template" ||
+    name === "update_template"
   ) {
     return { content: [{ type: "text", text: HOSTED_ONLY_MSG }], isError: true };
   }

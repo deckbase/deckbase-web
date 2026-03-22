@@ -1,0 +1,23 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "W6N8BEGK49.com.deckbase",
+        "components": [
+          {
+            "/": "/*"
+          }
+        ]
+      },
+      {
+        "appID": "W6N8BEGK49.com.deckbase.dev",
+        "components": [
+          {
+            "/": "/*"
+          }
+        ]
+      }
+    ]
+  }
+}
