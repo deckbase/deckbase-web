@@ -13,12 +13,12 @@ export default function DownloadFaq() {
       initial={{ opacity: 0 }}
       whileInView={{ opacity: 1 }}
       viewport={{ once: true }}
-      className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16 border-t border-white/10"
+      className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 border-t border-white/[0.07]"
     >
-      <h2 className="text-2xl md:text-3xl font-bold text-white text-center mb-2">
+      <h2 className="text-3xl font-bold text-white text-center mb-2 tracking-tight">
         Download FAQ
       </h2>
-      <p className="text-white/50 text-center text-sm mb-10">
+      <p className="text-white/50 text-center text-sm md:text-base mb-10 max-w-xl mx-auto">
         Common questions about apps, platforms, and getting started.
       </p>
       <ul className="space-y-3">

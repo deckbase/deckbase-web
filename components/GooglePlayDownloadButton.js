@@ -1,11 +1,9 @@
 import React from "react";
 import Image from "next/image"; // If using Next.js
+import { googlePlayStoreUrl } from "@/lib/app-download-config";
 
 const GooglePlayDownloadButton = () => {
-  const androidUrl =
-    "https://play.google.com/store/apps/details?id=com.tkg.deckbase";
-  const iosAppId = "6755723338";
-  const androidPackageName = "com.tkg.deckbase";
+  const androidUrl = googlePlayStoreUrl();
 
   const handleClick = () => {
     if (typeof window !== "undefined") {
@@ -17,28 +15,15 @@ const GooglePlayDownloadButton = () => {
         });
         console.log("Google Play button clicked");
       });
-    }
-
-    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-
-    if (/android/i.test(userAgent)) {
-      // Open Google Play Store in a new tab
-      window.open(
-        `https://play.google.com/store/apps/details?id=${androidPackageName}`,
-        "_blank"
-      );
-    } else if (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) {
-      // Open Apple App Store in a new tab
-      window.open(`https://apps.apple.com/app/id${iosAppId}`, "_blank");
-    } else {
-      // Fallback to a landing page or website
-      window.open(androidUrl, "_blank");
+      window.open(androidUrl, "_blank", "noopener,noreferrer");
     }
   };
 
   return (
     <button
+      type="button"
       onClick={handleClick}
+      aria-label="Get Deckbase on Google Play"
       style={{ border: "none", background: "none", padding: 0 }}
     >
       <Image
