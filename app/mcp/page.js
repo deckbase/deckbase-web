@@ -436,27 +436,22 @@ url = "${mcpUrl}"`;
             <PlatformIcon src="/icons/chatgtp.webp" className="w-6 h-6 flex-shrink-0" />
             ChatGPT
           </h2>
-          <div className="rounded-lg border border-amber-500/35 bg-amber-500/10 p-4 mb-4">
-            <p className="text-amber-100/95 text-sm font-medium mb-1">API key is required</p>
-            <p className="text-white/70 text-sm leading-relaxed">
-              Deckbase&apos;s hosted MCP only accepts <code className="px-1 py-0.5 rounded bg-black/30 font-mono text-xs">Authorization: Bearer &lt;API key&gt;</code>. If ChatGPT&apos;s connector UI does <strong>not</strong> let you set custom headers, the connector cannot authenticate and <strong>will not work</strong> with Deckbase for decks and cards. There is no public unauthenticated mode.
-            </p>
-          </div>
           <p className="text-white/80 text-sm sm:text-base mb-4">
-            If your ChatGPT connector <strong>does</strong> support custom headers (wording varies by release), use the URL below and set the header exactly to{" "}
-            <code className="px-1.5 py-0.5 rounded bg-white/15 font-mono text-sm">Authorization: Bearer YOUR_API_KEY</code>{" "}
-            (replace with a key from{" "}
-            <Link href="/dashboard/api-keys" className="text-accent hover:underline">
-              API keys
-            </Link>
-            ).
+            Use these values in ChatGPT Connectors:
           </p>
           <ol className="list-decimal list-inside space-y-3 text-white/85 text-sm sm:text-base mb-4">
             <li>
               Go to <strong>chatgpt.com/#settings/Connectors</strong> (requires login).
             </li>
             <li>
-              Click <strong>Add Connector</strong> and enter the URL:
+              Click <strong>Add Connector</strong>.
+            </li>
+            <li>
+              Enter <strong>Client ID</strong>:{" "}
+              <code className="px-1.5 py-0.5 rounded bg-white/15 font-mono text-sm">deckbase</code>
+            </li>
+            <li>
+              Enter this <strong>MCP URL</strong>:
             </li>
           </ol>
           <div className="relative rounded-xl overflow-hidden border border-white/15 bg-neutral-900/80 mb-4">
@@ -482,16 +477,11 @@ url = "${mcpUrl}"`;
               )}
             </button>
           </div>
-          <ol start={3} className="list-decimal list-inside space-y-3 text-white/85 text-sm sm:text-base mb-4">
+          <ol start={5} className="list-decimal list-inside space-y-3 text-white/85 text-sm sm:text-base mb-4">
             <li>
-              In the connector settings, add the <code className="px-1.5 py-0.5 rounded bg-white/15 font-mono text-sm">Authorization</code> header if that option exists.
+              Complete the browser login flow and authorize Deckbase access.
             </li>
           </ol>
-          <p className="text-white/70 text-sm border-t border-white/10 pt-4">
-            <strong className="text-white/85">If there is no header field:</strong> use{" "}
-            <strong className="text-white/85">Cursor</strong>, <strong className="text-white/85">Claude Code</strong>, or{" "}
-            <strong className="text-white/85">VS Code</strong> (sections on this page) — they all support passing your API key. OpenAI may add header support to Connectors later; we do not recommend putting secrets in the URL.
-          </p>
           </section>
 
           {/* Codex */}
