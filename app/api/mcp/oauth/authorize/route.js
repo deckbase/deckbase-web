@@ -5,6 +5,7 @@
 
 import { NextResponse } from "next/server";
 import { validateClientRedirect, isMcpOAuthConfigured } from "@/lib/mcp-oauth";
+import { MCP_RESOURCE_IDENTIFIER } from "@/lib/mcp-protected-resource-metadata";
 import { SITE_URL } from "@/lib/site-url";
 
 export async function GET(request) {
@@ -22,6 +23,16 @@ export async function GET(request) {
   const state = searchParams.get("state") || "";
   const codeChallenge = searchParams.get("code_challenge") || "";
   const codeChallengeMethod = searchParams.get("code_challenge_method") || "";
+  const resource = searchParams.get("resource") || "";
+  if (resource && resource !== MCP_RESOURCE_IDENTIFIER) {
+    return NextResponse.json(
+      {
+        error: "invalid_request",
+        error_description: "Invalid resource parameter",
+      },
+      { status: 400 }
+    );
+  }
 
   if (responseType !== "code") {
     return NextResponse.json(

@@ -16,12 +16,13 @@ When **`MCP_OAUTH_JWT_SECRET`** is set in the server environment (32+ characters
 
 | | URL |
 |---|-----|
-| **Discovery (RFC 8414)** | `GET https://www.deckbase.co/api/mcp/oauth/.well-known/oauth-authorization-server` — JSON metadata (`issuer`, `authorization_endpoint`, `token_endpoint`, PKCE support, etc.) |
+| **Protected resource (RFC 9728)** | `GET https://www.deckbase.co/.well-known/oauth-protected-resource/api/mcp` — MCP clients use this first to find `authorization_servers` (required by the MCP [authorization](https://modelcontextprotocol.io/specification/latest/basic/authorization) spec). |
+| **Discovery (RFC 8414)** | `GET https://www.deckbase.co/api/mcp/oauth/.well-known/oauth-authorization-server` — authorization server metadata (`issuer`, `authorization_endpoint`, `token_endpoint`, PKCE support, etc.) |
 | **Authorization** | `GET https://www.deckbase.co/api/mcp/oauth/authorize` (`response_type=code`, `client_id`, `redirect_uri`, `state`, `code_challenge`, `code_challenge_method=S256`) |
 | **Sign-in** | Redirects to `https://www.deckbase.co/mcp/oauth/login` (Firebase sign-in) |
 | **Token** | `POST https://www.deckbase.co/api/mcp/oauth/token` (`grant_type=authorization_code` or `refresh_token`) |
 
-Use the **access_token** from the token response as `Authorization: Bearer` on **`/api/mcp`**. **Dashboard API keys** keep working the same way. OAuth is optional; if the secret is not configured, OAuth endpoints return **503** and only API keys work.
+Use the **access_token** from the token response as `Authorization: Bearer` on **`/api/mcp`**. **Dashboard API keys** keep working the same way. OAuth is optional; if the secret is not configured, OAuth endpoints return **503** and only API keys work. Unauthenticated **`POST /api/mcp`** responses include **`WWW-Authenticate` with `resource_metadata`** (RFC 9728) when OAuth is configured so clients can discover the protected resource URL.
 
 Optional env: **`MCP_OAUTH_CLIENTS`** — JSON array of `{ "client_id", "redirect_uris" }`. Defaults include `cursor://anysphere.cursor-mcp/oauth/callback` and `https://www.deckbase.co/mcp/oauth/callback`.
 

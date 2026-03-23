@@ -12,6 +12,7 @@ import {
   isMcpOAuthConfigured,
   ACCESS_TOKEN_TTL_SEC,
 } from "@/lib/mcp-oauth";
+import { MCP_RESOURCE_IDENTIFIER } from "@/lib/mcp-protected-resource-metadata";
 
 function corsHeaders() {
   return {
@@ -48,6 +49,17 @@ export async function POST(request) {
 
   const body = await parseBody(request);
   const grantType = typeof body.grant_type === "string" ? body.grant_type.trim() : "";
+  const resource =
+    typeof body.resource === "string" ? body.resource.trim() : "";
+  if (resource && resource !== MCP_RESOURCE_IDENTIFIER) {
+    return NextResponse.json(
+      {
+        error: "invalid_request",
+        error_description: "Invalid resource parameter",
+      },
+      { status: 400, headers: corsHeaders() }
+    );
+  }
 
   try {
     if (grantType === "authorization_code") {
