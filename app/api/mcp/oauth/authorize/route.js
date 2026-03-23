@@ -18,8 +18,8 @@ export async function GET(request) {
 
   const { searchParams } = new URL(request.url);
   const responseType = searchParams.get("response_type") || "";
-  const clientId = searchParams.get("client_id") || "";
-  const redirectUri = searchParams.get("redirect_uri") || "";
+  const clientId = (searchParams.get("client_id") || "").trim();
+  const redirectUri = (searchParams.get("redirect_uri") || "").trim();
   const state = searchParams.get("state") || "";
   const codeChallenge = searchParams.get("code_challenge") || "";
   const codeChallengeMethod = searchParams.get("code_challenge_method") || "";
