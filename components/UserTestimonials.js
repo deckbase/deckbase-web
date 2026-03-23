@@ -50,138 +50,116 @@ const testimonials = [
 
 const UserTestimonials = () => {
   return (
-    <motion.section
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1, transition: { duration: 0.8 } }}
-      className="relative z-10 w-full bg-white py-16 overflow-hidden"
-    >
-      <div className="container mx-auto p-4 px-5 md:px-[5%] 2xl:px-0 max-w-[1200px]">
-        <div className="text-center mb-12 bg-bg-secondary border border-border rounded-3xl p-6 shadow-sm">
+    <section className="relative z-10 w-full bg-white py-24 overflow-hidden">
+      <div className="container mx-auto px-5 md:px-[5%] 2xl:px-0 max-w-[1200px]">
+
+        {/* Header */}
+        <div className="text-center mb-16">
           <motion.p
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0, transition: { duration: 0.6 } }}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-sm text-gray-500 mb-2"
+            transition={{ duration: 0.6 }}
+            className="text-xs uppercase tracking-widest text-secondary mb-3 font-medium"
           >
             What learners say
           </motion.p>
           <motion.h2
-            initial={{ opacity: 0, y: 50 }}
-            whileInView={{ opacity: 1, y: 0, transition: { duration: 0.8 } }}
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-3xl md:text-4xl font-bold mb-3 text-primary"
+            transition={{ duration: 0.8 }}
+            className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 text-primary"
           >
             How people use Deckbase
           </motion.h2>
           <motion.p
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{
-              opacity: 1,
-              y: 0,
-              transition: { duration: 0.8, delay: 0.2 },
-            }}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-base text-secondary max-w-2xl mx-auto"
+            transition={{ delay: 0.2, duration: 0.8 }}
+            className="text-secondary max-w-xl mx-auto text-sm"
           >
             Examples of study workflows—your experience may vary.
           </motion.p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {/* Testimonial grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {testimonials.map((testimonial, index) => (
             <motion.div
               key={index}
-              initial={{ opacity: 0, y: 50 }}
-              whileInView={{
-                opacity: 1,
-                y: 0,
-                transition: { duration: 0.6, delay: index * 0.1 },
-              }}
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="group bg-white border border-border p-6 rounded-lg shadow-sm hover:shadow-md transition-all duration-300"
+              transition={{ duration: 0.5, delay: index * 0.08 }}
+              className="group relative bg-white border border-border p-6 rounded-2xl hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
             >
-              <div className="flex items-center gap-1 mb-4">
+              {/* Decorative quote mark */}
+              <div className="absolute top-4 right-5 text-5xl font-bold text-gray-100 leading-none select-none font-serif">
+                &ldquo;
+              </div>
+
+              {/* Stars */}
+              <div className="flex items-center gap-0.5 mb-4">
                 {[...Array(testimonial.rating)].map((_, i) => (
-                  <Star
-                    key={i}
-                    className="w-5 h-5 fill-yellow-400 text-yellow-400"
-                  />
+                  <Star key={i} className="w-4 h-4 fill-notion-yellow text-notion-yellow" />
                 ))}
               </div>
 
-              <blockquote className="text-primary mb-6 italic leading-relaxed">
-                &quot;{testimonial.text}&quot;
+              {/* Quote */}
+              <blockquote className="text-primary/80 mb-6 leading-relaxed text-sm relative z-10">
+                {testimonial.text}
               </blockquote>
 
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-gradient-to-r from-accent to-purple-600 rounded-full flex items-center justify-center text-white font-bold shadow-sm">
-                  {testimonial.name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")}
+              {/* Author */}
+              <div className="flex items-center gap-3 pt-4 border-t border-border">
+                <div className="w-9 h-9 bg-gradient-to-br from-accent to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-xs shadow-sm flex-shrink-0">
+                  {testimonial.name.split(" ").map((n) => n[0]).join("")}
                 </div>
                 <div>
-                  <div className="font-semibold text-primary">
+                  <div className="font-semibold text-primary text-sm">
                     {testimonial.name}
                   </div>
-                  <div className="text-sm text-secondary">
-                    {testimonial.role}
-                  </div>
+                  <div className="text-xs text-secondary">{testimonial.role}</div>
                 </div>
               </div>
             </motion.div>
           ))}
         </div>
 
+        {/* CTA */}
         <motion.div
-          initial={{ opacity: 0, y: 50 }}
-          whileInView={{
-            opacity: 1,
-            y: 0,
-            transition: { duration: 0.8, delay: 0.8 },
-          }}
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-center mt-12"
+          transition={{ duration: 0.8, delay: 0.5 }}
+          className="text-center mt-16"
         >
-          <div className="bg-bg-secondary border border-border p-8 rounded-lg">
-            <h3 className="text-2xl font-bold mb-4 text-primary">
+          <div className="bg-bg-secondary border border-border p-10 rounded-2xl">
+            <h3 className="text-2xl font-bold mb-3 text-primary">
               Be Among the First to Learn Smarter
             </h3>
-            <p className="text-secondary mb-6 max-w-2xl mx-auto">
+            <p className="text-secondary mb-8 max-w-xl mx-auto text-sm leading-relaxed">
               Start your journey to remembering everything you read. Transform
               passive reading into lasting knowledge with AI-powered flashcards.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button
                 onClick={() => {
-                  const userAgent =
-                    navigator.userAgent || navigator.vendor || window.opera;
+                  const userAgent = navigator.userAgent || navigator.vendor || window.opera;
                   if (/android/i.test(userAgent)) {
-                    window.open(
-                      "https://play.google.com/store/apps/details?id=com.tkg.deckbase",
-                      "_blank"
-                    );
-                  } else if (
-                    /iPad|iPhone|iPod/.test(userAgent) &&
-                    !window.MSStream
-                  ) {
-                    window.open(
-                      "https://apps.apple.com/app/6755723338",
-                      "_blank"
-                    );
+                    window.open("https://play.google.com/store/apps/details?id=com.tkg.deckbase", "_blank");
                   } else {
-                    window.open(
-                      "https://apps.apple.com/app/6755723338",
-                      "_blank"
-                    );
+                    window.open("https://apps.apple.com/app/6755723338", "_blank");
                   }
                 }}
-                className="bg-gradient-to-r from-accent to-purple-600 text-white px-8 py-3 rounded-lg font-medium hover:opacity-90 transition-opacity cursor-pointer w-full sm:w-auto"
+                className="bg-gradient-to-r from-accent to-purple-600 text-white px-8 py-3 rounded-xl font-medium hover:opacity-90 transition-opacity cursor-pointer w-full sm:w-auto text-sm"
               >
                 Download Now
               </button>
               <Link href="/about-us" className="w-full sm:w-auto">
-                <button className="border-2 border-accent text-accent px-8 py-3 rounded-lg font-medium hover:bg-gradient-to-r hover:from-accent hover:to-purple-600 hover:text-white hover:border-transparent transition-all w-full">
+                <button className="border border-border text-secondary px-8 py-3 rounded-xl font-medium hover:border-accent hover:text-accent transition-all w-full text-sm">
                   Learn More
                 </button>
               </Link>
@@ -189,7 +167,7 @@ const UserTestimonials = () => {
           </div>
         </motion.div>
       </div>
-    </motion.section>
+    </section>
   );
 };
 

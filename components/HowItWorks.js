@@ -37,7 +37,8 @@ const steps = [
 const HowItWorks = () => {
   return (
     <section className="relative z-10 w-full bg-white overflow-hidden">
-      <div className="container mx-auto py-20 px-5 md:px-[5%] 2xl:px-0 max-w-[1400px]">
+      <div className="container mx-auto py-24 px-5 md:px-[5%] 2xl:px-0 max-w-[1400px]">
+
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -45,65 +46,67 @@ const HowItWorks = () => {
           viewport={{ once: true }}
           className="text-center mb-16"
         >
+          <p className="text-xs uppercase tracking-widest text-secondary mb-3 font-medium">
+            The process
+          </p>
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4 text-primary">
             How Deckbase Works
           </h2>
-          <p className="text-secondary text-lg md:text-xl max-w-3xl mx-auto">
+          <p className="text-secondary text-lg max-w-2xl mx-auto">
             Turn any content into lasting knowledge with AI-powered flashcards
           </p>
         </motion.div>
 
         {/* Main Content Grid */}
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
+        <div className="grid lg:grid-cols-2 gap-16 items-center">
+
           {/* Left: Phone Mockup */}
           <motion.div
             initial={{ opacity: 0, x: -50 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
+            transition={{ duration: 0.7 }}
             className="flex justify-center lg:justify-center"
           >
-            <div className="relative mr-8 lg:mr-16">
-              {/* Phone video */}
-              <div className="relative">
-                {/* Phone mockup image (demo.mp4 removed) */}
-                <img
-                  src="/mock/mock1.webp"
-                  alt="Deckbase app preview"
-                  className="w-full max-w-[200px] lg:max-w-xs h-auto drop-shadow-lg rounded-3xl object-cover"
-                />
-              </div>
+            <div className="relative">
+              {/* Soft glow behind phone */}
+              <div className="absolute inset-0 bg-gradient-to-br from-accent/15 to-purple-600/10 rounded-3xl blur-3xl scale-110" />
+              <img
+                src="/mock/mock1.webp"
+                alt="Deckbase app preview"
+                className="relative w-full max-w-[200px] lg:max-w-[260px] h-auto drop-shadow-xl rounded-3xl object-cover"
+              />
             </div>
           </motion.div>
 
           {/* Right: Steps */}
-          <div className="space-y-4">
+          <div className="space-y-3">
             {steps.map((step, index) => (
               <motion.div
                 key={index}
-                initial={{ opacity: 0, x: 50 }}
+                initial={{ opacity: 0, x: 40 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
                 className="group relative"
               >
-                {/* Connector line (except for last item) */}
+                {/* Connector line */}
                 {index < steps.length - 1 && (
-                  <div className="absolute left-5 top-14 w-0.5 h-10 bg-border"></div>
+                  <div className="absolute left-[1.85rem] top-14 w-px h-3 bg-border" />
                 )}
 
                 {/* Step card */}
-                <div className="flex gap-4 p-5 rounded-lg bg-white border border-border hover:shadow-md transition-all duration-300">
-                  {/* Number circle */}
-                  <div className="flex-shrink-0">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-r from-accent to-purple-600 flex items-center justify-center text-white font-semibold text-sm">
+                <div className="flex gap-4 p-4 rounded-xl bg-white border border-border hover:border-accent/20 hover:shadow-sm transition-all duration-300 group">
+                  {/* Number */}
+                  <div className="flex-shrink-0 relative">
+                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-accent to-purple-600 flex items-center justify-center text-white font-semibold text-xs">
                       {step.number}
                     </div>
                   </div>
 
                   {/* Content */}
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold mb-1 text-primary">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-base font-semibold mb-0.5 text-primary group-hover:text-accent transition-colors duration-200">
                       {step.title}
                     </h3>
                     <p className="text-secondary text-sm leading-relaxed">
@@ -118,18 +121,18 @@ const HowItWorks = () => {
 
         {/* Bottom Feature Highlight */}
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6, delay: 0.3 }}
           className="mt-16 text-center"
         >
-          <div className="inline-block bg-gradient-to-r from-accent/5 to-purple-600/5 border border-accent/20 rounded-lg px-8 py-4">
-            <p className="text-primary text-base">
+          <div className="inline-block bg-gradient-to-r from-accent/5 to-purple-600/5 border border-accent/15 rounded-xl px-8 py-4">
+            <p className="text-primary text-sm">
               <span className="font-semibold text-accent">
                 Powered by advanced AI
               </span>{" "}
-              - Deckbase understands context and creates flashcards that focus
+              — Deckbase understands context and creates flashcards that focus
               on what matters most for effective learning
             </p>
           </div>
