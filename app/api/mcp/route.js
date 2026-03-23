@@ -74,16 +74,6 @@ export async function POST(request) {
   }
   const uid = resolved.uid;
 
-  if (process.env.NODE_ENV === "production") {
-    const entitled = await isBasicOrProOrVip(uid);
-    if (!entitled) {
-      return NextResponse.json(
-        { jsonrpc: "2.0", id: null, error: { code: -32002, message: "MCP is available for Pro and VIP subscribers only" } },
-        { status: 403, headers: mcpJsonHeaders() }
-      );
-    }
-  }
-
   let body;
   try {
     body = await request.json();
@@ -95,6 +85,20 @@ export async function POST(request) {
   }
 
   const id = body.id;
+  const method = typeof body?.method === "string" ? body.method : "";
+
+  // Allow client discovery methods even when entitlement checks fail/flap.
+  // Restrict paid access at execution time (tools/call) instead.
+  if (process.env.NODE_ENV === "production" && method === "tools/call") {
+    const entitled = await isBasicOrProOrVip(uid);
+    if (!entitled) {
+      return NextResponse.json(
+        { jsonrpc: "2.0", id: null, error: { code: -32002, message: "MCP is available for Pro and VIP subscribers only" } },
+        { status: 403, headers: mcpJsonHeaders() }
+      );
+    }
+  }
+
   const rootPath = process.cwd();
   const context = { uid };
   const { result, error } = await handleMcpRequest(rootPath, body, context);
