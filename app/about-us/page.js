@@ -19,19 +19,19 @@ const values = [
   {
     id: 1,
     title: "Learning Made Effortless",
-    desc: "Learning should work with your brain, not against it. Deckbase reduces study setup time with AI card creation so you can spend more time reviewing and remembering.",
+    desc: "Learning should work with your brain. Deckbase cuts setup time with AI card creation, so you can spend more time reviewing.",
     icon: <RiSecurePaymentFill className="w-6 h-6 text-white" />,
   },
   {
     id: 2,
     title: "Science-Backed Methods",
-    desc: "Spaced repetition improves long-term memory. Deckbase supports adaptive review so difficult cards appear when they matter most.",
+    desc: "Spaced repetition improves long-term memory. Deckbase adapts review timing so difficult cards appear when they matter most.",
     icon: <MdOutlineWifiFind className="w-6 h-6 text-white" />,
   },
   {
     id: 3,
     title: "Privacy-First Approach",
-    desc: "Your decks and study data are yours. Deckbase is built with secure account-based sync so you can study across web and mobile with confidence.",
+    desc: "Your decks and study data are yours. Secure account sync keeps your progress available on web and mobile.",
     icon: <TbClockRecord className="w-6 h-6 text-white" />,
   },
 ];
@@ -70,9 +70,8 @@ export default function About() {
               transition={{ delay: 0.8, duration: 0.5 }}
               className="my-4 mb-6 text-white w-[80%] md:w-[60%] md:leading-8 text-center"
             >
-              We believe that reading without retention is wasted time. Deckbase
-              uses AI and spaced repetition to turn what you read into lasting
-              knowledge that stays with you.
+              Reading without retention is wasted effort. Deckbase uses AI and
+              spaced repetition to help what you read actually stick.
             </motion.p>
 
             <div className="mt-8 flex space-x-4">
@@ -94,7 +93,7 @@ export default function About() {
                 alt="Deckbase App Screenshot"
                 width={1500}
                 height={1125}
-                quality={100}
+                quality={75}
                 priority
                 className="rounded-3xl shadow-2xl w-full"
               />
@@ -116,8 +115,7 @@ export default function About() {
               <h3 className="text-xl font-bold">🧠 AI-Powered Learning</h3>
               <p>
                 Build cards faster from text, files, and captured content. AI
-                helps draft card content so you can refine and study instead of
-                spending hours formatting from scratch.
+                drafts the first version, then you refine what matters.
               </p>
             </div>
             <div>
@@ -125,17 +123,16 @@ export default function About() {
                 ⏰ Spaced Repetition Science
               </h3>
               <p>
-                Deckbase is designed around retention: review difficult material
-                more often, and reinforce what you learn with consistent, short
-                sessions.
+                Deckbase is built for retention: review difficult material more
+                often and reinforce learning with short, consistent sessions.
               </p>
             </div>
             <div>
               <h3 className="text-xl font-bold">📚 Built for Real Workflows</h3>
               <p>
                 Import CSV, Excel, and Anki decks, manage structured templates,
-                and sync cards across web and mobile. Deckbase supports both
-                quick capture and long-term knowledge systems.
+                and sync cards across web and mobile. Use it for quick capture
+                or long-term study systems.
               </p>
               <p className="mt-2 font-semibold">
                 Main promise: less setup, better recall.

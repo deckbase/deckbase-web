@@ -3,12 +3,12 @@ import { motion } from "framer-motion";
 
 const story = [
   "Most of what we read is forgotten within days.",
-  "We built Deckbase because we were tired of consuming information without actually retaining it.",
-  "Books, articles, courses—we'd read them and forget most of the content within a week. The problem wasn't motivation; it was method.",
-  "Traditional flashcard apps required hours of manual work. Creating good study materials was almost as time-consuming as the learning itself.",
-  "So we built something different. AI that understands what you're reading. Flashcards that create themselves.",
-  "Combined with spaced repetition—a scientifically proven method that schedules reviews at optimal intervals for long-term retention.",
-  "Now, learning is effortless. Capture any text, let AI do the work, and actually remember what you learn.",
+  "We built Deckbase because we were tired of reading a lot and retaining very little.",
+  "Books, articles, and courses were useful in the moment, then mostly forgotten in a week. The problem was method, not motivation.",
+  "Traditional flashcard apps often required hours of manual setup. Building study material felt almost as heavy as studying itself.",
+  "So we built a different workflow: AI that understands what you are reading and drafts cards quickly.",
+  "Then spaced repetition schedules reviews at useful intervals for long-term memory.",
+  "Now learning feels simpler: capture text, generate cards, and keep knowledge active with steady review.",
   "Deckbase is where reading becomes knowledge that lasts.",
 ];
 
