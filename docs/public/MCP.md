@@ -2,6 +2,19 @@
 
 Deckbase exposes an MCP server so AI tools (Cursor, Claude Code, VS Code, etc.) can read public docs and manage decks and cards.
 
+### For AI assistants (LLM agents)
+
+Use this section if you **design prompts or tools** for an assistant that talks to Deckbase MCP (hosted **`POST /api/mcp`**).
+
+1. **Start with the workflow doc:** [MCP-AI-CARD-WORKFLOW.md](./MCP-AI-CARD-WORKFLOW.md) — recommended sequence (`list_decks` → `get_template_schema` → `create_card` / `create_cards`), how **`side`** (front/back) works with **`block_text`**, validation errors, and bulk create limits.
+2. **Fetch it over MCP:** call **`list_docs`**, then **`read_doc`** with path **`MCP-AI-CARD-WORKFLOW.md`** or **`MCP.md`** (files live under `docs/public/`).
+3. **Do not invent `blockId`s.** Always call **`get_template_schema`** for the chosen template (or `deckId` only to use the deck default). Use **`list_block_schemas`** only for generic shapes per block *type*; real UUIDs and **`side`** per block come from **`get_template_schema`**.
+4. **Full tool tables, OAuth URLs, and examples** are in the rest of **this file** ([Tools](#tools)).
+
+Human-facing setup (API keys, Cursor, ChatGPT connectors): [Connecting to Deckbase MCP](https://www.deckbase.co/mcp).
+
+---
+
 ## Endpoints
 
 | Mode | Endpoint | Auth |
@@ -51,18 +64,18 @@ Optional env: **`MCP_OAUTH_CLIENTS`** — JSON array of `{ "client_id", "redirec
 | **create_deck** | Create a new deck. Returns `deckId`. | `title` (required), `description` (optional). |
 | **update_deck** | Update title, description, or default template. | `deckId` (required); optional `title`, `description`, `default_template_id` (empty string clears the default). |
 | **list_templates** | List templates (`templateId`, `name`, `description`). If the list is empty, use **create_template** before **create_card**. | None. |
-| **get_template_schema** | After the user picks a template, returns exact JSON for that layout: each `blockId`, type, `configJson`, `valuesExample`, and hints for **create_card** (`block_text` keys). Includes `voice_id_required_for_tts` when TTS needs an explicit voice. | `templateId` from **list_templates**, or `deckId` only to use the deck’s default template. |
+| **get_template_schema** | After the user picks a template, returns exact JSON for that layout: each `blockId`, type, **`side`** (`"front"` \| `"back"` — study shows front first, back after flip), `configJson`, `valuesExample`, and hints for **create_card** (`block_text` keys). Includes `voice_id_required_for_tts` when TTS needs an explicit voice. | `templateId` from **list_templates**, or `deckId` only to use the deck’s default template. |
 | **create_card** | Create a new card using a template’s fields. Returns `cardId`, `templateId` used, and `usedDeckDefault`. Validates `block_text` keys, required text blocks, and that at least one text field is filled when the template has text blocks. | `deckId` (required). `templateId` optional — if omitted, uses the deck’s `defaultTemplateId` from **list_decks** (set in the dashboard); if the deck has no default, pass `templateId` from **list_templates**. Optional `front`, `block_text`, **`generate_audio`** (default **true**). When **`generate_audio`** is true and the template has an **audio** block, pass **`voice_id`** from **list_elevenlabs_voices** *or* **`audio_language`** (ISO 639) and **`audio_gender`** (`female` \| `male`) after asking the user — same curated catalog as **list_elevenlabs_voices** filters. |
 | **update_card** | Edit an existing card. | Required `deckId` and `cardId`; optional full `values` and/or `blocks_snapshot`, or merge `front` / `block_text` into current values (use **export_deck** for ids and shapes). |
 | **create_cards** | Create multiple cards in one request (same `deckId`, template resolution, and validation as **create_card**). Max **50** cards per request. If one card fails, the response lists created so far and `failedAt`; earlier cards may already exist in Firestore. | `deckId`, optional `templateId`, optional top-level `voice_id`, **`audio_language`**, **`audio_gender`**, **`generate_audio`**, required non-empty `cards` array; each element may include `front`, `block_text`, `voice_id`, `audio_language`, `audio_gender`, **`generate_audio`** like **create_card**. |
 | **attach_audio_to_card** | ElevenLabs TTS for an existing card. | Required `deckId`, `cardId` (from **export_deck**). Pass **`voice_id`** *or* **`audio_language`** + **`audio_gender`** (after asking the user). Optional `text`, `block_id` when the card has multiple audio blocks, and **`replace_existing`** to overwrite existing audio. |
-| **export_deck** | Export deck metadata and cards as JSON. Response includes `truncated` and `exportType`. | `deckId` (required); optional `max_cards` (default **2000**, cap **5000**); optional **`export_type`**: **`full`** (default: each card includes `blocksSnapshot` and `values`) or **`values_only`** (`values` only, smaller payload). |
-| **create_template** | Create a flashcard template (block layout for new cards). Returns `templateId` and block ids. | `name` (required), optional `description`, optional `block_types` (ordered list of type keys or 0–12 ids from **list_template_block_types**; mutually exclusive with `blocks`), optional `blocks` (full block objects; omit both for default Question + Answer). If the layout includes an **audio** block, ask the user for a default TTS voice, then pass **`voice_id`** from **list_elevenlabs_voices** or **`audio_language`** (ISO 639) + **`audio_gender`** (`female` \| `male`) — same as **create_card** — unless every audio block already has `defaultVoiceId` in `configJson`. Optional `rendering` (`frontBlockIds` / `backBlockIds`), optional `mainBlockId` / `subBlockId`. |
-| **update_template** | Change a template’s metadata and/or layout. Returns updated version (increments **version** when layout or metadata changes). | Required `templateId`; optional `name`, `description`, `block_types` / `blocks`, `voice_id` or `audio_language` + `audio_gender`, `rendering`, `mainBlockId` / `subBlockId`. Same default-voice rules as **create_template**. |
+| **export_deck** | Export deck metadata and cards as JSON. Response includes `truncated` and `exportType`. | `deckId` (required); optional `max_cards` (default **2000**, cap **5000**); optional **`export_type`**: **`full`** (default: each card includes `blocksSnapshot` with **`side`** per block and `values`) or **`values_only`** (`values` only, smaller payload). |
+| **create_template** | Create a flashcard template (block layout for new cards). Returns `templateId` and block ids. | `name` (required), optional `description`, optional `block_types` (ordered list of type keys or 0–12 ids from **list_template_block_types**; mutually exclusive with `blocks`), optional `blocks` (full block objects; each may set **`side`**: `"front"` \| `"back"`; omit both for default Question + Answer). If the layout includes an **audio** block, ask the user for a default TTS voice, then pass **`voice_id`** from **list_elevenlabs_voices** or **`audio_language`** (ISO 639) + **`audio_gender`** (`female` \| `male`) — same as **create_card** — unless every audio block already has `defaultVoiceId` in `configJson`. Optional `rendering` (`frontBlockIds` / `backBlockIds`) is translated to per-block **`side`** and is not stored as `rendering` in Firestore. Optional `mainBlockId` / `subBlockId`. |
+| **update_template** | Change a template’s metadata and/or layout. Returns updated version (increments **version** when layout or metadata changes). | Required `templateId`; optional `name`, `description`, `block_types` / `blocks` (per-block **`side`** as in **create_template**), `voice_id` or `audio_language` + `audio_gender`, `rendering` (normalized to **`side`**), `mainBlockId` / `subBlockId`. Same default-voice rules as **create_template**. |
 
 - **list_decks** returns `{ deckId, title, description, defaultTemplateId? }[]`. Use `deckId` with **create_card**; when `defaultTemplateId` is set, **create_card** can omit `templateId`.
 - **list_templates** returns `{ templateId, name, description }[]`. If empty, use **create_template** (after **list_template_block_types**) before **create_card**.
-- **get_template_schema** returns per-block `blockId`, type, `configJson`, plus `valuesExample` and suggested `block_text` keys for **create_card** / **create_cards** after the user (or client) picks a template.
+- **get_template_schema** returns per-block `blockId`, type, **`side`** (`"front"` \| `"back"`), `configJson`, plus `valuesExample` and suggested `block_text` keys for **create_card** / **create_cards** after the user (or client) picks a template.
 - **create_deck** returns `{ deckId, title, description }`.
 - **update_deck** returns the deck’s current `deckId`, `title`, `description`, `defaultTemplateId` after applying any provided fields.
 - **update_card** returns `{ cardId, deckId }` after writing. Prefer **export_deck** to obtain `cardId`s and current **`values`** / **`blocksSnapshot`** before editing.
@@ -80,7 +93,7 @@ The **hosted** MCP endpoint requires an API key (or OAuth access token; see [End
 2. **Query:** Loads non-deleted cards in that deck from Firestore (`deck_id` match, `is_deleted == false`). Ordering is not guaranteed to be chronological.
 3. **Limit:** Returns at most `max_cards` (default **2000**, hard cap **5000**). If more cards exist, `truncated: true` and only the first *N* documents are returned.
 4. **Shape:** Response is JSON: `deck` (`deckId`, `title`, `description`), `cards[]`, `truncated`, `maxCards`, `exportType`.
-5. **Per card:** Each card includes ids (`cardId`, `templateId`, `mainBlockId`, `subBlockId`) and **`values`** (per-block content: `text`, `mediaIds`, quiz fields, etc.). With the default **`export_type`**, each card also includes **`blocksSnapshot`** (block definitions: `blockId`, `type`, `label`, `configJson`), matching what you need to interpret `values`.
+5. **Per card:** Each card includes ids (`cardId`, `templateId`, `mainBlockId`, `subBlockId`) and **`values`** (per-block content: `text`, `mediaIds`, quiz fields, etc.). With the default **`export_type`**, each card also includes **`blocksSnapshot`** (block definitions: `blockId`, `type`, `label`, **`side`**, `configJson`), matching what you need to interpret `values`.
 
 **`export_type`**
 
@@ -116,7 +129,7 @@ The server exposes MCP **resources** for public docs only:
 
 - **Protocol:** MCP `2024-11-05`
 - **Server name:** `deckbase-mcp`
-- **Hosted:** JSON-RPC 2.0 over POST; auth is API key only (no Firebase token).
+- **Hosted:** JSON-RPC 2.0 over POST; send **`Authorization: Bearer`** with a dashboard API key or OAuth **access token** (when OAuth is configured) — not an end-user Firebase ID token.
 - **Claude Code:** Use `claude mcp add --transport http deckbase https://www.deckbase.co/api/mcp --header "Authorization: Bearer YOUR_API_KEY"`. Without `--header`, requests are unauthenticated and return **401**. See the [MCP setup page](https://www.deckbase.co/mcp) for the full steps.
 - **ChatGPT Connectors:** Only works if the connector UI lets you set **custom headers** with `Authorization: Bearer <API key>`. If ChatGPT does not support that, Deckbase MCP cannot be used there; use Cursor, Claude Code, or VS Code instead. See [ChatGPT on the setup page](https://www.deckbase.co/mcp#chatgpt).
 - **Card shape:** create_card copies the chosen template’s blocks into a new card (via Firestore Admin). Decks and cards appear in the user's dashboard and sync to the mobile app.

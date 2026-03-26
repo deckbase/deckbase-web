@@ -193,6 +193,7 @@ export async function POST(request) {
       blockId: b.blockId,
       type: b.type,
       label: b.label || "",
+      side: b.side === "back" ? "back" : "front",
     }));
 
     console.log("[mobile add-with-ai] template blocks", {
@@ -275,6 +276,7 @@ export async function POST(request) {
       label: b.label || "",
       required: Boolean(b.required),
       configJson: b.configJson,
+      side: b.side === "back" ? "back" : "front",
     }));
 
     const generatedCards = [];

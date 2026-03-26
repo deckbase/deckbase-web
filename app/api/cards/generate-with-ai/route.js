@@ -24,6 +24,7 @@ function templateBlocksToFull(templateBlocks) {
     label: b.label || "",
     required: Boolean(b.required),
     configJson: b.configJson,
+    side: b.side === "back" ? "back" : "front",
   }));
 }
 
@@ -141,6 +142,7 @@ export async function POST(request) {
       blockId: b.blockId,
       type: normalizeBlockType(b.type),
       label: b.label || "",
+      side: b.side === "back" ? "back" : "front",
     }));
     console.log("[generate-with-ai] promptBlocks (normalized types)", promptBlocks.map((b) => ({ id: b.blockId?.slice(0, 8), type: b.type, label: (b.label || "").slice(0, 20) })));
 

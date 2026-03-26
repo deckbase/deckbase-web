@@ -6,10 +6,11 @@ import {
   useState,
   useCallback,
   useRef,
+  useMemo,
   Fragment,
 } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
   Check,
@@ -89,6 +90,23 @@ const normalizeBlockType = (type) => {
 const normalizeBlocks = (blocks) =>
   (blocks || []).map((b) => ({ ...b, type: normalizeBlockType(b.type) }));
 
+/** Template-driven face; missing side is treated as front. */
+const effectiveCardBlockSide = (block) =>
+  block?.side === "back" ? "back" : "front";
+
+/** Insert index for a new block on the given face (flat array order). */
+function insertionIndexForCardSide(blocks, side) {
+  const list = blocks || [];
+  if (side === "front") {
+    let lastFront = -1;
+    for (let i = 0; i < list.length; i++) {
+      if (effectiveCardBlockSide(list[i]) === "front") lastFront = i;
+    }
+    return lastFront + 1;
+  }
+  return list.length;
+}
+
 const isImageBlock = (b) => {
   const t = b?.type;
   return t === "image" || t === 6 || (typeof t === "string" && t === "6");
@@ -113,9 +131,9 @@ const normalizeValue = (v) =>
 
 // Default template for new cards (same structure for "add card" and consistency with edit)
 const DEFAULT_BLOCKS = [
-  { blockId: "front", type: "header1", label: "Front", required: true },
-  { blockId: "back", type: "text", label: "Back", required: true },
-  { blockId: "audio", type: "audio", label: "Audio", required: false },
+  { blockId: "front", type: "header1", label: "Front", required: true, side: "front" },
+  { blockId: "back", type: "text", label: "Back", required: true, side: "back" },
+  { blockId: "audio", type: "audio", label: "Audio", required: false, side: "front" },
 ];
 
 function getDefaultValuesForBlocks(blocks) {
@@ -157,12 +175,17 @@ function CardEditorPageInner() {
   );
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [showBlockPicker, setShowBlockPicker] = useState(false);
+  /** null = closed; which face new blocks are added to */
+  const [blockPickerSide, setBlockPickerSide] = useState(null);
+  /** True after “Add back of card” until back blocks exist or user removes back */
+  const [showBackSectionIntent, setShowBackSectionIntent] = useState(false);
+  const prevBackBlockCountRef = useRef(0);
   const [mediaCache, setMediaCache] = useState({});
   const [mainBlockId, setMainBlockId] = useState(null);
   const [subBlockId, setSubBlockId] = useState(null);
   const [generatingAudioBlockId, setGeneratingAudioBlockId] = useState(null);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [saveSnackbarOpen, setSaveSnackbarOpen] = useState(false);
   const [imageCropPending, setImageCropPending] = useState(null);
   const [imageUploadProgress, setImageUploadProgress] = useState(null);
   const [imageEditLoading, setImageEditLoading] = useState(null);
@@ -208,6 +231,15 @@ function CardEditorPageInner() {
       if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
     };
   }, []);
+
+  // Collapse empty “back section” intent when the last back block is removed
+  useEffect(() => {
+    const n = blocks.filter((b) => effectiveCardBlockSide(b) === "back").length;
+    if (prevBackBlockCountRef.current > 0 && n === 0) {
+      setShowBackSectionIntent(false);
+    }
+    prevBackBlockCountRef.current = n;
+  }, [blocks]);
 
   // Fetch deck and card data
   useEffect(() => {
@@ -384,8 +416,8 @@ function CardEditorPageInner() {
     scheduleTextAutoSave();
   };
 
-  // Add a new block
-  const addBlock = (type) => {
+  // Add a new block (optionally on back face — matches template editor)
+  const addBlock = (type, side = "front") => {
     const newBlockId = uuidv4();
     let configJson;
     if (type === "quizSingleSelect") {
@@ -415,15 +447,22 @@ function CardEditorPageInner() {
       configJson = JSON.stringify({ cropAspect: 1 });
     }
 
+    const face = side === "back" ? "back" : "front";
     const newBlock = {
       blockId: newBlockId,
       type,
       label: BLOCK_TYPES[type]?.label || "Block",
       required: false,
       configJson,
+      side: face,
     };
 
-    setBlocks((prev) => [...prev, newBlock]);
+    setBlocks((prev) => {
+      const insertAt = insertionIndexForCardSide(prev, face);
+      const next = [...prev];
+      next.splice(insertAt, 0, newBlock);
+      return next;
+    });
     setValues((prev) => ({
       ...prev,
       [newBlockId]: {
@@ -433,7 +472,37 @@ function CardEditorPageInner() {
         mediaIds: type === "image" || type === "audio" ? [] : undefined,
       },
     }));
-    setShowBlockPicker(false);
+    setBlockPickerSide(null);
+  };
+
+  const addBackOfCard = () => {
+    setShowBackSectionIntent(true);
+  };
+
+  const removeBackSection = () => {
+    const backIds = blocks
+      .filter((b) => effectiveCardBlockSide(b) === "back")
+      .map((b) => b.blockId);
+    if (backIds.length > 0) {
+      if (
+        !confirm(
+          "Remove the back of the card? All blocks on the back will be deleted.",
+        )
+      ) {
+        return;
+      }
+      setBlocks((prev) =>
+        prev.filter((b) => effectiveCardBlockSide(b) === "front"),
+      );
+      setValues((prev) => {
+        const next = { ...prev };
+        backIds.forEach((id) => {
+          delete next[id];
+        });
+        return next;
+      });
+    }
+    setShowBackSectionIntent(false);
   };
 
   // Remove a block
@@ -1124,13 +1193,20 @@ function CardEditorPageInner() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await persistCard(blocks, values, { redirect: true });
+      await persistCard(blocks, values, { redirect: false });
+      setSaveSnackbarOpen(true);
     } catch (error) {
       console.error("Error saving card:", error);
     } finally {
       setSaving(false);
     }
   };
+
+  useEffect(() => {
+    if (!saveSnackbarOpen) return;
+    const t = setTimeout(() => setSaveSnackbarOpen(false), 3500);
+    return () => clearTimeout(t);
+  }, [saveSnackbarOpen]);
 
   const cardValidation = getBlockValidationErrorsFromValidators(
     blocks,
@@ -1157,6 +1233,17 @@ function CardEditorPageInner() {
     });
   }
 
+  const frontBlocks = useMemo(
+    () => blocks.filter((b) => effectiveCardBlockSide(b) === "front"),
+    [blocks],
+  );
+  const backBlocks = useMemo(
+    () => blocks.filter((b) => effectiveCardBlockSide(b) === "back"),
+    [blocks],
+  );
+  const hasBackBlocks = backBlocks.length > 0;
+  const showBackPanel = hasBackBlocks || showBackSectionIntent;
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -1164,6 +1251,129 @@ function CardEditorPageInner() {
       </div>
     );
   }
+
+  const renderBlockRow = (block) => {
+    const globalIndex = blocks.findIndex((b) => b.blockId === block.blockId);
+    if (globalIndex < 0) return null;
+    const blockTypeNum =
+      typeof block.type === "number"
+        ? block.type
+        : /^\d+$/.test(block.type)
+          ? Number(block.type)
+          : null;
+    const isAudio =
+      blockTypeNum !== null
+        ? BlockTypeNames[blockTypeNum] === "audio"
+        : block.type === "audio";
+    const audioConfig = isAudio
+      ? parseAudioBlockConfig(block.configJson, { mainBlockId })
+      : {};
+    const defaultVoiceId = audioConfig.defaultVoiceId || undefined;
+    const defaultSourceBlockId =
+      audioConfig.defaultSourceBlockId || undefined;
+    const isDragging = draggedBlockIndex === globalIndex;
+    const showDropDivider = dragOverBlockIndex === globalIndex;
+
+    return (
+      <Fragment key={block.blockId || `block-${globalIndex}`}>
+        {showDropDivider && (
+          <div
+            className="h-1 rounded-full bg-accent/80 my-1 flex-shrink-0"
+            aria-hidden
+          />
+        )}
+        <div
+          draggable
+          onDragStart={(e) => {
+            e.dataTransfer.effectAllowed = "move";
+            e.dataTransfer.setData("text/plain", String(globalIndex));
+            setDraggedBlockIndex(globalIndex);
+            setupDragScroll();
+          }}
+          onDragEnd={() => {
+            setDraggedBlockIndex(null);
+            setDragOverBlockIndex(null);
+            clearDragScroll();
+          }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            setDragOverBlockIndex(globalIndex);
+          }}
+          onDragLeave={() =>
+            setDragOverBlockIndex((i) => (i === globalIndex ? null : i))
+          }
+          onDrop={(e) => {
+            e.preventDefault();
+            const from = draggedBlockIndex;
+            if (from != null && from !== globalIndex) {
+              const fromBlock = blocks[from];
+              const toBlock = blocks[globalIndex];
+              if (
+                fromBlock &&
+                toBlock &&
+                effectiveCardBlockSide(fromBlock) !==
+                  effectiveCardBlockSide(toBlock)
+              ) {
+                setDraggedBlockIndex(null);
+                setDragOverBlockIndex(null);
+                return;
+              }
+              moveBlock(from, globalIndex);
+            }
+            setDraggedBlockIndex(null);
+            setDragOverBlockIndex(null);
+          }}
+          className={`rounded-xl transition-colors cursor-grab active:cursor-grabbing ${isDragging ? "opacity-60" : ""}`}
+        >
+          {((cardValidation.errorsByBlockId ?? {})[block.blockId] || [])
+            .length > 0 && (
+            <div className="mb-2 rounded-lg border border-amber-500/50 bg-amber-500/10 text-amber-200 text-sm px-3 py-2">
+              <ul className="list-disc list-inside space-y-0.5">
+                {(cardValidation.errorsByBlockId ?? {})[block.blockId].map(
+                  (msg, i) => (
+                    <li key={i}>{msg}</li>
+                  ),
+                )}
+              </ul>
+            </div>
+          )}
+          <BlockEditor
+            block={block}
+            value={values[block.blockId]}
+            allBlocks={blocks}
+            allValues={values}
+            mediaCache={mediaCache}
+            isMainBlock={mainBlockId === block.blockId}
+            isSubBlock={subBlockId === block.blockId}
+            onValueChange={(text) => updateBlockValue(block.blockId, text)}
+            onRemove={() => removeBlock(block.blockId)}
+            onImageFileSelect={(files) =>
+              handleImageFileSelect(block.blockId, files)
+            }
+            onImageUpload={(files) => handleImageUpload(block.blockId, files)}
+            onImageEdit={(mediaId) => handleEditImage(block.blockId, mediaId)}
+            onImageRemove={(mediaId) => removeImage(block.blockId, mediaId)}
+            imageUploadProgress={imageUploadProgress}
+            imageEditLoading={imageEditLoading}
+            onAudioUpload={(files) => handleAudioUpload(block.blockId, files)}
+            onAudioRemove={(mediaId) => removeAudio(block.blockId, mediaId)}
+            onGenerateAudio={
+              audioProEntitled
+                ? (text, voiceId) =>
+                    handleGenerateAudio(block.blockId, text, voiceId)
+                : undefined
+            }
+            generateAudioProRequired={isProduction && !audioProEntitled}
+            defaultVoiceId={defaultVoiceId}
+            defaultSourceBlockId={defaultSourceBlockId}
+            generatingAudio={generatingAudioBlockId === block.blockId}
+            onConfigChange={(config) => updateBlockConfig(block.blockId, config)}
+          />
+        </div>
+      </Fragment>
+    );
+  };
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
@@ -1231,159 +1441,115 @@ function CardEditorPageInner() {
         </div>
       )}
 
-      {/* Blocks */}
-      <div className="space-y-4">
-        {blocks.map((block, index) => {
-          const blockTypeNum =
-            typeof block.type === "number"
-              ? block.type
-              : /^\d+$/.test(block.type)
-                ? Number(block.type)
-                : null;
-          const isAudio =
-            blockTypeNum !== null
-              ? BlockTypeNames[blockTypeNum] === "audio"
-              : block.type === "audio";
-          const audioConfig = isAudio
-            ? parseAudioBlockConfig(block.configJson, { mainBlockId })
-            : {};
-          const defaultVoiceId = audioConfig.defaultVoiceId || undefined;
-          const defaultSourceBlockId =
-            audioConfig.defaultSourceBlockId || undefined;
-          const isDragging = draggedBlockIndex === index;
-          const showDropDivider = dragOverBlockIndex === index;
-
-          return (
-            <Fragment key={block.blockId || `block-${index}`}>
-              {showDropDivider && (
-                <div
-                  className="h-1 rounded-full bg-accent/80 my-1 flex-shrink-0"
-                  aria-hidden
-                />
-              )}
-              <div
-                draggable
-                onDragStart={(e) => {
-                  e.dataTransfer.effectAllowed = "move";
-                  e.dataTransfer.setData("text/plain", String(index));
-                  setDraggedBlockIndex(index);
-                  setupDragScroll();
-                }}
-                onDragEnd={() => {
-                  setDraggedBlockIndex(null);
-                  setDragOverBlockIndex(null);
-                  clearDragScroll();
-                }}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  e.dataTransfer.dropEffect = "move";
-                  setDragOverBlockIndex(index);
-                }}
-                onDragLeave={() =>
-                  setDragOverBlockIndex((i) => (i === index ? null : i))
-                }
-                onDrop={(e) => {
-                  e.preventDefault();
-                  const from = draggedBlockIndex;
-                  if (from != null && from !== index) moveBlock(from, index);
-                  setDraggedBlockIndex(null);
-                  setDragOverBlockIndex(null);
-                }}
-                className={`rounded-xl transition-colors cursor-grab active:cursor-grabbing ${isDragging ? "opacity-60" : ""}`}
-              >
-                {((cardValidation.errorsByBlockId ?? {})[block.blockId] || [])
-                  .length > 0 && (
-                  <div className="mb-2 rounded-lg border border-amber-500/50 bg-amber-500/10 text-amber-200 text-sm px-3 py-2">
-                    <ul className="list-disc list-inside space-y-0.5">
-                      {(cardValidation.errorsByBlockId ?? {})[
-                        block.blockId
-                      ].map((msg, i) => (
-                        <li key={i}>{msg}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                <BlockEditor
-                  block={block}
-                  value={values[block.blockId]}
-                  allBlocks={blocks}
-                  allValues={values}
-                  mediaCache={mediaCache}
-                  isMainBlock={mainBlockId === block.blockId}
-                  isSubBlock={subBlockId === block.blockId}
-                  onValueChange={(text) =>
-                    updateBlockValue(block.blockId, text)
-                  }
-                  onRemove={() => removeBlock(block.blockId)}
-                  onImageFileSelect={(files) =>
-                    handleImageFileSelect(block.blockId, files)
-                  }
-                  onImageUpload={(files) =>
-                    handleImageUpload(block.blockId, files)
-                  }
-                  onImageEdit={(mediaId) =>
-                    handleEditImage(block.blockId, mediaId)
-                  }
-                  onImageRemove={(mediaId) =>
-                    removeImage(block.blockId, mediaId)
-                  }
-                  imageUploadProgress={imageUploadProgress}
-                  imageEditLoading={imageEditLoading}
-                  onAudioUpload={(files) =>
-                    handleAudioUpload(block.blockId, files)
-                  }
-                  onAudioRemove={(mediaId) =>
-                    removeAudio(block.blockId, mediaId)
-                  }
-                  onGenerateAudio={
-                    audioProEntitled
-                      ? (text, voiceId) =>
-                          handleGenerateAudio(block.blockId, text, voiceId)
-                      : undefined
-                  }
-                  generateAudioProRequired={isProduction && !audioProEntitled}
-                  defaultVoiceId={defaultVoiceId}
-                  defaultSourceBlockId={defaultSourceBlockId}
-                  generatingAudio={generatingAudioBlockId === block.blockId}
-                  onConfigChange={(config) =>
-                    updateBlockConfig(block.blockId, config)
-                  }
-                />
+      {/* Blocks — front / back (same pattern as template editor) */}
+      <div className="space-y-4 mb-6">
+        {blocks.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center bg-white/5 border border-white/10 rounded-xl">
+            <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
+              <Plus className="w-8 h-8 text-white/30" />
+            </div>
+            <h3 className="text-lg font-semibold text-white mb-2">
+              No blocks yet
+            </h3>
+            <p className="text-white/50 mb-4 text-sm max-w-sm">
+              Add blocks to fill this card. You can add a back face after the
+              front is set up.
+            </p>
+            <button
+              type="button"
+              onClick={() => setBlockPickerSide("front")}
+              className="px-4 py-2 rounded-lg bg-accent/20 text-accent hover:bg-accent/30 text-sm font-medium"
+            >
+              Add block
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] overflow-hidden">
+              <div className="px-4 py-2 border-b border-white/10 bg-white/[0.04]">
+                <span className="text-xs font-semibold uppercase tracking-wider text-white/50">
+                  Front
+                </span>
               </div>
-            </Fragment>
-          );
-        })}
+              <div className="p-4 space-y-4">
+                {frontBlocks.map((block) => renderBlockRow(block))}
+                <button
+                  type="button"
+                  onClick={() => setBlockPickerSide("front")}
+                  className="w-full py-2.5 border border-dashed border-white/15 hover:border-accent/40 rounded-lg text-white/45 hover:text-accent text-sm transition-colors flex items-center justify-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add block
+                </button>
+              </div>
+            </div>
+
+            {!showBackPanel ? (
+              <button
+                type="button"
+                onClick={addBackOfCard}
+                className="w-full py-3 rounded-xl border-2 border-dashed border-white/20 hover:border-accent/50 text-white/50 hover:text-accent text-sm transition-colors"
+              >
+                + Add back of card
+              </button>
+            ) : (
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] overflow-hidden">
+                <div className="px-4 py-2 border-b border-white/10 bg-white/[0.04] flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-white/50">
+                    Back
+                  </span>
+                  <button
+                    type="button"
+                    onClick={removeBackSection}
+                    className="text-xs text-red-400/90 hover:text-red-300"
+                  >
+                    Remove back
+                  </button>
+                </div>
+                <div className="p-4 space-y-4">
+                  {backBlocks.map((block) => renderBlockRow(block))}
+                  <button
+                    type="button"
+                    onClick={() => setBlockPickerSide("back")}
+                    className="w-full py-2.5 border border-dashed border-white/15 hover:border-accent/40 rounded-lg text-white/45 hover:text-accent text-sm transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add block
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
 
-      {/* Add Block Button */}
-      <div className="mt-6 relative">
-        <button
-          onClick={() => setShowBlockPicker(!showBlockPicker)}
-          className="w-full py-3 border-2 border-dashed border-white/20 hover:border-accent/50 rounded-xl text-white/50 hover:text-accent transition-colors flex items-center justify-center gap-2"
-        >
-          <Plus className="w-5 h-5" />
-          Add Block
-        </button>
-
-        {/* Block Picker */}
-        {showBlockPicker && (
+      {/* Block type picker */}
+      <div className="relative mt-2">
+        {blockPickerSide != null && (
           <>
             <div
               className="fixed inset-0 z-10"
-              onClick={() => setShowBlockPicker(false)}
+              onClick={() => setBlockPickerSide(null)}
             />
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               className="absolute bottom-full left-0 right-0 mb-2 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl p-3 z-20"
             >
+              <p className="text-white/45 text-xs mb-3">
+                Adding to:{" "}
+                <span className="text-white/80 font-medium">
+                  {blockPickerSide === "back" ? "Back" : "Front"}
+                </span>
+              </p>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {Object.entries(BLOCK_TYPES).map(([type, config]) => {
                   const Icon = config.icon;
                   return (
                     <button
                       key={type}
-                      onClick={() => addBlock(type)}
+                      type="button"
+                      onClick={() => addBlock(type, blockPickerSide)}
                       className="flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-white/10 transition-colors"
                     >
                       <Icon className="w-5 h-5 text-accent" />
@@ -1397,54 +1563,71 @@ function CardEditorPageInner() {
             </motion.div>
           </>
         )}
-
-        {/* Image crop modal */}
-        {imageCropPending && (
-          <ImageCropModal
-            imageSrc={imageCropPending.imageSrc}
-            defaultAspect={imageCropPending.defaultAspect}
-            initialCrop={imageCropPending.initialCrop}
-            initialZoom={imageCropPending.initialZoom}
-            allowRatioChange={imageCropPending.allowRatioChange === true}
-            onComplete={handleCropComplete}
-            onCancel={handleCropCancel}
-          />
-        )}
-
-        {/* Preview modal */}
-        {showPreviewModal && (
-          <div
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-            onClick={() => setShowPreviewModal(false)}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-zinc-900 border border-white/10 rounded-xl shadow-2xl w-full max-w-md max-h-[85vh] overflow-hidden flex flex-col"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between px-3 py-2.5 border-b border-white/10">
-                <h2 className="text-sm font-medium text-white/90">Preview</h2>
-                <button
-                  type="button"
-                  onClick={() => setShowPreviewModal(false)}
-                  className="p-1.5 rounded-lg hover:bg-white/10 text-white/50 hover:text-white transition-colors"
-                  aria-label="Close preview"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-              <div className="overflow-y-auto flex-1 overflow-x-hidden p-5">
-                <CardPreviewContent
-                  blocks={blocks}
-                  getValue={(blockId) => values[blockId]}
-                  mediaCache={mediaCache}
-                />
-              </div>
-            </motion.div>
-          </div>
-        )}
       </div>
+
+      {/* Image crop modal */}
+      {imageCropPending && (
+        <ImageCropModal
+          imageSrc={imageCropPending.imageSrc}
+          defaultAspect={imageCropPending.defaultAspect}
+          initialCrop={imageCropPending.initialCrop}
+          initialZoom={imageCropPending.initialZoom}
+          allowRatioChange={imageCropPending.allowRatioChange === true}
+          onComplete={handleCropComplete}
+          onCancel={handleCropCancel}
+        />
+      )}
+
+      {/* Preview modal */}
+      {showPreviewModal && (
+        <div
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => setShowPreviewModal(false)}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-zinc-900 border border-white/10 rounded-xl shadow-2xl w-full max-w-md max-h-[85vh] overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-3 py-2.5 border-b border-white/10">
+              <h2 className="text-sm font-medium text-white/90">Preview</h2>
+              <button
+                type="button"
+                onClick={() => setShowPreviewModal(false)}
+                className="p-1.5 rounded-lg hover:bg-white/10 text-white/50 hover:text-white transition-colors"
+                aria-label="Close preview"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="overflow-y-auto flex-1 overflow-x-hidden p-5">
+              <CardPreviewContent
+                blocks={blocks}
+                getValue={(blockId) => values[blockId]}
+                mediaCache={mediaCache}
+              />
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      <AnimatePresence>
+        {saveSnackbarOpen && (
+          <motion.div
+            role="status"
+            aria-live="polite"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            transition={{ duration: 0.2 }}
+            className="fixed bottom-6 left-1/2 z-[100] flex -translate-x-1/2 items-center gap-2 rounded-xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white shadow-lg shadow-black/50"
+          >
+            <Check className="h-4 w-4 shrink-0 text-emerald-400" strokeWidth={2.5} />
+            Card saved
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

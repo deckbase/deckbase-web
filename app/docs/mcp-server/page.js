@@ -60,14 +60,23 @@ export default function McpServerDocPage() {
                 <td className={`${M.tableCell} font-mono ${M.accent} text-xs break-all`}>
                   POST /api/mcp
                 </td>
-                <td className={M.tableCell}>Bearer API key</td>
+                <td className={M.tableCell}>
+                  <code className={M.code}>Authorization: Bearer</code> — dashboard API key or OAuth
+                  access token (when OAuth is configured on the server). Same path as production:{" "}
+                  <code className={`${M.code} break-all`}>/api/mcp</code>.
+                </td>
               </tr>
             </tbody>
           </table>
         </div>
         <p className={`${M.bodyMuted} mt-3`}>
           API keys are created in the dashboard. MCP is available for Pro and VIP subscribers in
-          production.
+          production. OAuth (browser login) is optional; see{" "}
+          <Link href="/mcp" className={M.linkPlain}>
+            Connecting to Deckbase MCP
+          </Link>{" "}
+          and the full reference in <code className={M.code}>docs/public/MCP.md</code> (via{" "}
+          <code className={M.code}>read_doc</code>).
         </p>
       </section>
 
@@ -126,9 +135,12 @@ export default function McpServerDocPage() {
                   list_block_schemas
                 </td>
                 <td className={M.tableCell}>
-                  JSON shapes per block: <code className={M.code}>blocksSnapshot</code>, matching{" "}
+                  JSON shapes per block <strong className="text-neutral-300">type</strong>:{" "}
+                  <code className={M.code}>blocksSnapshot</code>, matching{" "}
                   <code className={M.code}>values</code>, and <code className={M.code}>configJson</code> for
-                  quiz/image/audio. Pair with <code className={M.code}>export_deck</code> for real examples.
+                  quiz/image/audio. Per-template <code className={M.code}>side</code> (front/back) comes from{" "}
+                  <code className={M.code}>get_template_schema</code>, not here. Pair with{" "}
+                  <code className={M.code}>export_deck</code> for real examples.
                 </td>
                 <td className={M.tableCell}>None.</td>
               </tr>
@@ -214,9 +226,11 @@ export default function McpServerDocPage() {
                 </td>
                 <td className={M.tableCell}>
                   Exact JSON for the layout: <code className={M.code}>blockId</code>, type,{" "}
+                  <code className={M.code}>side</code> (<code className={M.code}>&quot;front&quot;</code> |{" "}
+                  <code className={M.code}>&quot;back&quot;</code> — study shows front first, back after flip),{" "}
                   <code className={M.code}>configJson</code>, <code className={M.code}>valuesExample</code>,{" "}
-                  <code className={M.code}>block_text</code> hints. Includes{" "}
-                  <code className={M.code}>voice_id_required_for_tts</code> when TTS needs an explicit voice.
+                  <code className={M.code}>create_card</code> hints (<code className={M.code}>block_text</code> keys).
+                  Includes <code className={M.code}>voice_id_required_for_tts</code> when TTS needs an explicit voice.
                 </td>
                 <td className={M.tableCell}>
                   <code className={M.code}>templateId</code> from <code className={M.code}>list_templates</code>, or{" "}
@@ -235,9 +249,10 @@ export default function McpServerDocPage() {
                   (uses deck <code className={M.code}>defaultTemplateId</code> or pass from{" "}
                   <code className={M.code}>list_templates</code>). Optional <code className={M.code}>front</code>,{" "}
                   <code className={M.code}>block_text</code>, <code className={M.code}>generate_audio</code> (default
-                  true), <code className={M.code}>voice_id</code> when{" "}
-                  <code className={M.code}>voice_id_required_for_tts</code> — use{" "}
-                  <code className={M.code}>list_elevenlabs_voices</code>.
+                  true). When the template has audio and TTS runs: <code className={M.code}>voice_id</code> from{" "}
+                  <code className={M.code}>list_elevenlabs_voices</code> or{" "}
+                  <code className={M.code}>audio_language</code> (ISO 639) + <code className={M.code}>audio_gender</code>{" "}
+                  (female/male) after asking the user — same as <code className={M.code}>MCP.md</code>.
                 </td>
               </tr>
               <tr className="border-b border-neutral-800 align-top">
@@ -257,10 +272,11 @@ export default function McpServerDocPage() {
                   failure: <code className={M.code}>created</code> + <code className={M.code}>failedAt</code>.
                 </td>
                 <td className={M.tableCell}>
-                  <code className={M.code}>deckId</code>, optional <code className={M.code}>templateId</code>,
-                  optional top-level <code className={M.code}>voice_id</code> /{" "}
-                  <code className={M.code}>generate_audio</code>, required <code className={M.code}>cards</code> array
-                  (per-card <code className={M.code}>front</code>, <code className={M.code}>block_text</code>, etc.).
+                  <code className={M.code}>deckId</code>, optional <code className={M.code}>templateId</code>, optional
+                  top-level <code className={M.code}>voice_id</code>, <code className={M.code}>audio_language</code>,{" "}
+                  <code className={M.code}>audio_gender</code>, <code className={M.code}>generate_audio</code>, required{" "}
+                  <code className={M.code}>cards</code> array (each element may set the same per-card overrides as{" "}
+                  <code className={M.code}>create_card</code>).
                 </td>
               </tr>
               <tr className="border-b border-neutral-800 align-top">
@@ -269,8 +285,9 @@ export default function McpServerDocPage() {
                 </td>
                 <td className={M.tableCell}>ElevenLabs TTS for an existing card.</td>
                 <td className={M.tableCell}>
-                  <code className={M.code}>deckId</code>, <code className={M.code}>cardId</code>,{" "}
-                  <code className={M.code}>voice_id</code> (from <code className={M.code}>list_elevenlabs_voices</code>
+                  <code className={M.code}>deckId</code>, <code className={M.code}>cardId</code>. Pass{" "}
+                  <code className={M.code}>voice_id</code> or <code className={M.code}>audio_language</code> +{" "}
+                  <code className={M.code}>audio_gender</code> (see <code className={M.code}>list_elevenlabs_voices</code>
                   ). Optional <code className={M.code}>text</code>, <code className={M.code}>block_id</code>,{" "}
                   <code className={M.code}>replace_existing</code>.
                 </td>
@@ -279,7 +296,9 @@ export default function McpServerDocPage() {
                 <td className={`${M.tableCell} font-mono text-neutral-100 text-xs sm:text-sm`}>export_deck</td>
                 <td className={M.tableCell}>
                   Deck + cards JSON. Response includes <code className={M.code}>truncated</code>,{" "}
-                  <code className={M.code}>exportType</code>.
+                  <code className={M.code}>exportType</code>. Default <code className={M.code}>export_type: full</code>{" "}
+                  includes per-card <code className={M.code}>blocksSnapshot</code> with <code className={M.code}>side</code>{" "}
+                  on each block plus <code className={M.code}>values</code>.
                 </td>
                 <td className={M.tableCell}>
                   <code className={M.code}>deckId</code> (required); optional <code className={M.code}>max_cards</code>{" "}
@@ -298,10 +317,14 @@ export default function McpServerDocPage() {
                 </td>
                 <td className={M.tableCell}>
                   <code className={M.code}>name</code> (required), optional description,{" "}
-                  <code className={M.code}>block_types</code> or <code className={M.code}>blocks</code>, optional{" "}
-                  <code className={M.code}>voice_id</code> for audio without <code className={M.code}>defaultVoiceId</code>
-                  , optional <code className={M.code}>rendering</code>, <code className={M.code}>mainBlockId</code> /{" "}
-                  <code className={M.code}>subBlockId</code>.
+                  <code className={M.code}>block_types</code> or <code className={M.code}>blocks</code> (each block may set{" "}
+                  <code className={M.code}>side</code> for front/back). Optional <code className={M.code}>rendering</code>{" "}
+                  (<code className={M.code}>frontBlockIds</code> / <code className={M.code}>backBlockIds</code>) is
+                  normalized to per-block <code className={M.code}>side</code> and not stored as{" "}
+                  <code className={M.code}>rendering</code> in Firestore. Optional <code className={M.code}>voice_id</code> or{" "}
+                  <code className={M.code}>audio_language</code> + <code className={M.code}>audio_gender</code> for audio
+                  blocks without <code className={M.code}>defaultVoiceId</code>; optional{" "}
+                  <code className={M.code}>mainBlockId</code> / <code className={M.code}>subBlockId</code>.
                 </td>
               </tr>
               <tr className="border-b border-neutral-800 align-top">
@@ -314,16 +337,20 @@ export default function McpServerDocPage() {
                 </td>
                 <td className={M.tableCell}>
                   <code className={M.code}>templateId</code> (required); optional name, description,{" "}
-                  <code className={M.code}>block_types</code> / <code className={M.code}>blocks</code>,{" "}
-                  <code className={M.code}>voice_id</code>, <code className={M.code}>rendering</code>,{" "}
-                  <code className={M.code}>mainBlockId</code> / <code className={M.code}>subBlockId</code>.
+                  <code className={M.code}>block_types</code> / <code className={M.code}>blocks</code> (per-block{" "}
+                  <code className={M.code}>side</code> as in <code className={M.code}>create_template</code>),{" "}
+                  <code className={M.code}>rendering</code> (normalized to <code className={M.code}>side</code>),{" "}
+                  <code className={M.code}>voice_id</code> or <code className={M.code}>audio_language</code> +{" "}
+                  <code className={M.code}>audio_gender</code>, <code className={M.code}>mainBlockId</code> /{" "}
+                  <code className={M.code}>subBlockId</code>.
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
         <p className={`${M.bodyMuted} mt-4`}>
-          The hosted MCP endpoint requires an API key on every request. Tools that read your data (
+          The hosted MCP endpoint requires authentication on every request (API key or OAuth access token when OAuth
+          is configured). Tools that read your data (
           <code className={M.code}>list_decks</code>, <code className={M.code}>list_templates</code>,{" "}
           <code className={M.code}>get_template_schema</code>, <code className={M.code}>create_deck</code>,{" "}
           <code className={M.code}>update_deck</code>, <code className={M.code}>create_card</code>,{" "}
@@ -335,7 +362,7 @@ export default function McpServerDocPage() {
           <code className={M.code}>list_block_schemas</code> return static reference data (no user Firestore
           reads). <code className={M.code}>list_elevenlabs_voices</code> does not read Firestore; it returns the
           Deckbase curated voice list (TTS still uses <code className={M.code}>ELEVENLABS_API_KEY</code> when
-          generating audio). All still require the same auth on hosted.
+          generating audio). Unauthenticated requests return <strong className="text-neutral-300">401</strong>.
         </p>
       </section>
 
@@ -374,7 +401,8 @@ export default function McpServerDocPage() {
             Call <strong className="font-mono text-neutral-100">get_template_schema</strong> with the
             chosen <code className={M.code}>templateId</code> (or <code className={M.code}>deckId</code> only
             if the deck default is the right layout) so clients know exact{" "}
-            <code className={M.code}>blockId</code> keys for <code className={M.code}>block_text</code>.
+            <code className={M.code}>blockId</code> keys and <code className={M.code}>side</code> for{" "}
+            <code className={M.code}>block_text</code>.
           </li>
           <li>
             Call <strong className="font-mono text-neutral-100">create_deck</strong> with a{" "}
@@ -399,14 +427,15 @@ export default function McpServerDocPage() {
             <strong className="text-neutral-100">Server name:</strong> deckbase-mcp
           </li>
           <li>
-            <strong className="text-neutral-100">Hosted:</strong> JSON-RPC 2.0 over POST; auth is API
-            key only (no Firebase token).
+            <strong className="text-neutral-100">Hosted:</strong> JSON-RPC 2.0 over POST; use dashboard API key or OAuth
+            access token (Bearer) — not a Firebase ID token on the wire.
           </li>
           <li>
             <strong className="text-neutral-100">Card shape:</strong> create_card copies the selected
-            template&apos;s block layout into a new card (empty values by default; optional{" "}
-            <code className={M.code}>front</code> / <code className={M.code}>block_text</code>). Data is
-            stored in Firestore and syncs to the dashboard and mobile app.
+            template&apos;s block layout into a new card (each block includes <code className={M.code}>side</code> from
+            the template; empty values by default; optional <code className={M.code}>front</code> /{" "}
+            <code className={M.code}>block_text</code>). Data is stored in Firestore and syncs to the dashboard and
+            mobile app.
           </li>
         </ul>
       </section>

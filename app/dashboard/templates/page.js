@@ -66,7 +66,6 @@ export default function TemplatesPage() {
           `${fullTemplate.name} (Copy)`,
           fullTemplate.description,
           fullTemplate.blocks,
-          fullTemplate.rendering
         );
       }
     } catch (error) {

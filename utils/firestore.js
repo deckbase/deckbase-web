@@ -474,25 +474,19 @@ export const createTemplate = async (
   name,
   description = "",
   blocks = [],
-  rendering = null,
   mainBlockId = null,
   subBlockId = null,
 ) => {
   const templateId = uuidv4();
   const now = Timestamp.now();
+  const blocksNormalized = normalizeTemplateBlocksForWrite(blocks);
 
   const template = {
     template_id: templateId,
     name: name ?? "",
     description: description ?? "",
     version: 1,
-    blocks: blocks.map(transformBlockToFirestore),
-    rendering: rendering
-      ? {
-          front_block_ids: rendering.frontBlockIds || [],
-          back_block_ids: rendering.backBlockIds || [],
-        }
-      : null,
+    blocks: blocksNormalized.map(transformBlockToFirestore),
     main_block_id: mainBlockId ?? null,
     sub_block_id: subBlockId ?? null,
     created_at: now,
@@ -554,15 +548,10 @@ export const updateTemplate = async (uid, templateId, updates) => {
   if (updates.name !== undefined) updateData.name = updates.name;
   if (updates.description !== undefined)
     updateData.description = updates.description;
-  if (updates.blocks !== undefined)
-    updateData.blocks = updates.blocks.map(transformBlockToFirestore);
-  if (updates.rendering !== undefined) {
-    updateData.rendering = updates.rendering
-      ? {
-          front_block_ids: updates.rendering.frontBlockIds || [],
-          back_block_ids: updates.rendering.backBlockIds || [],
-        }
-      : null;
+  if (updates.blocks !== undefined) {
+    const blocksIn = updates.blocks;
+    const normalized = normalizeTemplateBlocksForWrite(blocksIn);
+    updateData.blocks = normalized.map(transformBlockToFirestore);
   }
   if (updates.mainBlockId !== undefined)
     updateData.main_block_id = updates.mainBlockId ?? null;
@@ -907,23 +896,29 @@ function parseCardContentFromJson(data) {
       const parsed = JSON.parse(data.blocks_snapshot_json);
       const arr = parsed || [];
       console.log("[parseCardContentFromJson] READ parsed array length", arr.length, "first 200 chars", JSON.stringify(arr).slice(0, 200));
-      blocksSnapshot = arr.map((b) =>
-        transformBlockFromFirestore(normalizeBlockForTransform(b)),
-      );
+      blocksSnapshot = arr
+        .map((b) =>
+          transformBlockFromFirestore(normalizeBlockForTransform(b)),
+        )
+        .map((b) => ({ ...b, side: b.side ?? "front" }));
       const quizRead = (blocksSnapshot || []).filter((b) => isQuizBlockType(b.type));
       if (quizRead.length > 0) {
         console.log("[parseCardContentFromJson] READ after transform quiz blocks", quizRead.length, quizRead.map((b) => ({ blockId: b.blockId, type: b.type, hasConfigJson: !!b.configJson, configKeys: b.configJson ? Object.keys(b.configJson) : [], question: b.configJson?.question?.slice?.(0, 30) })));
       }
     } catch (e) {
       console.warn("[parseCardContentFromJson] READ JSON parse failed", e.message);
-      blocksSnapshot = (data.blocks_snapshot || []).map((b) =>
-        transformBlockFromFirestore(normalizeBlockForTransform(b)),
-      );
+      blocksSnapshot = (data.blocks_snapshot || [])
+        .map((b) =>
+          transformBlockFromFirestore(normalizeBlockForTransform(b)),
+        )
+        .map((b) => ({ ...b, side: b.side ?? "front" }));
     }
   } else {
-    blocksSnapshot = (data.blocks_snapshot || []).map((b) =>
-      transformBlockFromFirestore(normalizeBlockForTransform(b)),
-    );
+    blocksSnapshot = (data.blocks_snapshot || [])
+      .map((b) =>
+        transformBlockFromFirestore(normalizeBlockForTransform(b)),
+      )
+      .map((b) => ({ ...b, side: b.side ?? "front" }));
   }
   if (data.values_json) {
     try {
@@ -1035,6 +1030,7 @@ const transformBlockFromFirestore = (data) => {
     label: data.label || "",
     required: data.required || false,
     configJson,
+    side: blockSideFromFirestoreData(data),
   };
 };
 
@@ -1078,6 +1074,7 @@ const transformBlockToFirestore = (block) => {
     }
     result.config_json = config;
   }
+  result.side = block.side === "back" ? "back" : "front";
   return result;
 };
 
@@ -1119,6 +1116,21 @@ function ensureArray(value) {
   return [];
 }
 
+/** Side on each block; missing / invalid → front */
+function blockSideFromFirestoreData(data) {
+  const s = data?.side;
+  if (s === "back") return "back";
+  return "front";
+}
+
+/** Ensure each template block has `side: "front" | "back"`. */
+function normalizeTemplateBlocksForWrite(blocks) {
+  return (blocks || []).map((b) => ({
+    ...b,
+    side: b.side === "back" ? "back" : "front",
+  }));
+}
+
 const transformTemplateFromFirestore = (data) => {
   const createdAt =
     data.created_at?.toMillis?.() || data.created_at || Date.now();
@@ -1131,23 +1143,12 @@ const transformTemplateFromFirestore = (data) => {
   const blocks = rawBlocks.map((b) =>
     transformBlockFromFirestore(normalizeBlockForTransform(b))
   );
-
   return {
     templateId: data.template_id ?? data.templateId,
     name: data.name || "Untitled",
     description: data.description || "",
     version: data.version || 1,
     blocks,
-    rendering: data.rendering
-      ? {
-          frontBlockIds: ensureArray(
-            data.rendering.front_block_ids ?? data.rendering.frontBlockIds,
-          ),
-          backBlockIds: ensureArray(
-            data.rendering.back_block_ids ?? data.rendering.backBlockIds,
-          ),
-        }
-      : null,
     mainBlockId: data.main_block_id ?? data.mainBlockId ?? null,
     subBlockId: data.sub_block_id ?? data.subBlockId ?? null,
     createdAt,
@@ -1206,6 +1207,7 @@ export const createDefaultTemplates = async (uid) => {
         type: BlockType.header1,
         label: "Word",
         required: true,
+        side: "front",
         configJson: JSON.stringify({ maxLength: 80 }),
       },
       {
@@ -1213,6 +1215,7 @@ export const createDefaultTemplates = async (uid) => {
         type: BlockType.header3,
         label: "Pronunciation",
         required: false,
+        side: "front",
         configJson: JSON.stringify({ maxLength: 120 }),
       },
       {
@@ -1220,6 +1223,7 @@ export const createDefaultTemplates = async (uid) => {
         type: BlockType.header2,
         label: "Part of Speech",
         required: false,
+        side: "back",
         configJson: JSON.stringify({ maxLength: 100 }),
       },
       {
@@ -1227,6 +1231,7 @@ export const createDefaultTemplates = async (uid) => {
         type: BlockType.text,
         label: "Definition",
         required: true,
+        side: "back",
         configJson: JSON.stringify({ multiline: true, appendMode: "newline" }),
       },
       {
@@ -1234,6 +1239,7 @@ export const createDefaultTemplates = async (uid) => {
         type: BlockType.quote,
         label: "Example Sentence",
         required: false,
+        side: "back",
         configJson: JSON.stringify({ multiline: true }),
       },
       {
@@ -1241,18 +1247,10 @@ export const createDefaultTemplates = async (uid) => {
         type: BlockType.hiddenText,
         label: "Synonyms",
         required: false,
+        side: "back",
         configJson: JSON.stringify({ multiline: true }),
       },
     ],
-    {
-      frontBlockIds: [wordBlockId, pronunciationBlockId],
-      backBlockIds: [
-        partOfSpeechBlockId,
-        definitionBlockId,
-        exampleBlockId,
-        synonymsBlockId,
-      ],
-    },
   );
 
   // Create Japanese Vocabulary template (matches mobile)
@@ -1273,6 +1271,7 @@ export const createDefaultTemplates = async (uid) => {
         type: BlockType.header1,
         label: "Kanji / Word",
         required: true,
+        side: "front",
         configJson: JSON.stringify({ maxLength: 80 }),
       },
       {
@@ -1280,6 +1279,7 @@ export const createDefaultTemplates = async (uid) => {
         type: BlockType.header2,
         label: "Hiragana / Reading",
         required: false,
+        side: "front",
         configJson: JSON.stringify({ maxLength: 100 }),
       },
       {
@@ -1287,6 +1287,7 @@ export const createDefaultTemplates = async (uid) => {
         type: BlockType.header3,
         label: "Romaji",
         required: false,
+        side: "back",
         configJson: JSON.stringify({ maxLength: 120 }),
       },
       {
@@ -1294,6 +1295,7 @@ export const createDefaultTemplates = async (uid) => {
         type: BlockType.text,
         label: "Meaning",
         required: true,
+        side: "back",
         configJson: JSON.stringify({ multiline: true, appendMode: "newline" }),
       },
       {
@@ -1301,6 +1303,7 @@ export const createDefaultTemplates = async (uid) => {
         type: BlockType.quote,
         label: "Example Sentence",
         required: false,
+        side: "back",
         configJson: JSON.stringify({ multiline: true }),
       },
       {
@@ -1308,18 +1311,10 @@ export const createDefaultTemplates = async (uid) => {
         type: BlockType.hiddenText,
         label: "Notes",
         required: false,
+        side: "back",
         configJson: JSON.stringify({ multiline: true }),
       },
     ],
-    {
-      frontBlockIds: [kanjiBlockId, hiraganaBlockId],
-      backBlockIds: [
-        romajiBlockId,
-        meaningBlockId,
-        jpExampleBlockId,
-        notesBlockId,
-      ],
-    },
   );
 
   return [englishTemplate, japaneseTemplate];
@@ -1352,6 +1347,7 @@ export const importCardsFromSpreadsheet = async (
         label: blockConfig.label,
         required: blockConfig.required || false,
         configJson: blockConfig.configJson || null,
+        side: "front",
       });
 
       values.push({

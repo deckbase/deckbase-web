@@ -60,6 +60,7 @@ import {
   getFileTypeFromPath,
 } from "@/utils/spreadsheetParser";
 import { exportApkgToBlob } from "@/utils/apkgExport";
+import { deckTitleToExportFilenameBase } from "@/utils/exportFilename";
 import { parseAudioBlockConfig } from "@/lib/audio-block-config";
 import CardPreviewContent from "@/components/CardPreviewContent";
 import ExcelJS from "exceljs";
@@ -70,6 +71,17 @@ const ImportStep = {
   selectRows: 2,
   mapColumns: 3,
   importing: 4,
+};
+
+/** Template/card blocks: missing side = front */
+const effectiveBlockSide = (b) => (b?.side === "back" ? "back" : "front");
+
+/** Anki CSV/APKG column headers often named "Front" / "Back" */
+const inferColumnFaceFromHeader = (header) => {
+  const s = String(header ?? "").trim().toLowerCase();
+  if (s === "front" || s.startsWith("front ")) return "front";
+  if (s === "back" || s.startsWith("back ")) return "back";
+  return null;
 };
 
 const isProduction = process.env.NODE_ENV === "production";
@@ -672,7 +684,12 @@ export default function DeckDetailPage() {
   const getExportColumns = useMemo(() => {
     if (!cards.length) return [];
     const blocks = cards[0].blocksSnapshot || [];
-    return blocks.map((b) => ({ blockId: b.blockId, label: b.label || b.blockId || "Block" }));
+    return blocks.map((b) => {
+      const base = b.label || b.blockId || "Block";
+      const label =
+        effectiveBlockSide(b) === "back" ? `[Back] ${base}` : `[Front] ${base}`;
+      return { blockId: b.blockId, label };
+    });
   }, [cards]);
 
   const buildExportRows = useCallback(() => {
@@ -721,8 +738,7 @@ export default function DeckDetailPage() {
     const line = (row) => headers.map((h) => escape(row[h])).join(",");
     const csv = "\uFEFF" + [headers.join(","), ...rows.map(line)].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const safeTitle = (deck?.title || "deck").replace(/[^\w\s-]/g, "").slice(0, 50);
-    downloadBlob(blob, `${safeTitle}.csv`);
+    downloadBlob(blob, `${deckTitleToExportFilenameBase(deck?.title)}.csv`);
   };
 
   const handleExportXLSX = async () => {
@@ -748,8 +764,7 @@ export default function DeckDetailPage() {
     }
     const buf = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-    const safeTitle = (deck?.title || "deck").replace(/[^\w\s-]/g, "").slice(0, 50);
-    downloadBlob(blob, `${safeTitle}.xlsx`);
+    downloadBlob(blob, `${deckTitleToExportFilenameBase(deck?.title)}.xlsx`);
   };
 
   const [exportApkgLoading, setExportApkgLoading] = useState(false);
@@ -795,8 +810,7 @@ export default function DeckDetailPage() {
         getMediaBytes,
       });
       console.log("[APKG Export] done", { blobSize: blob?.size });
-      const safeTitle = (deck?.title || "deck").replace(/[^\w\s-]/g, "").slice(0, 50);
-      downloadBlob(blob, `${safeTitle}.apkg`);
+      downloadBlob(blob, `${deckTitleToExportFilenameBase(deck?.title)}.apkg`);
     } catch (err) {
       console.error("APKG export failed", err);
       alert(err?.message || "Export failed. Try again.");
@@ -1078,6 +1092,7 @@ export default function DeckDetailPage() {
         label: block.label,
         required: block.required,
         configJson: block.configJson,
+        side: block.side === "back" ? "back" : "front",
       }));
 
       for (let i = 0; i < rows.length; i++) {
@@ -1530,6 +1545,7 @@ export default function DeckDetailPage() {
         label: b.label || "",
         required: b.required || false,
         configJson: b.configJson,
+        side: effectiveBlockSide(b),
       }));
       const generatedCards = rawCards.map((c) => {
         if (c && Array.isArray(c.values) && c.blocksSnapshot) {
@@ -1791,6 +1807,7 @@ export default function DeckDetailPage() {
       label: b.label || "",
       required: Boolean(b.required),
       configJson: b.configJson,
+      side: effectiveBlockSide(b),
     }));
     const mainBlock = template.mainBlockId ? template.blocks.find((b) => b.blockId === template.mainBlockId) : null;
     const subBlock = template.subBlockId ? template.blocks.find((b) => b.blockId === template.subBlockId) : null;
@@ -1800,6 +1817,7 @@ export default function DeckDetailPage() {
       label: b.label || "",
       required: b.required || false,
       configJson: b.configJson,
+      side: effectiveBlockSide(b),
     }));
     console.log("[add-with-ai] sending to API", {
       templateBlocksCount: templateBlocks.length,
@@ -2235,6 +2253,7 @@ export default function DeckDetailPage() {
         label: b.label || "",
         required: b.required || false,
         configJson: b.configJson,
+        side: effectiveBlockSide(b),
       }));
       const generatedCards = rawCards.map((c) => {
         if (c && Array.isArray(c.values) && c.blocksSnapshot) {
@@ -2541,32 +2560,41 @@ export default function DeckDetailPage() {
 
   const getGeneratedCardPreview = (card) => {
     const values = card?.values ?? card;
+    const list = Array.isArray(values) ? values : [];
     const blocks = card?.blocksSnapshot;
-    const first = (values || []).find((v) => v.text != null && String(v.text).trim());
-    if (first) return String(first.text).trim().substring(0, 80);
-    if (blocks?.length) {
-      for (const b of blocks) {
-        const t = b.type;
-        const isQ =
-          t === "quizSingleSelect" ||
-          t === "quizMultiSelect" ||
-          t === "quizTextAnswer" ||
-          t === 8 ||
-          t === 9 ||
-          t === 10;
-        if (!isQ) continue;
-        let cfg = b.configJson;
-        if (typeof cfg === "string") {
-          try {
-            cfg = JSON.parse(cfg || "{}");
-          } catch {
-            cfg = {};
-          }
-        }
-        const q = cfg?.question;
-        if (q != null && String(q).trim()) return String(q).trim().substring(0, 80);
+    const byBlockId = Object.fromEntries(
+      list.filter((v) => v?.blockId).map((v) => [v.blockId, v]),
+    );
+    const frontBlocks = (blocks || []).filter((b) => effectiveBlockSide(b) === "front");
+    for (const b of frontBlocks.length ? frontBlocks : blocks || []) {
+      const v = byBlockId[b.blockId];
+      if (v?.text != null && String(v.text).trim()) {
+        return String(v.text).trim().substring(0, 80);
       }
     }
+    for (const b of frontBlocks.length ? frontBlocks : blocks || []) {
+      const t = b.type;
+      const isQ =
+        t === "quizSingleSelect" ||
+        t === "quizMultiSelect" ||
+        t === "quizTextAnswer" ||
+        t === 8 ||
+        t === 9 ||
+        t === 10;
+      if (!isQ) continue;
+      let cfg = b.configJson;
+      if (typeof cfg === "string") {
+        try {
+          cfg = JSON.parse(cfg || "{}");
+        } catch {
+          cfg = {};
+        }
+      }
+      const q = cfg?.question;
+      if (q != null && String(q).trim()) return String(q).trim().substring(0, 80);
+    }
+    const first = list.find((v) => v.text != null && String(v.text).trim());
+    if (first) return String(first.text).trim().substring(0, 80);
     return "Empty card";
   };
 
@@ -2763,7 +2791,7 @@ export default function DeckDetailPage() {
   };
   const isQuizBlock = (block) => QUIZ_BLOCK_TYPES.includes(resolveBlockType(block?.type));
 
-  // Get preview text from card values using card's or template's main/sub blocks (quiz question like mobile)
+  // Preview line: prefer front-face blocks (main/sub only when on front)
   const getCardPreview = (card) => {
     if (!card.values || card.values.length === 0) return { main: "Empty card", sub: null };
 
@@ -2771,44 +2799,62 @@ export default function DeckDetailPage() {
     const mainId = card.mainBlockId ?? template?.mainBlockId;
     const subId = card.subBlockId ?? template?.subBlockId;
     const blocks = card.blocksSnapshot || [];
+    const frontBlocks = blocks.filter((b) => effectiveBlockSide(b) === "front");
 
-    if (mainId || subId) {
-      const mainBlock = mainId ? blocks.find((b) => b.blockId === mainId) : null;
-      const mainValue = mainId ? card.values.find((v) => v.blockId === mainId) : null;
-      const subValue = subId ? card.values.find((v) => v.blockId === subId) : null;
-
-      let mainText = mainValue?.text?.substring(0, 100);
-      if (!mainText && mainBlock && isQuizBlock(mainBlock)) {
+    const textForBlock = (block) => {
+      if (!block) return null;
+      const val = card.values.find((v) => v.blockId === block.blockId);
+      if (val?.text?.trim()) return val.text.substring(0, 100);
+      if (isQuizBlock(block)) {
         try {
-          const config = typeof mainBlock.configJson === "string" ? JSON.parse(mainBlock.configJson || "{}") : mainBlock.configJson || {};
-          mainText = (config.question || "Quiz").substring(0, 100);
+          const config =
+            typeof block.configJson === "string"
+              ? JSON.parse(block.configJson || "{}")
+              : block.configJson || {};
+          return (config.question || "Quiz").substring(0, 100);
         } catch {
-          mainText = "Quiz";
+          return "Quiz";
         }
       }
-      return {
-        main: mainText || card.values.find((v) => v.text)?.text?.substring(0, 100) || "Empty card",
-        sub: subValue?.text?.substring(0, 80) || null,
-      };
-    }
+      return null;
+    };
 
-    // Fallback: use first two text values; if first is quiz, use its question
-    const firstBlock = blocks[0];
-    if (firstBlock && isQuizBlock(firstBlock)) {
-      try {
-        const config = typeof firstBlock.configJson === "string" ? JSON.parse(firstBlock.configJson || "{}") : firstBlock.configJson || {};
-        return {
-          main: (config.question || "Quiz").substring(0, 100),
-          sub: null,
-        };
-      } catch {
-        return { main: "Quiz", sub: null };
+    let mainText = null;
+    let subText = null;
+
+    if (mainId) {
+      const mainBlock = blocks.find((b) => b.blockId === mainId);
+      if (mainBlock && effectiveBlockSide(mainBlock) === "front") {
+        mainText = textForBlock(mainBlock);
       }
     }
-    const textValues = card.values.filter((v) => v.text && v.text.trim());
+    if (subId) {
+      const subBlock = blocks.find((b) => b.blockId === subId);
+      if (subBlock && effectiveBlockSide(subBlock) === "front") {
+        subText = textForBlock(subBlock)?.substring(0, 80) ?? null;
+      }
+    }
+
+    if (!mainText && frontBlocks.length > 0) {
+      mainText = textForBlock(frontBlocks[0]);
+      if (!subText && frontBlocks.length > 1) {
+        const s = textForBlock(frontBlocks[1]);
+        subText = s ? s.substring(0, 80) : null;
+      }
+    }
+
+    if (!mainText) {
+      const textValues = card.values.filter((v) => v.text && v.text.trim());
+      mainText =
+        textValues[0]?.text?.substring(0, 100) || "Empty card";
+      if (!subText && textValues.length > 1) {
+        subText = textValues[1]?.text?.substring(0, 80) || null;
+      }
+    }
+
     return {
-      main: textValues[0]?.text?.substring(0, 100) || "Empty card",
-      sub: textValues[1]?.text?.substring(0, 80) || null,
+      main: mainText || "Empty card",
+      sub: subText || null,
     };
   };
 
@@ -4915,13 +4961,21 @@ export default function DeckDetailPage() {
                             <strong className="text-white/60">quiz or audio</strong> blocks — AI
                             generates that block per row from the table context.
                           </p>
-                          <div className="flex flex-wrap gap-2 items-center">
-                            {selectedTemplate.blocks.map((block) => {
+                          {(() => {
+                            const blocks = selectedTemplate.blocks || [];
+                            const frontBlocks = blocks.filter(
+                              (b) => effectiveBlockSide(b) === "front"
+                            );
+                            const backBlocks = blocks.filter(
+                              (b) => effectiveBlockSide(b) === "back"
+                            );
+                            const showFaceGroups = backBlocks.length > 0;
+
+                            const renderBlockChip = (block, showFaceBadge) => {
                               const mapping = getMappingForBlock(block.blockId);
                               const isMapped = !!mapping;
                               const isAI = mapping?.generateWithAI;
                               const isPending = pendingBlockId === block.blockId;
-                              const canUseAI = isBlockEligibleForGenerateWithAI(block);
                               return (
                                 <div
                                   key={block.blockId}
@@ -4932,7 +4986,7 @@ export default function DeckDetailPage() {
                                     onClick={() =>
                                       handleBlockClick(block.blockId)
                                     }
-                                    className={`text-xs px-3 py-1.5 rounded transition-all ${
+                                    className={`text-xs px-3 py-1.5 rounded transition-all inline-flex items-center gap-1.5 ${
                                       isMapped
                                         ? isAI
                                           ? "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30"
@@ -4944,14 +4998,62 @@ export default function DeckDetailPage() {
                                         : "bg-white/10 text-white/50 hover:bg-white/20 hover:text-white"
                                     }`}
                                   >
-                                    {block.label}
+                                    {showFaceBadge && (
+                                      <span
+                                        className={`shrink-0 rounded px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${
+                                          effectiveBlockSide(block) === "back"
+                                            ? "bg-violet-500/25 text-violet-200/90"
+                                            : "bg-white/10 text-white/45"
+                                        }`}
+                                      >
+                                        {effectiveBlockSide(block) === "back"
+                                          ? "Back"
+                                          : "Front"}
+                                      </span>
+                                    )}
+                                    <span>{block.label}</span>
                                     {isMapped && (isAI ? " (AI) ✓" : " ✓")}
                                     {isPending && " ←"}
                                   </button>
                                 </div>
                               );
-                            })}
-                          </div>
+                            };
+
+                            if (showFaceGroups) {
+                              return (
+                                <div className="space-y-4">
+                                  <div>
+                                    <h5 className="text-white/50 text-xs font-semibold uppercase tracking-wider mb-2">
+                                      Front
+                                    </h5>
+                                    <div className="flex flex-wrap gap-2 items-center">
+                                      {frontBlocks.map((b) =>
+                                        renderBlockChip(b, false)
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <h5 className="text-white/50 text-xs font-semibold uppercase tracking-wider mb-2">
+                                      Back
+                                    </h5>
+                                    <div className="flex flex-wrap gap-2 items-center">
+                                      {backBlocks.map((b) =>
+                                        renderBlockChip(b, false)
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            }
+
+                            return (
+                              <div className="flex flex-wrap gap-2 items-center">
+                                {blocks.map((block) =>
+                                  renderBlockChip(block, true)
+                                )}
+                              </div>
+                            );
+                          })()}
                         </div>
 
                         {/* Dev only: Quiz = prompt preview; Audio = request JSON preview */}
@@ -5148,6 +5250,7 @@ export default function DeckDetailPage() {
                                 {importData.headers.map((h, i) => {
                                   const mapping = getMappingForColumn(i);
                                   const isPending = pendingColumnIndex === i;
+                                  const colFace = inferColumnFaceFromHeader(h);
                                   return (
                                     <th
                                       key={i}
@@ -5164,15 +5267,26 @@ export default function DeckDetailPage() {
                                     >
                                       <div className="flex flex-col gap-0.5">
                                         <span
-                                          className={
+                                          className={`inline-flex items-center gap-1.5 flex-wrap ${
                                             mapping
                                               ? "text-accent font-medium"
                                               : isPending
                                               ? "text-yellow-400 font-medium"
                                               : ""
-                                          }
+                                          }`}
                                         >
-                                          {h || `Col ${i + 1}`}
+                                          {colFace && (
+                                            <span
+                                              className={`shrink-0 rounded px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${
+                                                colFace === "back"
+                                                  ? "bg-violet-500/30 text-violet-100"
+                                                  : "bg-white/15 text-white/70"
+                                              }`}
+                                            >
+                                              {colFace === "back" ? "Back" : "Front"}
+                                            </span>
+                                          )}
+                                          <span>{h || `Col ${i + 1}`}</span>
                                         </span>
                                         {mapping ? (
                                           <span className="text-accent/70 text-[10px]">

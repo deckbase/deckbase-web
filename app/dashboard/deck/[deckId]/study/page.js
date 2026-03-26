@@ -134,6 +134,13 @@ const resolveBlockType = (rawType) => {
   return null;
 };
 
+/** @param {{ side?: string }} block */
+const effectiveStudySide = (block) =>
+  block?.side === "back" ? "back" : "front";
+
+const blockHasRevealableType = (block) =>
+  REVEALABLE_TYPES.has(resolveBlockType(block.type));
+
 const formatInterval = (ms) => {
   const durationMs = Math.max(0, ms);
   const minutes = Math.round(durationMs / MS_MINUTE);
@@ -349,6 +356,8 @@ export default function StudySessionPage() {
   const [quizState, setQuizState] = useState({});
   const [mediaCache, setMediaCache] = useState({});
   const [isSwitchingMode, setIsSwitchingMode] = useState(false);
+  /** True when the card has a back face and it is visible (after flip). */
+  const [flipRevealed, setFlipRevealed] = useState(false);
 
   const sessionCards = mode === "due" ? dueCards : allCards;
   const currentCard = sessionCards[currentIndex];
@@ -357,13 +366,71 @@ export default function StudySessionPage() {
   const progressText =
     totalCards > 0 ? `${currentIndex + 1} / ${totalCards}` : "0 / 0";
 
-  const hasRevealableBlocks = useMemo(() => {
+  const frontBlocks = useMemo(() => {
+    const snap = currentCard?.blocksSnapshot;
+    if (!Array.isArray(snap)) return [];
+    return snap.filter((b) => effectiveStudySide(b) === "front");
+  }, [currentCard]);
+
+  const backBlocks = useMemo(() => {
+    const snap = currentCard?.blocksSnapshot;
+    if (!Array.isArray(snap)) return [];
+    return snap.filter((b) => effectiveStudySide(b) === "back");
+  }, [currentCard]);
+
+  const hasFlipBack = backBlocks.length > 0;
+
+  const hasRevealableOnBack = useMemo(
+    () => backBlocks.some((b) => blockHasRevealableType(b)),
+    [backBlocks],
+  );
+
+  /** Front quiz blocks only — hiddenText uses tap-to-reveal, not rating. */
+  const frontNeedsQuizRatingReveal = useMemo(() => {
+    return frontBlocks.some((b) => {
+      const t = resolveBlockType(b.type);
+      return (
+        t === "quizMultiSelect" ||
+        t === "quizSingleSelect" ||
+        t === "quizTextAnswer"
+      );
+    });
+  }, [frontBlocks]);
+
+  /** Flat / legacy cards: any quiz or hiddenText on the snapshot (no separate back face). */
+  const hasLegacyFlatRevealable = useMemo(() => {
     return Boolean(
-      currentCard?.blocksSnapshot?.some((block) =>
-        REVEALABLE_TYPES.has(resolveBlockType(block.type))
-      )
+      currentCard?.blocksSnapshot?.some((block) => blockHasRevealableType(block)),
     );
   }, [currentCard]);
+
+  const ratingHint = useMemo(() => {
+    if (!currentCard) return "";
+    if (hasFlipBack) {
+      if (!flipRevealed) {
+        if (frontNeedsQuizRatingReveal && !showAnswer) {
+          return "Tap a rating to reveal the answer.";
+        }
+        return "Tap a rating to show the back.";
+      }
+      if (hasRevealableOnBack && !showAnswer) {
+        return "Tap a rating to reveal the answer.";
+      }
+      return "Tap a rating to record your recall.";
+    }
+    if (hasLegacyFlatRevealable && !showAnswer) {
+      return "Tap a rating to reveal the answer.";
+    }
+    return "Tap a rating to record your recall.";
+  }, [
+    currentCard,
+    hasFlipBack,
+    flipRevealed,
+    frontNeedsQuizRatingReveal,
+    hasRevealableOnBack,
+    showAnswer,
+    hasLegacyFlatRevealable,
+  ]);
 
   const ratingPreviews = useMemo(() => {
     if (!currentCard) return {};
@@ -378,6 +445,7 @@ export default function StudySessionPage() {
     setCurrentIndex(0);
     setReviewedCount(0);
     setShowAnswer(false);
+    setFlipRevealed(false);
     setSessionComplete(false);
     setIsRevealing(false);
     setCardShownAt(Date.now());
@@ -436,6 +504,10 @@ export default function StudySessionPage() {
     setTimeout(() => setIsRevealing(false), 800);
   }, [showAnswer, isRevealing]);
 
+  useEffect(() => {
+    setFlipRevealed(false);
+  }, [currentCard?.cardId]);
+
   const handleToggleReveal = (blockId) => {
     if (showAnswer) return;
     setRevealedBlocks((prev) => ({
@@ -456,9 +528,53 @@ export default function StudySessionPage() {
   const handleRate = async (rating) => {
     if (!currentCard || !user || sessionComplete || isSaving) return;
 
-    if (hasRevealableBlocks && !showAnswer) {
+    // Two-sided card: optional front reveal (quiz), then flip; optional back reveal (quiz), then SRS.
+    if (hasFlipBack) {
+      if (!flipRevealed) {
+        if (frontNeedsQuizRatingReveal && !showAnswer) {
+          const multiFront = frontBlocks.filter(
+            (b) => resolveBlockType(b.type) === "quizMultiSelect",
+          );
+          for (const block of multiFront) {
+            const selected = quizState[block.blockId];
+            const count = Array.isArray(selected) ? selected.length : 0;
+            if (count === 0) {
+              setError("Please select at least one option.");
+              return;
+            }
+          }
+          setError("");
+          triggerReveal();
+          return;
+        }
+        setError("");
+        setIsRevealing(true);
+        setFlipRevealed(true);
+        setShowAnswer(false);
+        setTimeout(() => setIsRevealing(false), 650);
+        return;
+      }
+      if (hasRevealableOnBack && !showAnswer) {
+        const multiBack = (currentCard.blocksSnapshot || []).filter(
+          (b) =>
+            effectiveStudySide(b) === "back" &&
+            resolveBlockType(b.type) === "quizMultiSelect",
+        );
+        for (const block of multiBack) {
+          const selected = quizState[block.blockId];
+          const count = Array.isArray(selected) ? selected.length : 0;
+          if (count === 0) {
+            setError("Please select at least one option.");
+            return;
+          }
+        }
+        setError("");
+        triggerReveal();
+        return;
+      }
+    } else if (hasLegacyFlatRevealable && !showAnswer) {
       const multiSelectBlocks = (currentCard.blocksSnapshot || []).filter(
-        (b) => resolveBlockType(b.type) === "quizMultiSelect"
+        (b) => resolveBlockType(b.type) === "quizMultiSelect",
       );
       for (const block of multiSelectBlocks) {
         const selected = quizState[block.blockId];
@@ -506,6 +622,7 @@ export default function StudySessionPage() {
     if (currentIndex < sessionCards.length - 1) {
       setCurrentIndex((prev) => prev + 1);
       setShowAnswer(false);
+      setFlipRevealed(false);
       setIsRevealing(false);
       setCardShownAt(Date.now());
       setRevealedBlocks({});
@@ -715,15 +832,68 @@ export default function StudySessionPage() {
           >
             <SrsInfoBar card={currentCard} />
             <div className="mt-6">
-              <FlashcardContent
-                card={currentCard}
-                showAnswer={showAnswer}
-                revealedBlocks={revealedBlocks}
-                onToggleReveal={handleToggleReveal}
-                mediaCache={mediaCache}
-                quizState={quizState}
-                onQuizChange={handleQuizChange}
-              />
+              {hasFlipBack ? (
+                <div
+                  className="relative mx-auto max-w-2xl"
+                  style={{ perspective: "1200px" }}
+                >
+                  <motion.div
+                    className="relative w-full min-h-[8rem]"
+                    style={{ transformStyle: "preserve-3d" }}
+                    animate={{ rotateY: flipRevealed ? 180 : 0 }}
+                    transition={{ duration: 0.55, ease: [0.4, 0, 0.2, 1] }}
+                  >
+                    <div
+                      className="w-full"
+                      style={{
+                        backfaceVisibility: "hidden",
+                        WebkitBackfaceVisibility: "hidden",
+                        transform: "rotateY(0deg) translateZ(1px)",
+                      }}
+                    >
+                      <FlashcardContent
+                        card={currentCard}
+                        blocks={frontBlocks}
+                        showAnswer={showAnswer}
+                        revealedBlocks={revealedBlocks}
+                        onToggleReveal={handleToggleReveal}
+                        mediaCache={mediaCache}
+                        quizState={quizState}
+                        onQuizChange={handleQuizChange}
+                      />
+                    </div>
+                    <div
+                      className="absolute top-0 left-0 w-full min-h-full"
+                      style={{
+                        backfaceVisibility: "hidden",
+                        WebkitBackfaceVisibility: "hidden",
+                        transform: "rotateY(180deg) translateZ(1px)",
+                      }}
+                    >
+                      <FlashcardContent
+                        card={currentCard}
+                        blocks={backBlocks}
+                        showAnswer={showAnswer}
+                        revealedBlocks={revealedBlocks}
+                        onToggleReveal={handleToggleReveal}
+                        mediaCache={mediaCache}
+                        quizState={quizState}
+                        onQuizChange={handleQuizChange}
+                      />
+                    </div>
+                  </motion.div>
+                </div>
+              ) : (
+                <FlashcardContent
+                  card={currentCard}
+                  showAnswer={showAnswer}
+                  revealedBlocks={revealedBlocks}
+                  onToggleReveal={handleToggleReveal}
+                  mediaCache={mediaCache}
+                  quizState={quizState}
+                  onQuizChange={handleQuizChange}
+                />
+              )}
             </div>
           </motion.div>
 
@@ -734,13 +904,7 @@ export default function StudySessionPage() {
                 Please select at least one option before revealing.
               </div>
             )}
-            {hasRevealableBlocks && (
-              <p className="text-center text-white/40 text-xs mb-3">
-                {showAnswer
-                  ? "Tap a rating to record your recall."
-                  : "Tap a rating to reveal the answer."}
-              </p>
-            )}
+            <p className="text-center text-white/40 text-xs mb-3">{ratingHint}</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {RATINGS.map((rating) => (
                 <button
@@ -931,6 +1095,7 @@ function StudyAudioBlock({ value, mediaCache }) {
 
 function FlashcardContent({
   card,
+  blocks: blocksProp,
   showAnswer,
   revealedBlocks,
   onToggleReveal,
@@ -938,7 +1103,9 @@ function FlashcardContent({
   quizState,
   onQuizChange,
 }) {
-  if (!card?.blocksSnapshot?.length) {
+  const blocksToRender = blocksProp ?? card?.blocksSnapshot ?? [];
+
+  if (!blocksToRender.length) {
     return (
       <p className="text-white/50 text-sm">This card does not have content.</p>
     );
@@ -949,7 +1116,7 @@ function FlashcardContent({
 
   return (
     <div className="space-y-4">
-      {card.blocksSnapshot.map((block) => {
+      {blocksToRender.map((block) => {
         const type = resolveBlockType(block.type);
         const value = getValueForBlock(block.blockId);
 

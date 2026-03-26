@@ -655,11 +655,8 @@ export async function exportApkgToBlob(opts) {
   const modelId = Date.now();
   const deckId = 1;
 
-  // Front = first block + all quiz blocks + all audio blocks; Back = everything else.
-  const isAudioBlock = (b) => {
-    const t = b?.type;
-    return t === "audio" || t === 7 || (typeof t === "string" && t === "7");
-  };
+  /** @param {{ side?: string } | undefined} b */
+  const effectiveSide = (b) => (b?.side === "back" ? "back" : "front");
   const collapseToFrontBack = (card, fields) => {
     if (!fields || fields.length === 0) return ["", ""];
     const blocks = card.blocksSnapshot || [];
@@ -667,12 +664,13 @@ export async function exportApkgToBlob(opts) {
     const backParts = [];
     for (let i = 0; i < fields.length; i++) {
       const block = blocks[i];
-      const isFirst = i === 0;
-      const isQuiz = block && isQuizBlockType(block.type);
-      const isAudio = block && isAudioBlock(block);
       const html = (fields[i] || "").trim();
-      if (isFirst || isQuiz || isAudio) frontParts.push(html);
-      else backParts.push(html);
+      if (!block) {
+        frontParts.push(html);
+        continue;
+      }
+      if (effectiveSide(block) === "back") backParts.push(html);
+      else frontParts.push(html);
     }
     return [frontParts.filter(Boolean).join("<br>"), backParts.filter(Boolean).join("<br>")];
   };

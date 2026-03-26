@@ -142,6 +142,7 @@ export async function POST(request) {
       label: b.label || "",
       required: Boolean(b.required),
       configJson: b.configJson,
+      side: b.side === "back" ? "back" : "front",
     }));
     const blockIdSet = new Set(blockIds);
     const filteredFull = fullBlocks.filter(
@@ -169,6 +170,7 @@ export async function POST(request) {
       blockId: b.blockId,
       type: b.type,
       label: b.label,
+      side: b.side === "back" ? "back" : "front",
     }));
     const text = (extractedContent || "").trim().slice(0, MAX_EXTRACTED_CHARS);
     if (!text) {

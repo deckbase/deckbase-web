@@ -259,7 +259,12 @@ export async function POST(request) {
       }
       const deckTitle = deck?.title ?? "";
       const templateBlocks = template.blocks
-        .map((b) => ({ blockId: b.blockId, type: b.type, label: b.label ?? "" }))
+        .map((b) => ({
+          blockId: b.blockId,
+          type: b.type,
+          label: b.label ?? "",
+          side: b.side === "back" ? "back" : "front",
+        }))
         .filter((b) => b.blockId);
       const templateFull = template.blocks.map((b) => ({
         blockId: b.blockId,
@@ -267,6 +272,7 @@ export async function POST(request) {
         label: b.label || "",
         required: Boolean(b.required),
         configJson: b.configJson,
+        side: b.side === "back" ? "back" : "front",
       }));
       if (templateBlocks.length === 0) {
         return NextResponse.json(
@@ -414,7 +420,12 @@ export async function POST(request) {
 
     console.log("[file-to-ai] template.blocks raw", template.blocks?.map((b, i) => ({ i, blockId: b.blockId?.slice(0, 8), type: b.type, typeOf: typeof b.type, label: b.label?.slice(0, 20) })));
     const templateBlocks = template.blocks
-      .map((b) => ({ blockId: b.blockId, type: b.type, label: b.label ?? "" }))
+      .map((b) => ({
+        blockId: b.blockId,
+        type: b.type,
+        label: b.label ?? "",
+        side: b.side === "back" ? "back" : "front",
+      }))
       .filter((b) => b.blockId);
     console.log("[file-to-ai] templateBlocks passed to prompt", templateBlocks.map((b) => ({ blockId: b.blockId?.slice(0, 8), type: b.type, typeOf: typeof b.type, label: b.label?.slice(0, 20) })));
 
@@ -424,6 +435,7 @@ export async function POST(request) {
       label: b.label || "",
       required: Boolean(b.required),
       configJson: b.configJson,
+      side: b.side === "back" ? "back" : "front",
     }));
 
     if (templateBlocks.length === 0) {

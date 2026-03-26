@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
+  ArrowRight,
   Plus,
   Trash2,
   GripVertical,
@@ -134,6 +135,56 @@ const getBlockTypeValue = (key) => {
   return BlockType[key] ?? key;
 };
 
+/** @param {{ side?: string }} b */
+function effectiveTemplateSide(b) {
+  return b?.side === "back" ? "back" : "front";
+}
+
+/** Insert index for a new block on the given face (flat array order). */
+function insertionIndexForSide(blocks, side) {
+  const list = blocks || [];
+  if (side === "front") {
+    let lastFront = -1;
+    for (let i = 0; i < list.length; i++) {
+      if (effectiveTemplateSide(list[i]) === "front") lastFront = i;
+    }
+    return lastFront + 1;
+  }
+  return list.length;
+}
+
+/** After changing side, move block to end of that face’s run. */
+function reorderBlockToFaceEnd(blocks, blockId, targetSide) {
+  const idx = blocks.findIndex((b) => b.blockId === blockId);
+  if (idx < 0) return blocks;
+  const block = { ...blocks[idx], side: targetSide };
+  const others = blocks.filter((_, i) => i !== idx);
+  let insertAt = others.length;
+  if (targetSide === "back") {
+    let lastBack = -1;
+    for (let i = 0; i < others.length; i++) {
+      if (effectiveTemplateSide(others[i]) === "back") lastBack = i;
+    }
+    if (lastBack >= 0) insertAt = lastBack + 1;
+    else {
+      let lastFront = -1;
+      for (let i = 0; i < others.length; i++) {
+        if (effectiveTemplateSide(others[i]) === "front") lastFront = i;
+      }
+      insertAt = lastFront + 1;
+    }
+  } else {
+    let lastFront = -1;
+    for (let i = 0; i < others.length; i++) {
+      if (effectiveTemplateSide(others[i]) === "front") lastFront = i;
+    }
+    insertAt = lastFront + 1;
+  }
+  const out = [...others];
+  out.splice(insertAt, 0, block);
+  return out;
+}
+
 // Normalize block.type (may be number from Firestore or string "7" / "audio") for config lookup
 const getBlockTypeForConfig = (type) => {
   if (type == null) return null;
@@ -160,9 +211,13 @@ export default function TemplateEditorPage() {
   const [description, setDescription] = useState("");
   const [blocks, setBlocks] = useState([]);
   const [existingTemplate, setExistingTemplate] = useState(null);
-  const [showBlockPicker, setShowBlockPicker] = useState(false);
+  /** null = closed; which face new blocks are added to */
+  const [blockPickerSide, setBlockPickerSide] = useState(null);
+  /** True after “Add back of card” until back blocks exist or user removes back */
+  const [showBackSectionIntent, setShowBackSectionIntent] = useState(false);
   const [mainBlockId, setMainBlockId] = useState(null);
   const [subBlockId, setSubBlockId] = useState(null);
+  const prevBackBlockCountRef = useRef(0);
 
   // Fetch template data
   useEffect(() => {
@@ -175,7 +230,13 @@ export default function TemplateEditorPage() {
           setExistingTemplate(template);
           setName(template.name);
           setDescription(template.description || "");
-          setBlocks(template.blocks || []);
+          setBlocks(
+            (template.blocks || []).map((b) => ({
+              ...b,
+              side: b.side === "back" ? "back" : "front",
+            })),
+          );
+          setShowBackSectionIntent(false);
           logAudio("Template loaded from Firestore", {
             templateId: template.templateId,
             name: template.name,
@@ -209,8 +270,21 @@ export default function TemplateEditorPage() {
     fetchData();
   }, [user, templateId, isNewTemplate, router]);
 
-  // Add a new block
-  const addBlock = (typeKey) => {
+  // Collapse empty “back section” intent only when the last back block is removed (not when opening an empty back panel).
+  useEffect(() => {
+    const n = blocks.filter((b) => effectiveTemplateSide(b) === "back").length;
+    if (prevBackBlockCountRef.current > 0 && n === 0) {
+      setShowBackSectionIntent(false);
+    }
+    prevBackBlockCountRef.current = n;
+  }, [blocks]);
+
+  /**
+   * @param {string} typeKey
+   * @param {"front" | "back"} [side]
+   * @param {string} [labelOverride] - if set (including ""), used instead of the type default label
+   */
+  const addBlock = (typeKey, side = "front", labelOverride) => {
     const type = getBlockTypeValue(typeKey);
     const newBlockId = uuidv4();
     const config = BLOCK_TYPE_CONFIG[type];
@@ -234,18 +308,52 @@ export default function TemplateEditorPage() {
       configJson = JSON.stringify({ cropAspect: DEFAULT_CROP_ASPECT });
     }
 
+    const face = side === "back" ? "back" : "front";
+
     setBlocks((prev) => {
+      const insertAt = insertionIndexForSide(prev, face);
       const isFirstBlock = prev.length === 0;
+      const label =
+        labelOverride !== undefined
+          ? String(labelOverride)
+          : config?.label || "Block";
       const newBlock = {
         blockId: newBlockId,
         type,
-        label: config?.label || "Block",
+        label,
         required: isFirstBlock,
         configJson,
+        side: face,
       };
-      return [...prev, newBlock];
+      const next = [...prev];
+      next.splice(insertAt, 0, newBlock);
+      return next;
     });
-    setShowBlockPicker(false);
+    setBlockPickerSide(null);
+  };
+
+  /** Reveal Back section; user adds blocks via “Add block” (no default block). */
+  const addBackOfCard = () => {
+    setShowBackSectionIntent(true);
+  };
+
+  const removeBackSection = () => {
+    const hasBackBlocks = blocks.some((b) => effectiveTemplateSide(b) === "back");
+    if (hasBackBlocks) {
+      if (
+        !confirm(
+          "Remove the back of the card? All blocks on the back will be deleted.",
+        )
+      ) {
+        return;
+      }
+      setBlocks((prev) => prev.filter((b) => effectiveTemplateSide(b) === "front"));
+    }
+    setShowBackSectionIntent(false);
+  };
+
+  const moveBlockToSide = (blockId, targetSide) => {
+    setBlocks((prev) => reorderBlockToFaceEnd(prev, blockId, targetSide));
   };
 
   // Remove a block
@@ -256,24 +364,26 @@ export default function TemplateEditorPage() {
     if (subBlockId === blockId) setSubBlockId(null);
   };
 
-  // Move block up
-  const moveBlockUp = (index) => {
-    if (index === 0) return;
-    setBlocks((prev) => {
-      const newBlocks = [...prev];
-      [newBlocks[index - 1], newBlocks[index]] = [newBlocks[index], newBlocks[index - 1]];
-      return newBlocks;
-    });
+  // Move block up within the same face only
+  const moveBlockUp = (globalIndex) => {
+    const side = effectiveTemplateSide(blocks[globalIndex]);
+    for (let i = globalIndex - 1; i >= 0; i--) {
+      if (effectiveTemplateSide(blocks[i]) === side) {
+        moveBlock(globalIndex, i);
+        return;
+      }
+    }
   };
 
-  // Move block down
-  const moveBlockDown = (index) => {
-    if (index === blocks.length - 1) return;
-    setBlocks((prev) => {
-      const newBlocks = [...prev];
-      [newBlocks[index], newBlocks[index + 1]] = [newBlocks[index + 1], newBlocks[index]];
-      return newBlocks;
-    });
+  // Move block down within the same face only
+  const moveBlockDown = (globalIndex) => {
+    const side = effectiveTemplateSide(blocks[globalIndex]);
+    for (let i = globalIndex + 1; i < blocks.length; i++) {
+      if (effectiveTemplateSide(blocks[i]) === side) {
+        moveBlock(globalIndex, i);
+        return;
+      }
+    }
   };
 
   // Reorder block by drag-and-drop (fromIndex → toIndex)
@@ -306,6 +416,7 @@ export default function TemplateEditorPage() {
     const newBlock = {
       ...originalBlock,
       blockId: uuidv4(),
+      side: effectiveTemplateSide(originalBlock) === "back" ? "back" : "front",
     };
 
     setBlocks((prev) => {
@@ -356,9 +467,10 @@ export default function TemplateEditorPage() {
     ].includes(n);
   };
 
-  // Get effective main/sub block IDs
+  // Get effective main/sub block IDs (front face text blocks only — AI / audio defaults)
   const getEffectiveMainSubBlocks = () => {
-    const textBlocks = blocks.filter((b) => isTextBlock(b.type));
+    const frontBlocksOnly = blocks.filter((b) => effectiveTemplateSide(b) === "front");
+    const textBlocks = frontBlocksOnly.filter((b) => isTextBlock(b.type));
     const effectiveMainBlockId = mainBlockId || (textBlocks[0]?.blockId ?? null);
     const effectiveSubBlockId = subBlockId || (textBlocks[1]?.blockId ?? null);
     return { effectiveMainBlockId, effectiveSubBlockId };
@@ -381,36 +493,25 @@ export default function TemplateEditorPage() {
     try {
       const { effectiveMainBlockId, effectiveSubBlockId } = getEffectiveMainSubBlocks();
 
-      // Build rendering config
-      const frontBlockIds = [];
-      if (effectiveMainBlockId) frontBlockIds.push(effectiveMainBlockId);
-      if (effectiveSubBlockId) frontBlockIds.push(effectiveSubBlockId);
-
-      const backBlockIds = blocks
-        .filter((b) => !frontBlockIds.includes(b.blockId))
-        .map((b) => b.blockId);
-
-      const rendering = {
-        frontBlockIds,
-        backBlockIds,
-      };
+      const blocksWithSide = blocks.map((b) => ({
+        ...b,
+        side: effectiveTemplateSide(b) === "back" ? "back" : "front",
+      }));
 
       if (isNewTemplate) {
         await createTemplate(
           user.uid,
           name.trim(),
           description.trim(),
-          blocks,
-          rendering,
+          blocksWithSide,
           effectiveMainBlockId,
-          effectiveSubBlockId
+          effectiveSubBlockId,
         );
       } else {
         await updateTemplate(user.uid, templateId, {
           name: name.trim(),
           description: description.trim(),
-          blocks,
-          rendering,
+          blocks: blocksWithSide,
           mainBlockId: effectiveMainBlockId,
           subBlockId: effectiveSubBlockId,
         });
@@ -432,6 +533,93 @@ export default function TemplateEditorPage() {
   }
 
   const { effectiveMainBlockId, effectiveSubBlockId } = getEffectiveMainSubBlocks();
+
+  const frontBlocks = blocks.filter((b) => effectiveTemplateSide(b) === "front");
+  const backBlocks = blocks.filter((b) => effectiveTemplateSide(b) === "back");
+  const hasBackBlocks = backBlocks.length > 0;
+  const showBackPanel = hasBackBlocks || showBackSectionIntent;
+
+  const renderBlockRow = (block, sectionIndex, sectionLength, face) => {
+    const globalIndex = blocks.findIndex((b) => b.blockId === block.blockId);
+    const otherTextBlocks = blocks.filter(
+      (b) =>
+        b.blockId !== block.blockId &&
+        effectiveTemplateSide(b) === "front" &&
+        isTextBlock(getBlockTypeForConfig(b.type)),
+    );
+    logAudio(
+      "Block list item",
+      { globalIndex, blockId: block.blockId, type: block.type, label: block.label, face },
+      "otherTextBlocks count:",
+      otherTextBlocks.length,
+    );
+    return (
+      <BlockCard
+        key={block.blockId != null ? `${block.blockId}-${globalIndex}` : `block-${globalIndex}`}
+        block={block}
+        globalIndex={globalIndex}
+        sectionIndex={sectionIndex}
+        sectionLength={sectionLength}
+        face={face}
+        isMainBlock={effectiveMainBlockId === block.blockId}
+        isSubBlock={effectiveSubBlockId === block.blockId}
+        canSetMainSub={face === "front" && isTextBlock(block.type)}
+        otherTextBlocksForAudio={otherTextBlocks}
+        effectiveMainBlockId={effectiveMainBlockId}
+        onSetAsMain={() => {
+          if (subBlockId === block.blockId) {
+            setSubBlockId(mainBlockId);
+          }
+          setMainBlockId(block.blockId);
+        }}
+        onSetAsSub={() => {
+          if (mainBlockId === block.blockId) {
+            setMainBlockId(subBlockId);
+          }
+          setSubBlockId(block.blockId);
+        }}
+        onMoveUp={() => moveBlockUp(globalIndex)}
+        onMoveDown={() => moveBlockDown(globalIndex)}
+        onMoveToBack={() => moveBlockToSide(block.blockId, "back")}
+        onMoveToFront={() => moveBlockToSide(block.blockId, "front")}
+        onDuplicate={() => duplicateBlock(globalIndex)}
+        onRemove={() => removeBlock(block.blockId)}
+        onLabelChange={(label) => updateBlockLabel(block.blockId, label)}
+        onConfigChange={(config) => updateBlockConfig(block.blockId, config)}
+        onDragStart={(e) => {
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData("text/plain", String(globalIndex));
+          setDraggedBlockIndex(globalIndex);
+        }}
+        onDragEnd={() => {
+          setDraggedBlockIndex(null);
+          setDragOverBlockIndex(null);
+        }}
+        onDragOver={(e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+          setDragOverBlockIndex(globalIndex);
+        }}
+        onDragLeave={() => setDragOverBlockIndex((i) => (i === globalIndex ? null : i))}
+        onDrop={(e) => {
+          e.preventDefault();
+          const from = draggedBlockIndex;
+          if (from != null && from !== globalIndex) {
+            if (effectiveTemplateSide(blocks[from]) !== effectiveTemplateSide(blocks[globalIndex])) {
+              setDraggedBlockIndex(null);
+              setDragOverBlockIndex(null);
+              return;
+            }
+            moveBlock(from, globalIndex);
+          }
+          setDraggedBlockIndex(null);
+          setDragOverBlockIndex(null);
+        }}
+        isDragging={draggedBlockIndex === globalIndex}
+        isDragOver={dragOverBlockIndex === globalIndex}
+      />
+    );
+  };
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
@@ -492,7 +680,7 @@ export default function TemplateEditorPage() {
         </div>
       </div>
 
-      {/* Blocks List */}
+      {/* Blocks List — front / back */}
       <div className="space-y-4 mb-6">
         {blocks.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center bg-white/5 border border-white/10 rounded-xl">
@@ -501,97 +689,87 @@ export default function TemplateEditorPage() {
             </div>
             <h3 className="text-lg font-semibold text-white mb-2">No blocks yet</h3>
             <p className="text-white/50 mb-4">Add blocks to define your template structure</p>
+            <button
+              type="button"
+              onClick={() => setBlockPickerSide("front")}
+              className="px-4 py-2 rounded-lg bg-accent/20 text-accent hover:bg-accent/30 text-sm font-medium"
+            >
+              Add block
+            </button>
           </div>
         ) : (
-          blocks.map((block, index) => {
-            const otherTextBlocks = blocks.filter(
-              (b) =>
-                b.blockId !== block.blockId &&
-                isTextBlock(getBlockTypeForConfig(b.type))
-            );
-            logAudio(
-              "Block list item",
-              { index, blockId: block.blockId, type: block.type, label: block.label },
-              "otherTextBlocks count:",
-              otherTextBlocks.length,
-              otherTextBlocks.map((b) => ({ blockId: b.blockId, type: b.type, label: b.label }))
-            );
-            return (
-              <BlockCard
-                key={block.blockId != null ? `${block.blockId}-${index}` : `block-${index}`}
-                block={block}
-                index={index}
-                totalCount={blocks.length}
-                isMainBlock={effectiveMainBlockId === block.blockId}
-                isSubBlock={effectiveSubBlockId === block.blockId}
-                canSetMainSub={isTextBlock(block.type)}
-                otherTextBlocksForAudio={otherTextBlocks}
-                effectiveMainBlockId={effectiveMainBlockId}
-                onSetAsMain={() => {
-                  if (subBlockId === block.blockId) {
-                    setSubBlockId(mainBlockId);
-                  }
-                  setMainBlockId(block.blockId);
-                }}
-                onSetAsSub={() => {
-                  if (mainBlockId === block.blockId) {
-                    setMainBlockId(subBlockId);
-                  }
-                  setSubBlockId(block.blockId);
-                }}
-                onMoveUp={() => moveBlockUp(index)}
-                onMoveDown={() => moveBlockDown(index)}
-                onDuplicate={() => duplicateBlock(index)}
-                onRemove={() => removeBlock(block.blockId)}
-                onLabelChange={(label) => updateBlockLabel(block.blockId, label)}
-                onConfigChange={(config) => updateBlockConfig(block.blockId, config)}
-                onDragStart={(e) => {
-                  e.dataTransfer.effectAllowed = "move";
-                  e.dataTransfer.setData("text/plain", String(index));
-                  setDraggedBlockIndex(index);
-                }}
-                onDragEnd={() => {
-                  setDraggedBlockIndex(null);
-                  setDragOverBlockIndex(null);
-                }}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  e.dataTransfer.dropEffect = "move";
-                  setDragOverBlockIndex(index);
-                }}
-                onDragLeave={() => setDragOverBlockIndex((i) => (i === index ? null : i))}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  const from = draggedBlockIndex;
-                  if (from != null && from !== index) moveBlock(from, index);
-                  setDraggedBlockIndex(null);
-                  setDragOverBlockIndex(null);
-                }}
-                isDragging={draggedBlockIndex === index}
-                isDragOver={dragOverBlockIndex === index}
-              />
-            );
-          })
+          <>
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] overflow-hidden">
+              <div className="px-4 py-2 border-b border-white/10 bg-white/[0.04]">
+                <span className="text-xs font-semibold uppercase tracking-wider text-white/50">
+                  Front
+                </span>
+              </div>
+              <div className="p-4 space-y-4">
+                {frontBlocks.map((block, sectionIndex) =>
+                  renderBlockRow(block, sectionIndex, frontBlocks.length, "front"),
+                )}
+                <button
+                  type="button"
+                  onClick={() => setBlockPickerSide("front")}
+                  className="w-full py-2.5 border border-dashed border-white/15 hover:border-accent/40 rounded-lg text-white/45 hover:text-accent text-sm transition-colors flex items-center justify-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add block
+                </button>
+              </div>
+            </div>
+
+            {!showBackPanel ? (
+              <button
+                type="button"
+                onClick={addBackOfCard}
+                className="w-full py-3 rounded-xl border-2 border-dashed border-white/20 hover:border-accent/50 text-white/50 hover:text-accent text-sm transition-colors"
+              >
+                + Add back of card
+              </button>
+            ) : (
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] overflow-hidden">
+                <div className="px-4 py-2 border-b border-white/10 bg-white/[0.04] flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-white/50">
+                    Back
+                  </span>
+                  <button
+                    type="button"
+                    onClick={removeBackSection}
+                    className="text-xs text-red-400/90 hover:text-red-300"
+                  >
+                    Remove back
+                  </button>
+                </div>
+                <div className="p-4 space-y-4">
+                  {backBlocks.map((block, sectionIndex) =>
+                    renderBlockRow(block, sectionIndex, backBlocks.length, "back"),
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setBlockPickerSide("back")}
+                    className="w-full py-2.5 border border-dashed border-white/15 hover:border-accent/40 rounded-lg text-white/45 hover:text-accent text-sm transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add block
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
-      {/* Add Block Button */}
+      {/* Block type picker (anchored to last “Add block” intent) */}
       <div className="relative">
-        <button
-          onClick={() => setShowBlockPicker(!showBlockPicker)}
-          className="w-full py-3 border-2 border-dashed border-white/20 hover:border-accent/50 rounded-xl text-white/50 hover:text-accent transition-colors flex items-center justify-center gap-2"
-        >
-          <Plus className="w-5 h-5" />
-          Add Block
-        </button>
-
         {/* Block Picker */}
         <AnimatePresence>
-          {showBlockPicker && (
+          {blockPickerSide != null && (
             <>
               <div
                 className="fixed inset-0 z-10"
-                onClick={() => setShowBlockPicker(false)}
+                onClick={() => setBlockPickerSide(null)}
               />
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
@@ -599,6 +777,12 @@ export default function TemplateEditorPage() {
                 exit={{ opacity: 0, y: 10 }}
                 className="absolute bottom-full left-0 right-0 mb-2 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl p-4 z-20 max-h-80 overflow-y-auto"
               >
+                <p className="text-white/45 text-xs mb-3">
+                  Adding to:{" "}
+                  <span className="text-white/80 font-medium">
+                    {blockPickerSide === "back" ? "Back" : "Front"}
+                  </span>
+                </p>
                 {/* Text Blocks */}
                 <div className="mb-4">
                   <h4 className="text-white/50 text-xs uppercase tracking-wider mb-2">Text</h4>
@@ -610,7 +794,7 @@ export default function TemplateEditorPage() {
                         return (
                           <button
                             key={typeKey}
-                            onClick={() => addBlock(typeKey)}
+                            onClick={() => addBlock(typeKey, blockPickerSide)}
                             className="flex items-center gap-2 p-3 rounded-lg hover:bg-white/10 transition-colors text-left"
                           >
                             <Icon className="w-4 h-4 text-accent shrink-0" />
@@ -632,7 +816,7 @@ export default function TemplateEditorPage() {
                         return (
                           <button
                             key={typeKey}
-                            onClick={() => addBlock(typeKey)}
+                            onClick={() => addBlock(typeKey, blockPickerSide)}
                             className="flex items-center gap-2 p-3 rounded-lg hover:bg-white/10 transition-colors text-left"
                           >
                             <Icon className="w-4 h-4 text-accent shrink-0" />
@@ -654,7 +838,7 @@ export default function TemplateEditorPage() {
                         return (
                           <button
                             key={typeKey}
-                            onClick={() => addBlock(typeKey)}
+                            onClick={() => addBlock(typeKey, blockPickerSide)}
                             className="flex items-center gap-2 p-3 rounded-lg hover:bg-white/10 transition-colors text-left"
                           >
                             <Icon className="w-4 h-4 text-accent shrink-0" />
@@ -677,7 +861,7 @@ export default function TemplateEditorPage() {
                         return (
                           <button
                             key={typeKey}
-                            onClick={() => !disabled && addBlock(typeKey)}
+                            onClick={() => !disabled && addBlock(typeKey, blockPickerSide)}
                             disabled={disabled}
                             className="flex items-center gap-2 p-3 rounded-lg hover:bg-white/10 transition-colors text-left disabled:opacity-30 disabled:cursor-not-allowed"
                           >
@@ -708,8 +892,9 @@ export default function TemplateEditorPage() {
 // Block Card Component
 function BlockCard({
   block,
-  index,
-  totalCount,
+  sectionIndex,
+  sectionLength,
+  face,
   isMainBlock,
   isSubBlock,
   canSetMainSub,
@@ -719,6 +904,8 @@ function BlockCard({
   onSetAsSub,
   onMoveUp,
   onMoveDown,
+  onMoveToBack,
+  onMoveToFront,
   onDuplicate,
   onRemove,
   onLabelChange,
@@ -820,8 +1007,9 @@ function BlockCard({
 
             {/* Actions */}
             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              {index > 0 && (
+              {sectionIndex > 0 && (
                 <button
+                  type="button"
                   onClick={onMoveUp}
                   className="p-1 hover:bg-white/10 rounded transition-colors"
                   title="Move up"
@@ -829,13 +1017,34 @@ function BlockCard({
                   <ChevronUp className="w-4 h-4 text-white/50" />
                 </button>
               )}
-              {index < totalCount - 1 && (
+              {sectionIndex < sectionLength - 1 && (
                 <button
+                  type="button"
                   onClick={onMoveDown}
                   className="p-1 hover:bg-white/10 rounded transition-colors"
                   title="Move down"
                 >
                   <ChevronDown className="w-4 h-4 text-white/50" />
+                </button>
+              )}
+              {face === "front" && (
+                <button
+                  type="button"
+                  onClick={onMoveToBack}
+                  className="p-1 hover:bg-white/10 rounded transition-colors flex items-center gap-0.5"
+                  title="Move to back"
+                >
+                  <ArrowRight className="w-4 h-4 text-amber-400/90" />
+                </button>
+              )}
+              {face === "back" && (
+                <button
+                  type="button"
+                  onClick={onMoveToFront}
+                  className="p-1 hover:bg-white/10 rounded transition-colors"
+                  title="Move to front"
+                >
+                  <ArrowLeft className="w-4 h-4 text-amber-400/90" />
                 </button>
               )}
               {!isQuizBlock && (
