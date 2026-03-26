@@ -5,11 +5,11 @@ import { absoluteUrl } from "@/lib/site-url";
 export const metadata = {
   title: "Features — AI Flashcards, Spaced Repetition & More",
   description:
-    "Explore Deckbase features: AI flashcard generation, spaced repetition, multi-source capture, learning analytics, and deck sharing. Study smarter.",
+    "Explore Deckbase features: AI card creation, spaced repetition, CSV/Excel/Anki import, template-based cards, cross-device sync, and MCP/API workflows.",
   openGraph: {
     title: "Deckbase Features — AI Flashcards & Spaced Repetition",
     description:
-      "AI flashcard generation, spaced repetition, learning analytics, and more. Study smarter with Deckbase.",
+      "AI card creation, spaced repetition, structured templates, import workflows, and cross-device learning with Deckbase.",
     url: absoluteUrl("/features"),
   },
   alternates: { canonical: absoluteUrl("/features") },

@@ -116,17 +116,17 @@ const Feature = () => {
             Feature overview
           </span>
 
-          <h2 className="text-h2 lg:text-h3 font-bold tracking-tight leading-tight max-w-[720px]">
-            Everything you need to{" "}
+          <h1 className="text-h2 lg:text-h3 font-bold tracking-tight leading-tight max-w-[720px]">
+            The best flashcard app for{" "}
             <span className="bg-gradient-to-r from-accent via-blue-400 to-violet-400 bg-clip-text text-transparent">
-              learn faster
+              spaced repetition
             </span>
-          </h2>
+          </h1>
 
           <p className="mt-5 text-white/50 text-base md:text-lg max-w-[540px] leading-relaxed">
             Deckbase helps you go from source material to review-ready cards:
             generate with AI, organize with templates, sync across devices, and
-            retain knowledge with spaced repetition.
+            retain knowledge with an adaptive spaced repetition workflow.
           </p>
         </motion.div>
 

@@ -85,9 +85,9 @@ const Testimonial = () => {
                         </p>
                         <div className="flex items-center gap-4">
                           <div className="flex gap-2 items-start">
-                            <h1 className="text-white font-extrabold text-[16px] leading-[24.55px]">
+                            <p className="text-white font-extrabold text-[16px] leading-[24.55px]">
                               {`- ${review.name},`}
-                            </h1>
+                            </p>
                             <span className="text-white/70 italic">
                               {review.title}
                             </span>
