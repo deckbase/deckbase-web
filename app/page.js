@@ -49,7 +49,7 @@ export default function Home() {
               >
                 <Sparkles className="w-4 h-4 text-accent" />
                 <span className="bg-gradient-to-r from-accent to-purple-600 bg-clip-text text-transparent font-medium text-sm">
-                  AI-Powered Learning, Effortlessly
+                  AI-powered MCP + Anki-ready workflows
                 </span>
               </motion.div>
 
@@ -61,9 +61,9 @@ export default function Home() {
                 className="mb-6"
               >
                 <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-tight">
-                  <span className="block text-white">Scan. Build.</span>
+                  <span className="block text-white">AI-powered MCP workflows,</span>
                   <span className="bg-gradient-to-r from-accent via-blue-400 to-purple-500 bg-clip-text text-transparent">
-                    Remember.
+                    Anki-ready flashcards.
                   </span>
                 </h1>
               </motion.div>
@@ -73,9 +73,10 @@ export default function Home() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.7, duration: 0.8 }}
-                className="text-lg text-white/60 leading-relaxed mb-10 max-w-lg"
+                className="text-lg text-white/60 leading-relaxed mb-10 max-w-2xl"
               >
-                Transform anything you read into lasting knowledge. Deckbase uses AI to instantly convert articles, PDFs, and notes into smart flashcards—optimized for how your brain actually learns.
+                Turn notes, PDFs, and articles into flashcards in seconds, then
+                automate deck and card workflows with MCP and Anki-friendly import/export.
               </motion.p>
 
               {/* Download buttons */}
@@ -143,8 +144,8 @@ export default function Home() {
                 <Zap className="w-5 h-5 text-notion-purple" />
               </div>
               <div>
-                <h3 className="font-semibold text-white text-sm mb-1">Instant Capture</h3>
-                <p className="text-white/40 text-xs leading-relaxed">From articles, PDFs, books, or notes—convert instantly to flashcards.</p>
+                <h3 className="font-semibold text-white text-sm mb-1">Anki + MCP Ready</h3>
+                <p className="text-white/40 text-xs leading-relaxed">Automate with AI-powered MCP and import/export with Anki-friendly workflows.</p>
               </div>
             </div>
           </motion.div>

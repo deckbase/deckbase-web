@@ -20,11 +20,11 @@ const firebaseAuthOrigin = firebaseAuthRaw
 // ✅ Export metadata for SEO - this runs on the server
 export const metadata = {
   title: {
-    default: "Deckbase — Scan. Build. Remember.",
+    default: "Deckbase — AI flashcards from notes, PDFs, and articles",
     template: "%s | Deckbase",
   },
   description:
-    "Scan books into flashcards with AI. Deckbase turns what you read into lasting knowledge using spaced repetition. Study smarter, remember more.",
+    "Deckbase turns notes, PDFs, and articles into study-ready flashcards in seconds. Generate cards with AI, retain more with spaced repetition, automate workflows with MCP, and move easily with Anki-friendly import/export.",
   keywords: [
     "flashcards",
     "AI flashcards",
@@ -52,9 +52,9 @@ export const metadata = {
     canonical: "/",
   },
   openGraph: {
-    title: "Deckbase — Scan. Build. Remember.",
+    title: "Deckbase — AI flashcards from notes, PDFs, and articles",
     description:
-      "Scan books into flashcards with AI. Study smarter with spaced repetition and remember more of what you read.",
+      "Deckbase turns notes, PDFs, and articles into study-ready flashcards in seconds. Generate cards with AI, retain more with spaced repetition, and use Anki-friendly import/export.",
     url: SITE_URL,
     siteName: "Deckbase",
     images: [
@@ -70,9 +70,9 @@ export const metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Deckbase — Scan. Build. Remember.",
+    title: "Deckbase — AI flashcards from notes, PDFs, and articles",
     description:
-      "Scan books into flashcards with AI. Study smarter with spaced repetition and remember more of what you read.",
+      "Deckbase turns notes, PDFs, and articles into study-ready flashcards in seconds. Generate with AI and retain more with spaced repetition.",
     site: "@DeckbaseApp",
     images: ["/app_logo.webp"],
   },
@@ -109,7 +109,7 @@ const jsonLd = {
       operatingSystem: "Android, iOS",
       url: SITE_URL,
       description:
-        "Scan books into flashcards with AI. Study smarter with spaced repetition and remember more of what you read.",
+        "Deckbase turns notes, PDFs, and articles into study-ready flashcards in seconds with AI, spaced repetition, MCP workflows, and Anki-friendly import/export.",
       offers: {
         "@type": "Offer",
         price: "0",
@@ -138,7 +138,7 @@ const jsonLd = {
       name: "Deckbase",
       url: SITE_URL,
       description:
-        "Scan books into flashcards with AI. Study smarter with spaced repetition.",
+        "AI flashcards from notes, PDFs, and articles with spaced repetition and Anki-friendly import/export.",
       publisher: { "@id": orgId },
       potentialAction: {
         "@type": "SearchAction",
