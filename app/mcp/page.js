@@ -405,7 +405,7 @@ url = "${mcpUrl}"`;
                       >
                         dashboard
                       </Link>
-                      . API keys don't expire. On 401, verify the header is{" "}
+                      . API keys don&apos;t expire. On 401, verify the header is{" "}
                       <InlineCode>
                         Authorization: Bearer YOUR_API_KEY
                       </InlineCode>
@@ -563,7 +563,7 @@ url = "${mcpUrl}"`;
 
                   <div className="mt-2 pt-4 border-t border-white/[0.06]">
                     <p className="text-sm text-white/35">
-                      Don't commit real API keys. For project scope, prefer
+                      Don&apos;t commit real API keys. For project scope, prefer
                       env-based config if your team uses shared templates.
                     </p>
                   </div>
@@ -733,7 +733,7 @@ url = "${mcpUrl}"`;
                   <Step number={2}>
                     <p className="text-sm text-white/60">
                       Configure the <InlineCode>Authorization</InlineCode>{" "}
-                      header with your API key per Codex's MCP documentation
+                      header with your API key per Codex&apos;s MCP documentation
                       (e.g. environment variable or auth plugin).
                     </p>
                   </Step>
@@ -830,7 +830,7 @@ url = "${mcpUrl}"`;
               Need an API key?
             </p>
             <p className="text-xs text-white/35 mt-0.5">
-              Create one in the dashboard — keys don't expire.
+              Create one in the dashboard — keys don&apos;t expire.
             </p>
           </div>
           <Link

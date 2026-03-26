@@ -6,6 +6,14 @@ import { NextResponse } from "next/server";
  * Does not intercept /robots.txt or /llms.txt.
  */
 export function middleware(request) {
+  const host = request.headers.get("host") || "";
+  if (host === "deckbase.co") {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.host = "www.deckbase.co";
+    redirectUrl.protocol = "https:";
+    return NextResponse.redirect(redirectUrl, 301);
+  }
+
   const key = process.env.INDEXNOW_KEY?.trim();
   if (!key) {
     return NextResponse.next();

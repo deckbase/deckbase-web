@@ -19,6 +19,10 @@ import {
 const PAGE_PATH = "/best-flashcard-apps";
 const pageUrl = absoluteUrl(PAGE_PATH);
 const homeUrl = absoluteUrl("/");
+const publishedAt = "2026-03-21";
+const updatedAt = "2026-03-26";
+const orgId = `${homeUrl}/#organization`;
+const authorId = `${homeUrl}/#deckbase-editorial`;
 
 export const metadata = {
   title: "Best Flashcard Apps in 2026 (Med, Languages, AI)",
@@ -38,7 +42,7 @@ export const metadata = {
     description: "Compare leading flashcard apps for spaced repetition, AI generation, and mobile study — and where Deckbase fits.",
     url: pageUrl,
     siteName: "Deckbase",
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: "Best Flashcard Apps" }],
+    images: [{ url: "/app_logo.webp", width: 512, height: 512, alt: "Best Flashcard Apps" }],
     locale: "en_US",
     type: "article",
   },
@@ -47,8 +51,9 @@ export const metadata = {
     title: "Best Flashcard Apps in 2026 (Med, Languages, AI)",
     description: "Compare leading flashcard apps for spaced repetition, AI generation, and mobile study.",
     site: "@DeckbaseApp",
-    images: ["/og.png"],
+    images: ["/app_logo.webp"],
   },
+  robots: { index: true, follow: true },
 };
 
 const criteria = [
@@ -61,6 +66,13 @@ const picks = [
   { title: "Deckbase", badge: "AI + FSRS · mobile-first", body: "Best when you want to generate cards from books and PDFs quickly, study on iOS/Android, and keep FSRS-style scheduling without a long setup." },
   { title: "Anki", badge: "Power users · community decks", body: "Best when you want maximum control, add-ons, and free desktop/Android use — and you are okay investing time in setup." },
   { title: "Quizlet", badge: "Simple sets · classroom", body: "Best for lightweight review and shared sets; verify whether the study mode matches your spaced repetition needs for exams." },
+];
+
+const methodology = [
+  "Daily-use fit: whether the app supports a repeatable study loop, not just one-time card generation.",
+  "Scheduling quality: support for FSRS (or equivalent adaptive spacing) for long-term retention.",
+  "Creation speed vs control: how quickly users can create accurate cards from notes, PDFs, and books.",
+  "Mobile consistency: whether review quality stays high on iOS/Android, where most users actually study.",
 ];
 
 const faqs = [
@@ -80,6 +92,8 @@ const jsonLd = {
       url: pageUrl,
       name: "Best Flashcard Apps in 2026 (Med, Languages, AI)",
       description: "Guide to top flashcard apps: FSRS, AI cards, med school and language learning use cases.",
+      datePublished: publishedAt,
+      dateModified: updatedAt,
       breadcrumb: {
         "@type": "BreadcrumbList",
         itemListElement: [
@@ -87,6 +101,33 @@ const jsonLd = {
           { "@type": "ListItem", position: 2, name: "Best flashcard apps", item: pageUrl },
         ],
       },
+    },
+    {
+      "@type": "Article",
+      "@id": `${pageUrl}#article`,
+      mainEntityOfPage: { "@id": pageUrl },
+      headline: "Best Flashcard Apps in 2026 (Med, Languages, AI)",
+      description:
+        "Comparison guide for flashcard apps focused on spaced repetition quality, AI card creation, and long-term study consistency.",
+      author: { "@id": authorId },
+      publisher: { "@id": orgId },
+      datePublished: publishedAt,
+      dateModified: updatedAt,
+      image: absoluteUrl("/app_logo.webp"),
+      about: ["Flashcards", "FSRS", "AI learning tools"],
+    },
+    {
+      "@type": "Organization",
+      "@id": orgId,
+      name: "Deckbase",
+      url: homeUrl,
+      logo: absoluteUrl("/app_logo.webp"),
+    },
+    {
+      "@type": "Person",
+      "@id": authorId,
+      name: "Deckbase Editorial Team",
+      url: homeUrl,
     },
     {
       "@type": "FAQPage",
@@ -122,6 +163,11 @@ export default function BestFlashcardAppsPage() {
 
         <ArticleSection id="how-to-choose">
           <ArticleH2>How to choose (fast)</ArticleH2>
+          <ArticleBody>
+            The phrase &quot;best flashcard app&quot; means different things for med students, language
+            learners, and exam candidates. Instead of generic rankings, use the criteria below to
+            match your workflow and review habits.
+          </ArticleBody>
           <ArticleCardGrid cols={3}>
             {criteria.map((x) => (
               <ArticleCard key={x.n} badge={`0${x.n}`} title={x.title}>
@@ -129,6 +175,21 @@ export default function BestFlashcardAppsPage() {
               </ArticleCard>
             ))}
           </ArticleCardGrid>
+        </ArticleSection>
+
+        <ArticleSection id="methodology">
+          <ArticleH2>Method used for this ranking</ArticleH2>
+          <ArticleBody>
+            This page is evaluated around retention outcomes and day-to-day usability rather than
+            feature checklist inflation. The shortlist favors tools that keep learners reviewing
+            over months, not just during setup week.
+          </ArticleBody>
+          <ArticleFaq
+            items={methodology.map((m, i) => ({
+              q: `Criterion ${i + 1}`,
+              a: m,
+            }))}
+          />
         </ArticleSection>
 
         <ArticleSection id="shortlist">
@@ -144,6 +205,24 @@ export default function BestFlashcardAppsPage() {
             For a broader Anki-focused list (including migration), see{" "}
             <Link href="/anki-alternatives" className="text-accent hover:underline underline-offset-2">
               Best Anki alternatives
+            </Link>
+            .
+          </ArticleBody>
+          <ArticleBody>
+            If you are deciding between Deckbase and specific competitors, use direct comparison
+            pages for clearer migration detail and trade-offs:
+            <Link
+              href="/deckbase-vs-anki"
+              className="text-accent hover:underline underline-offset-2 ml-1"
+            >
+              Deckbase vs Anki
+            </Link>{" "}
+            and{" "}
+            <Link
+              href="/deckbase-vs-quizlet"
+              className="text-accent hover:underline underline-offset-2"
+            >
+              Deckbase vs Quizlet
             </Link>
             .
           </ArticleBody>

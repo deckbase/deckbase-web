@@ -19,21 +19,27 @@ const values = [
   {
     id: 1,
     title: "Learning Made Effortless",
-    desc: "We believe learning should work with your brain, not against it. Deckbase uses AI to eliminate the friction of creating study materials, so you can focus on what matters—actually learning.",
+    desc: "Learning should work with your brain, not against it. Deckbase reduces study setup time with AI card creation so you can spend more time reviewing and remembering.",
     icon: <RiSecurePaymentFill className="w-6 h-6 text-white" />,
   },
   {
     id: 2,
     title: "Science-Backed Methods",
-    desc: "Spaced repetition is proven to dramatically improve retention. Our algorithms schedule reviews at optimal intervals based on your performance, ensuring you remember what you learn.",
+    desc: "Spaced repetition improves long-term memory. Deckbase supports adaptive review so difficult cards appear when they matter most.",
     icon: <MdOutlineWifiFind className="w-6 h-6 text-white" />,
   },
   {
     id: 3,
     title: "Privacy-First Approach",
-    desc: "Your learning data and personal information are yours alone. Deckbase keeps your study materials secure and private, with optional cloud sync for convenience.",
+    desc: "Your decks and study data are yours. Deckbase is built with secure account-based sync so you can study across web and mobile with confidence.",
     icon: <TbClockRecord className="w-6 h-6 text-white" />,
   },
+];
+
+const editorialNotes = [
+  { label: "Team", value: "Deckbase product and editorial team" },
+  { label: "Updated", value: "March 2026" },
+  { label: "Contact", value: "support@deckbase.co" },
 ];
 export default function About() {
   useEffect(() => {
@@ -66,7 +72,7 @@ export default function About() {
             >
               We believe that reading without retention is wasted time. Deckbase
               uses AI and spaced repetition to turn what you read into lasting
-              knowledge that stays with you forever.
+              knowledge that stays with you.
             </motion.p>
 
             <div className="mt-8 flex space-x-4">
@@ -109,9 +115,9 @@ export default function About() {
             <div>
               <h3 className="text-xl font-bold">🧠 AI-Powered Learning</h3>
               <p>
-                Stop spending hours creating flashcards manually. Our AI
-                understands context, extracts key concepts, and generates
-                well-structured cards that focus on what matters most.
+                Build cards faster from text, files, and captured content. AI
+                helps draft card content so you can refine and study instead of
+                spending hours formatting from scratch.
               </p>
             </div>
             <div>
@@ -119,23 +125,50 @@ export default function About() {
                 ⏰ Spaced Repetition Science
               </h3>
               <p>
-                Our algorithm schedules reviews at the optimal moment—right
-                before you&apos;re about to forget. This scientifically proven
-                method dramatically improves long-term retention.
+                Deckbase is designed around retention: review difficult material
+                more often, and reinforce what you learn with consistent, short
+                sessions.
               </p>
             </div>
             <div>
-              <h3 className="text-xl font-bold">📚 Learn From Anything</h3>
+              <h3 className="text-xl font-bold">📚 Built for Real Workflows</h3>
               <p>
-                Whether it&apos;s articles, textbooks, PDFs, or your own notes,
-                Deckbase turns any text into study material. Capture knowledge
-                from everywhere and consolidate it in one place.
+                Import CSV, Excel, and Anki decks, manage structured templates,
+                and sync cards across web and mobile. Deckbase supports both
+                quick capture and long-term knowledge systems.
               </p>
               <p className="mt-2 font-semibold">
-                Because knowledge that isn&apos;t remembered is knowledge lost.
+                Main promise: less setup, better recall.
               </p>
             </div>
           </div>
+
+          <section className="w-full max-w-3xl rounded-2xl border border-black/10 bg-black/[0.02] p-6">
+            <h3 className="text-xl font-bold mb-3">How we keep things clear</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+              {editorialNotes.map((note) => (
+                <div key={note.label} className="rounded-lg border border-black/10 bg-white p-3">
+                  <p className="text-black/45">{note.label}</p>
+                  <p className="font-medium">{note.value}</p>
+                </div>
+              ))}
+            </div>
+            <p className="mt-4 text-sm text-black/65">
+              Read our{" "}
+              <a href="/privacy-policy" className="text-accent hover:underline">
+                Privacy Policy
+              </a>{" "}
+              and{" "}
+              <a href="/terms-and-conditions" className="text-accent hover:underline">
+                Terms & Conditions
+              </a>
+              . For technical setup and integrations, see{" "}
+              <a href="/docs/mcp-server" className="text-accent hover:underline">
+                MCP server docs
+              </a>
+              .
+            </p>
+          </section>
 
           <article className="grid grid-cols-1 items-start justify-center lg:grid-cols-3 gap-4 mt-10 lg:pb-0 px-6 pb-10 lg:rounded-2xl text-black lg:shadow-xl lg:w-full">
             {values.map((hook) => (

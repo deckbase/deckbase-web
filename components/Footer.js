@@ -68,6 +68,23 @@ const Footer = () => {
             </div>
           </section>
           <section>
+            <h2 className="text-silver pb-2">RESOURCES</h2>
+            <div className="flex flex-col gap-2 text-[#fff]">
+              <Link
+                href="/resources/mcp"
+                className="cursor-pointer transition-all hover:text-silver"
+              >
+                MCP for Flashcards
+              </Link>
+              <Link
+                href="/best-flashcard-apps"
+                className="cursor-pointer transition-all hover:text-silver"
+              >
+                Best Flashcard Apps
+              </Link>
+            </div>
+          </section>
+          <section>
             <h2 className="text-silver pb-2">LEGALS</h2>
             <div className="flex flex-col gap-2 text-[#fff]">
               <Link

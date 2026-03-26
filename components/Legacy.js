@@ -13,11 +13,11 @@ const Legacy = () => {
       <article className=" container mx-auto py-14 p-4 px-5 md:px-[5%] 2xl:px-0 max-w-5xl flex flex-col items-center justify-center">
         <div className="flex flex-col gap-4 items-center justify-center">
           <h2 className="text-h3 lg:text-h4 font-bold text-center max-w-[80%]">
-            Want to leave a legacy but don&apos;t know how?
+            Ready to turn reading into long-term memory?
           </h2>
           <p className="my-6 text-center max-w-[80%] lg:max-w-[60%] lg:leading-8">
-            Deckbase makes capturing your life story both effortless and
-            insightful.
+            Start with free card creation, then upgrade when you need advanced
+            AI and import workflows.
           </p>
           <div className="mt-8 flex space-x-4">
             <div className="flex flex-col md:flex-row gap-4">

@@ -1,84 +1,84 @@
 "use client";
 import { motion } from "framer-motion";
-import { Sparkles, Brain, Layers, LayoutGrid, BarChart3, Users } from "lucide-react";
+import { Sparkles, Brain, Layers, LayoutGrid, BarChart3, Workflow } from "lucide-react";
 
 const features = [
   {
     id: "01",
     icon: Sparkles,
-    title: "AI-Powered Card Generation",
+    title: "AI Card Creation",
     gradient: "from-blue-500/20 to-cyan-500/10",
     iconColor: "text-blue-400",
     iconBg: "bg-blue-500/10 border-blue-500/20",
     desc: [
-      "Capture any text and let AI instantly create well-structured flashcards.",
-      "Our AI extracts key concepts, generates examples, and formats cards for optimal learning.",
-      "Edit and customize generated cards to match your personal study style.",
+      "Generate cards from text, images, PDFs, and imported rows.",
+      "Use AI suggestions to speed up card writing instead of starting from blank templates.",
+      "Edit every card after generation so final content stays accurate.",
     ],
   },
   {
     id: "02",
     icon: Brain,
-    title: "Spaced Repetition System",
+    title: "Spaced Repetition That Sticks",
     gradient: "from-violet-500/20 to-purple-500/10",
     iconColor: "text-violet-400",
     iconBg: "bg-violet-500/10 border-violet-500/20",
     desc: [
-      "Review cards at scientifically optimal intervals for maximum retention.",
-      "Algorithm adapts to your performance, showing difficult cards more often.",
-      "Never waste time reviewing what you already know—focus on what needs work.",
+      "Study with adaptive scheduling designed for long-term retention.",
+      "Reviews focus more on weak cards and less on cards you already know.",
+      "Deckbase is built for daily review habits, not one-time cramming.",
     ],
   },
   {
     id: "03",
     icon: Layers,
-    title: "Multi-Source Import",
+    title: "Import From Real Study Files",
     gradient: "from-emerald-500/20 to-teal-500/10",
     iconColor: "text-emerald-400",
     iconBg: "bg-emerald-500/10 border-emerald-500/20",
     desc: [
-      "Import content from PDFs, web articles, ebooks, and handwritten notes.",
-      "Use share extension to capture content directly from any app.",
-      "Scan physical books and documents using your device camera.",
+      "Import CSV, Excel (.xls/.xlsx), and Anki (.apkg) into your decks.",
+      "Map columns to template blocks before import so cards stay structured.",
+      "Bring existing study material into one place without rebuilding from scratch.",
     ],
   },
   {
     id: "04",
     icon: LayoutGrid,
-    title: "Smart Organization",
+    title: "Template-Based Card Structure",
     gradient: "from-amber-500/20 to-orange-500/10",
     iconColor: "text-amber-400",
     iconBg: "bg-amber-500/10 border-amber-500/20",
     desc: [
-      "Organize cards into decks and folders by subject, course, or topic.",
-      "Tag cards for cross-referencing and create smart filtered views.",
-      "Search across all your cards to quickly find what you need.",
+      "Create reusable templates with text, hidden text, image, audio, and quiz blocks.",
+      "Choose front/back rendering by template so reviews stay consistent.",
+      "Keep deck-level organization clean with clear card previews and block labels.",
     ],
   },
   {
     id: "05",
     icon: BarChart3,
-    title: "Learning Analytics",
+    title: "Cross-Device Learning Workflow",
     gradient: "from-rose-500/20 to-pink-500/10",
     iconColor: "text-rose-400",
     iconBg: "bg-rose-500/10 border-rose-500/20",
     desc: [
-      "Track your progress with detailed insights and performance metrics.",
-      "See mastery levels, review streaks, and time spent studying.",
-      "Identify weak areas and get recommendations for improvement.",
+      "Create and manage decks/cards on web, then continue review on mobile.",
+      "Changes sync through your account so edits stay consistent across devices.",
+      "Move faster from capture to review without duplicating work.",
     ],
   },
   {
     id: "06",
-    icon: Users,
-    title: "Share & Collaborate",
+    icon: Workflow,
+    title: "MCP + API For Power Users",
     gradient: "from-sky-500/20 to-indigo-500/10",
     iconColor: "text-sky-400",
     iconBg: "bg-sky-500/10 border-sky-500/20",
     desc: [
-      "Share decks with friends, classmates, or study groups instantly.",
-      "Browse and import community-created decks for popular subjects.",
-      "Collaborate on shared decks with real-time sync across devices.",
+      "Connect AI tools through Deckbase MCP to list decks and create cards.",
+      "Use API keys to automate repeatable study content workflows.",
+      "Keep generated cards aligned with your template schema.",
     ],
   },
 ];
@@ -113,7 +113,7 @@ const Feature = () => {
         >
           <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold tracking-widest uppercase text-accent border border-accent/25 bg-accent/[0.07] mb-5">
             <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-            What's inside
+            Feature overview
           </span>
 
           <h2 className="text-h2 lg:text-h3 font-bold tracking-tight leading-tight max-w-[720px]">
@@ -124,8 +124,9 @@ const Feature = () => {
           </h2>
 
           <p className="mt-5 text-white/50 text-base md:text-lg max-w-[540px] leading-relaxed">
-            Deckbase turns any text into effective flashcards with AI, then helps
-            you retain it with spaced repetition — all with minimal effort.
+            Deckbase helps you go from source material to review-ready cards:
+            generate with AI, organize with templates, sync across devices, and
+            retain knowledge with spaced repetition.
           </p>
         </motion.div>
 
@@ -178,6 +179,7 @@ const Feature = () => {
             );
           })}
         </motion.div>
+
       </div>
     </section>
   );

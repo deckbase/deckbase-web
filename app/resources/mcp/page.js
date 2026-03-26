@@ -28,6 +28,10 @@ import {
 const PAGE_PATH = "/resources/mcp";
 const pageUrl = absoluteUrl(PAGE_PATH);
 const homeUrl = absoluteUrl("/");
+const publishedAt = "2026-03-21";
+const updatedAt = "2026-03-26";
+const orgId = `${homeUrl}/#organization`;
+const authorId = `${homeUrl}/#deckbase-editorial`;
 
 export const metadata = {
   title: "Deckbase MCP for Flashcards: vs Other MCP Servers & How to Create Cards",
@@ -49,7 +53,7 @@ export const metadata = {
       "Compare Deckbase MCP to typical MCP servers and learn how to create decks and cards from your AI editor — synced to mobile.",
     url: pageUrl,
     siteName: "Deckbase",
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: "Deckbase MCP for flashcards" }],
+    images: [{ url: "/app_logo.webp", width: 512, height: 512, alt: "Deckbase MCP for flashcards" }],
     locale: "en_US",
     type: "article",
   },
@@ -59,8 +63,9 @@ export const metadata = {
     description:
       "MCP comparison for SEO and learners: how Deckbase connects AI tools to your flashcard library.",
     site: "@DeckbaseApp",
-    images: ["/og.png"],
+    images: ["/app_logo.webp"],
   },
+  robots: { index: true, follow: true },
 };
 
 const comparisonRows = [
@@ -124,6 +129,12 @@ const faqs = [
   },
 ];
 
+const evaluatorNotes = [
+  "This comparison is written from the Deckbase product side and focuses on real card-creation workflows, not generic MCP demos.",
+  "Examples prioritize tasks learners actually run: list decks, inspect template schema, and create cards that sync to mobile.",
+  "References are aligned with the public MCP docs so implementation details stay verifiable.",
+];
+
 const jsonLd = {
   "@context": "https://schema.org",
   "@graph": [
@@ -133,6 +144,8 @@ const jsonLd = {
       url: pageUrl,
       name: "Deckbase MCP for Flashcards: Comparison & How to Create Cards",
       description: "SEO guide comparing Deckbase MCP to typical MCP servers and explaining how users create flashcards via MCP from AI tools.",
+      datePublished: publishedAt,
+      dateModified: updatedAt,
       isPartOf: { "@type": "WebSite", name: "Deckbase", url: homeUrl },
       breadcrumb: {
         "@type": "BreadcrumbList",
@@ -142,6 +155,33 @@ const jsonLd = {
           { "@type": "ListItem", position: 3, name: "Deckbase MCP guide", item: pageUrl },
         ],
       },
+    },
+    {
+      "@type": "Article",
+      "@id": `${pageUrl}#article`,
+      mainEntityOfPage: { "@id": `${pageUrl}#webpage` },
+      headline: "Deckbase MCP for Flashcards: Comparison & How to Create Cards",
+      description:
+        "Operational guide to compare Deckbase MCP with common MCP patterns and create synced flashcards from AI tools.",
+      author: { "@id": authorId },
+      publisher: { "@id": orgId },
+      datePublished: publishedAt,
+      dateModified: updatedAt,
+      image: absoluteUrl("/app_logo.webp"),
+      about: ["Model Context Protocol", "Flashcards", "Spaced repetition"],
+    },
+    {
+      "@type": "Organization",
+      "@id": orgId,
+      name: "Deckbase",
+      url: homeUrl,
+      logo: absoluteUrl("/app_logo.webp"),
+    },
+    {
+      "@type": "Person",
+      "@id": authorId,
+      name: "Deckbase Editorial Team",
+      url: homeUrl,
     },
     {
       "@type": "FAQPage",
@@ -192,6 +232,21 @@ export default function ResourcesMcpPage() {
             two things: a fair comparison to other MCP patterns, and a clear workflow to actually
             create cards from your editor. Below is both — with links to setup and technical docs.
           </ArticleBody>
+          <ArticleBody>
+            Most pages about MCP explain the protocol at a high level. This guide is intentionally
+            operational: what changes when your assistant can write to a flashcard library with
+            template constraints, deck IDs, and sync behavior.
+          </ArticleBody>
+        </ArticleSection>
+
+        <ArticleSection id="evaluation-method">
+          <ArticleH2>How this comparison is evaluated</ArticleH2>
+          <ArticleBody>
+            To avoid thin comparison content, we evaluate each MCP pattern by one practical
+            question: does it complete end-to-end deck and card workflows that are ready for study
+            in a spaced-repetition app?
+          </ArticleBody>
+          <ArticleSteps items={evaluatorNotes} />
         </ArticleSection>
 
         <ArticleSection id="comparison">
@@ -255,6 +310,12 @@ export default function ResourcesMcpPage() {
             </Link>
             .
           </ArticleNote>
+          <ArticleBody>
+            If your assistant returns tool-call success but you do not see cards in app, the first
+            checks are usually wrong <Code>deckId</Code>, mismatched <Code>blockId</Code>, or
+            missing required template fields. Running <Code>get_template_schema</Code> before write
+            operations is the fastest way to prevent failed card writes.
+          </ArticleBody>
         </ArticleSection>
 
         <ArticleSection id="example-prompt">

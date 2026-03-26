@@ -59,10 +59,10 @@ export const metadata = {
     siteName: "Deckbase",
     images: [
       {
-        url: "/og.png",
-        width: 1200,
-        height: 630,
-        alt: "Deckbase — Scan. Build. Remember.",
+        url: "/app_logo.webp",
+        width: 512,
+        height: 512,
+        alt: "Deckbase logo",
       },
     ],
     locale: "en_US",
@@ -74,25 +74,13 @@ export const metadata = {
     description:
       "Scan books into flashcards with AI. Study smarter with spaced repetition and remember more of what you read.",
     site: "@DeckbaseApp",
-    images: ["/og.png"],
+    images: ["/app_logo.webp"],
   },
   icons: {
     icon: [
-      { url: "/favicon/favicon.ico" },
-      { url: "/favicon/favicon-16x16.png", sizes: "16x16", type: "image/png" },
-      { url: "/favicon/favicon-32x32.png", sizes: "32x32", type: "image/png" },
-      {
-        url: "/favicon/android-chrome-192x192.png",
-        sizes: "192x192",
-        type: "image/png",
-      },
-      {
-        url: "/favicon/android-chrome-512x512.png",
-        sizes: "512x512",
-        type: "image/png",
-      },
+      { url: "/app_logo.webp", type: "image/webp", sizes: "512x512" },
     ],
-    apple: [{ url: "/favicon/apple-touch-icon.png", sizes: "180x180" }],
+    apple: [{ url: "/app_logo.webp", sizes: "512x512", type: "image/webp" }],
   },
   manifest: "/favicon/site.webmanifest",
   robots: {

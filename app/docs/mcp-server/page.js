@@ -186,7 +186,7 @@ export default function McpServerDocPage() {
         <TableSection label="Decks & Cards — require API key" icon={Lock}>
           <tr className="hover:bg-white/[0.02] transition-colors">
             <ToolName>list_decks</ToolName>
-            <Td>User's decks (<C>deckId</C>, title, description, optional <C>defaultTemplateId</C>).</Td>
+            <Td>User&apos;s decks (<C>deckId</C>, title, description, optional <C>defaultTemplateId</C>).</Td>
             <Td className="text-white/30 italic">None.</Td>
           </tr>
           <tr className="hover:bg-white/[0.02] transition-colors">
@@ -207,10 +207,10 @@ export default function McpServerDocPage() {
           <tr className="hover:bg-white/[0.02] transition-colors">
             <ToolName>get_template_schema</ToolName>
             <Td>
-              Exact JSON for the layout: <C>blockId</C>, type, <C>side</C> (<C>"front"</C> | <C>"back"</C>),{" "}
+              Exact JSON for the layout: <C>blockId</C>, type, <C>side</C> (<C>&quot;front&quot;</C> | <C>&quot;back&quot;</C>),{" "}
               <C>configJson</C>, <C>valuesExample</C>, <C>create_card</C> hints.
             </Td>
-            <Td><C>templateId</C> or <C>deckId</C> for the deck's default template.</Td>
+            <Td><C>templateId</C> or <C>deckId</C> for the deck&apos;s default template.</Td>
           </tr>
           <tr className="hover:bg-white/[0.02] transition-colors">
             <ToolName>create_card</ToolName>
@@ -232,7 +232,7 @@ export default function McpServerDocPage() {
           </tr>
           <tr className="hover:bg-white/[0.02] transition-colors">
             <ToolName>update_card</ToolName>
-            <Td>Edit a card's content.</Td>
+            <Td>Edit a card&apos;s content.</Td>
             <Td>
               <C>deckId</C>, <C>cardId</C>; optional <C>values</C> / <C>blocks_snapshot</C>, or merge{" "}
               <C>front</C> / <C>block_text</C>.
@@ -282,7 +282,7 @@ export default function McpServerDocPage() {
         <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] text-[13px] text-white/40 leading-relaxed">
           Tools that read your data require a valid API key or OAuth token.{" "}
           <C>list_template_block_types</C> and <C>list_block_schemas</C> return static data (no auth needed).{" "}
-          <C>list_elevenlabs_voices</C> doesn't read Firestore. Unauthenticated requests return{" "}
+          <C>list_elevenlabs_voices</C> doesn&apos;t read Firestore. Unauthenticated requests return{" "}
           <strong className="text-white/60">401</strong>.
         </div>
       </section>
@@ -353,7 +353,7 @@ export default function McpServerDocPage() {
             },
             {
               label: "Card shape",
-              value: "create_card copies the template's block layout. Each block includes side from the template; empty values by default. Data is stored in Firestore and syncs to dashboard and mobile app.",
+              value: "create_card copies the template&apos;s block layout. Each block includes side from the template; empty values by default. Data is stored in Firestore and syncs to dashboard and mobile app.",
             },
           ].map((item) => (
             <div key={item.label} className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-4 px-4 py-3 hover:bg-white/[0.02] transition-colors">

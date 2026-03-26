@@ -143,7 +143,7 @@ const PricingPlans = () => {
             Simple, transparent pricing
           </h1>
           <p className="mt-4 text-white/50 text-base md:text-lg max-w-[480px] mx-auto leading-relaxed">
-            Start free. Upgrade when you're ready to unlock AI and advanced features.
+            Start free. Upgrade when you&apos;re ready to unlock AI and advanced features.
           </p>
 
           {/* Billing toggle */}
