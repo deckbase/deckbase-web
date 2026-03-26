@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { motion } from "framer-motion";
-import { ArrowLeft, Edit2, Trash2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ArrowLeft, Edit2, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { getDeck, getCard, getMedia, deleteCard } from "@/utils/firestore";
@@ -39,10 +39,7 @@ export default function CardPreviewPage() {
           const draft = raw ? JSON.parse(raw) : null;
           if (draft?.blocks?.length) {
             const valuesArray = Object.entries(draft.values || {}).map(([blockId, v]) => ({ ...v, blockId }));
-            setCard({
-              blocksSnapshot: draft.blocks,
-              values: valuesArray,
-            });
+            setCard({ blocksSnapshot: draft.blocks, values: valuesArray });
           } else {
             router.replace(`/dashboard/deck/${deckId}/card/new`);
             return;
@@ -60,12 +57,8 @@ export default function CardPreviewPage() {
         const blocks = cardData.blocksSnapshot || [];
         const quizBlocks = blocks.filter(
           (b) =>
-            b.type === "quizSingleSelect" ||
-            b.type === "quizMultiSelect" ||
-            b.type === "quizTextAnswer" ||
-            b.type === 8 ||
-            b.type === 9 ||
-            b.type === 10 ||
+            b.type === "quizSingleSelect" || b.type === "quizMultiSelect" || b.type === "quizTextAnswer" ||
+            b.type === 8 || b.type === 9 || b.type === 10 ||
             (typeof b.type === "string" && /^(8|9|10)$/.test(b.type))
         );
         console.log("[CardPreview] cardId", cardId, "blocksSnapshot length", blocks.length, "quiz blocks", quizBlocks.length, quizBlocks.map((b) => ({ blockId: b.blockId, type: b.type, hasConfigJson: !!b.configJson, configKeys: b.configJson ? Object.keys(b.configJson) : [], question: b.configJson?.question?.slice?.(0, 40) })));
@@ -75,9 +68,7 @@ export default function CardPreviewPage() {
           if (value.mediaIds && value.mediaIds.length > 0) {
             for (const mediaId of value.mediaIds) {
               const media = await getMedia(user.uid, mediaId);
-              if (media) {
-                setMediaCache((prev) => ({ ...prev, [mediaId]: media }));
-              }
+              if (media) setMediaCache((prev) => ({ ...prev, [mediaId]: media }));
             }
           }
         }
@@ -105,26 +96,40 @@ export default function CardPreviewPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-accent"></div>
+      <div className="max-w-md mx-auto px-4 py-6">
+        <div className="flex items-center gap-2 mb-6">
+          <div className="w-8 h-8 rounded-lg bg-white/[0.05] animate-pulse" />
+          <div className="flex-1 h-3.5 bg-white/[0.04] rounded animate-pulse" />
+          <div className="w-16 h-8 rounded-xl bg-white/[0.04] animate-pulse" />
+        </div>
+        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-6 space-y-4 animate-pulse">
+          <div className="h-6 w-2/3 bg-white/[0.06] rounded-lg" />
+          <div className="space-y-2">
+            <div className="h-4 w-full bg-white/[0.04] rounded" />
+            <div className="h-4 w-5/6 bg-white/[0.04] rounded" />
+          </div>
+          <div className="h-px bg-white/[0.06] rounded" />
+          <div className="h-10 bg-white/[0.04] rounded-xl" />
+        </div>
       </div>
     );
   }
 
   return (
     <div className="max-w-md mx-auto px-4 py-6">
-      <div className="flex items-center gap-2 mb-4 text-white/80">
+      {/* Header bar */}
+      <div className="flex items-center gap-2 mb-5">
         <Link
           href={`/dashboard/deck/${deckId}`}
-          className="p-1.5 -ml-1.5 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition-colors"
+          className="p-2 rounded-xl border border-white/[0.07] bg-white/[0.03] hover:bg-white/[0.07] text-white/40 hover:text-white/80 transition-all flex-shrink-0"
           aria-label="Back to deck"
         >
-          <ArrowLeft className="w-5 h-5" />
+          <ArrowLeft className="w-4 h-4" />
         </Link>
-        <span className="text-sm text-white/40 truncate flex-1 min-w-0">{deck?.title}</span>
+        <span className="text-[13px] text-white/30 truncate flex-1 min-w-0">{deck?.title}</span>
         <Link
           href={`/dashboard/deck/${deckId}/card/${cardId}`}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm rounded-lg bg-white/10 hover:bg-white/15 text-white transition-colors shrink-0"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium rounded-xl border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.07] text-white/60 hover:text-white/90 transition-all shrink-0"
         >
           <Edit2 className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">{cardId === "new" ? "Back to edit" : "Edit"}</span>
@@ -133,63 +138,97 @@ export default function CardPreviewPage() {
           <button
             type="button"
             onClick={() => setShowDeleteModal(true)}
-            className="p-1.5 rounded-lg text-red-400/90 hover:bg-red-500/15 transition-colors shrink-0"
+            className="p-2 rounded-xl border border-white/[0.07] bg-white/[0.03] hover:bg-red-500/[0.08] hover:border-red-500/20 text-white/30 hover:text-red-400 transition-all shrink-0"
             aria-label="Delete card"
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="w-3.5 h-3.5" />
           </button>
         )}
       </div>
 
-      <div className="rounded-xl border border-white/10 bg-white/[0.04] p-5 overflow-hidden shadow-lg shadow-black/20">
-        <CardPreviewContent
-          blocks={card?.blocksSnapshot}
-          getValue={getValue}
-          mediaCache={mediaCache}
-        />
+      {/* Card — height-constrained wrapper keeps it inside the viewport */}
+      <div className="flex justify-center" style={{ maxHeight: "calc(100dvh - 160px)" }}>
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="rounded-2xl border border-white/[0.08] bg-white/[0.025] overflow-hidden shadow-xl shadow-black/20 flex flex-col h-full"
+        style={{ aspectRatio: "9/16" }}
+      >
+        {/* Top label */}
+        <div className="px-5 pt-4 pb-0 flex items-center gap-2 flex-shrink-0">
+          <span className="w-1.5 h-1.5 rounded-full bg-accent/50" />
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-white/25">Preview</span>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-5">
+          <CardPreviewContent
+            blocks={card?.blocksSnapshot}
+            getValue={getValue}
+            mediaCache={mediaCache}
+          />
+        </div>
+      </motion.div>
       </div>
 
+      {/* Meta */}
       {cardId !== "new" && (card?.createdAt != null || card?.updatedAt != null) && (
-        <p className="mt-3 text-center text-white/25 text-xs">
+        <p className="mt-3 text-center text-[11px] text-white/20">
           {card?.createdAt != null ? new Date(card.createdAt).toLocaleDateString() : "—"}
-          {card?.updatedAt != null && ` · ${new Date(card.updatedAt).toLocaleDateString()}`}
+          {card?.updatedAt != null && ` · Updated ${new Date(card.updatedAt).toLocaleDateString()}`}
         </p>
       )}
 
-      {/* Delete Confirmation Modal */}
-      {showDeleteModal && (
-        <div
-          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          onClick={() => setShowDeleteModal(false)}
-        >
+      {/* Delete Modal */}
+      <AnimatePresence>
+        {showDeleteModal && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            className="bg-zinc-900 border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center z-50 p-4"
+            onClick={() => setShowDeleteModal(false)}
           >
-            <h2 className="text-xl font-bold text-white mb-2">Delete Card?</h2>
-            <p className="text-white/60 mb-6">
-              Are you sure you want to delete this card? This action cannot be
-              undone.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowDeleteModal(false)}
-                className="flex-1 px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDelete}
-                className="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
-              >
-                Delete
-              </button>
-            </div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 12 }}
+              transition={{ type: "spring", bounce: 0.15, duration: 0.4 }}
+              className="bg-[#0e0e0e] border border-white/[0.08] rounded-2xl w-full max-w-md shadow-2xl overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-white/[0.06]">
+                <h2 className="text-[15px] font-semibold text-white">Delete card?</h2>
+                <button
+                  onClick={() => setShowDeleteModal(false)}
+                  className="p-1.5 rounded-lg text-white/30 hover:text-white/70 hover:bg-white/[0.06] transition-all"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="px-5 py-5 flex flex-col gap-5">
+                <p className="text-[13px] text-white/45 leading-relaxed">
+                  This card will be permanently deleted and cannot be recovered.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowDeleteModal(false)}
+                    className="flex-1 px-4 py-2.5 bg-white/[0.04] hover:bg-white/[0.08] text-white/60 hover:text-white text-[13px] font-medium rounded-xl border border-white/[0.07] transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDelete}
+                    className="flex-1 px-4 py-2.5 bg-red-500/90 hover:bg-red-500 text-white text-[13px] font-semibold rounded-xl transition-colors"
+                  >
+                    Delete card
+                  </button>
+                </div>
+              </div>
+            </motion.div>
           </motion.div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -2,242 +2,102 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { usePathname } from "next/navigation";
-import Button from "./Button";
 import { useAuth } from "@/contexts/AuthContext";
+
+const navLinks = [
+  { href: "/features", label: "Features" },
+  { href: "/premium", label: "Pricing" },
+  { href: "/download", label: "Download" },
+  { href: "/mcp", label: "MCP" },
+  { href: "/docs", label: "Docs" },
+  { href: "/resources", label: "Resources" },
+];
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
   const { user, userProfile, loading } = useAuth();
 
-  const isActive = (path) => {
-    return pathname === path
-      ? "text-white font-semibold bg-white/15 rounded-md px-2 py-1 -mx-1"
-      : "text-white/90 hover:text-white transition-colors duration-300";
-  };
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 24);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
-  const toggleMenu = () => {
-    setIsOpen(!isOpen);
-  };
-
-  const navbarVariants = {
-    hidden: { opacity: 0, y: -50 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
-  };
+  useEffect(() => {
+    setIsOpen(false);
+  }, [pathname]);
 
   return (
-    <motion.nav
-      className="fixed top-0 left-0 w-full min-h-[80px] z-50 bg-black/30 backdrop-blur-lg border-b border-white/10"
-      variants={navbarVariants}
-      initial="hidden"
-      animate="visible"
-    >
-      <article className="p-4 px-5 md:px-[5%] w-full mx-auto flex items-center justify-between gap-3 min-w-0">
-        <div className="flex items-center min-w-0 flex-1 md:flex-initial gap-4 md:gap-6 lg:gap-8">
+    <>
+      <motion.nav
+        className={`fixed top-0 left-0 w-full z-50 transition-all duration-500 ${
+          scrolled
+            ? "bg-black/70 backdrop-blur-2xl border-b border-white/[0.07] shadow-[0_1px_24px_rgba(0,0,0,0.5)]"
+            : "bg-transparent border-b border-transparent"
+        }`}
+        initial={{ opacity: 0, y: -12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
+      >
+        <div className="px-5 md:px-[5%] mx-auto max-w-[1400px] flex items-center justify-between h-[68px]">
+
+          {/* Logo */}
           <Link
             href="/"
-            className="flex items-center flex-shrink-0 cursor-pointer font-ubuntu text-white text-base sm:text-lg md:text-xl font-bold min-w-0"
+            className="flex items-center gap-2.5 flex-shrink-0 group"
             onClick={() => setIsOpen(false)}
           >
             <Image
               src="/app_logo.webp"
               alt="Deckbase Logo"
-              width={32}
-              height={32}
-              className="mr-2 flex-shrink-0"
+              width={28}
+              height={28}
+              className="flex-shrink-0 group-hover:scale-105 transition-transform duration-200"
               priority
             />
-            <span className="truncate md:hidden lg:inline">Deckbase</span>
+            <span className="font-bold text-white text-[17px] tracking-[-0.01em]">
+              Deckbase
+            </span>
           </Link>
 
-          <ul className="hidden md:flex flex-shrink min-w-0 items-center md:space-x-4 lg:space-x-6 xl:space-x-8 text-sm lg:text-base flex-nowrap overflow-x-auto">
-            <li className="flex-shrink-0">
-              <Link
-                href="/features"
-                className={isActive("/features")}
-                onClick={toggleMenu}
-              >
-                Features
-              </Link>
-            </li>
-            <li className="flex-shrink-0">
-              <Link href="/premium" className={isActive("/premium")}>
-                Pricing
-              </Link>
-            </li>
-            <li className="flex-shrink-0">
-              <Link href="/download" className={isActive("/download")}>
-                Download
-              </Link>
-            </li>
-            <li className="flex-shrink-0">
-              <Link href="/mcp" className={isActive("/mcp")}>
-                MCP
-              </Link>
-            </li>
-            <li className="flex-shrink-0">
-              <Link href="/docs" className={isActive("/docs")}>
-                Docs
-              </Link>
-            </li>
-            <li className="flex-shrink-0">
-              <Link href="/resources" className={isActive("/resources")}>
-                Resources
-              </Link>
-            </li>
-          </ul>
-        </div>
+          {/* Desktop Nav */}
+          <nav className="hidden md:flex items-center gap-0.5">
+            {navLinks.map((link) => {
+              const active = pathname === link.href;
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`relative px-3.5 py-2 text-sm font-medium rounded-md transition-colors duration-200 ${
+                    active
+                      ? "text-white"
+                      : "text-white/50 hover:text-white/90"
+                  }`}
+                >
+                  {active && (
+                    <motion.span
+                      layoutId="nav-active-pill"
+                      className="absolute inset-0 bg-white/[0.09] rounded-md border border-white/[0.1]"
+                      transition={{ type: "spring", bounce: 0.2, duration: 0.4 }}
+                    />
+                  )}
+                  <span className="relative">{link.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
 
-        <div className="hidden md:flex flex-shrink-0 items-center">
-          {!loading && !user && (
-            <Link
-              href="/login"
-              className="px-4 py-2 bg-accent hover:bg-accent/90 text-white font-medium rounded-lg transition-colors"
-            >
-              Sign in
-            </Link>
-          )}
-          {!loading && user && (
-            <Link
-              href="/dashboard"
-              className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white transition-colors"
-              aria-label="Go to dashboard"
-            >
-              {(userProfile?.profileUrl || user.photoURL) ? (
-                <img
-                  src={userProfile?.profileUrl || user.photoURL}
-                  alt=""
-                  className="h-7 w-7 min-w-[28px] rounded-full object-cover shrink-0"
-                />
-              ) : (
-                <span className="inline-flex h-7 w-7 min-w-[28px] shrink-0 items-center justify-center rounded-full bg-accent text-sm font-semibold text-white">
-                  {(userProfile?.displayName || user.email || "U").charAt(0).toUpperCase()}
-                </span>
-              )}
-              <span className="max-w-[140px] truncate text-sm">
-                {userProfile?.displayName || user.email}
-              </span>
-            </Link>
-          )}
-        </div>
-
-        {/* Mobile Menu Button */}
-        <article className="md:hidden flex items-center justify-end flex-shrink-0">
-          <motion.button
-            onClick={toggleMenu}
-            whileHover={{ scale: 1.1 }}
-            transition={{ duration: 0.2 }}
-          >
-            {isOpen ? (
-              <svg
-                className="w-8 h-8 text-white"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M6 18L18 6M6 6l12 12"
-                ></path>
-              </svg>
-            ) : (
-              <svg
-                className="w-8 h-8 text-white"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M4 6h16M4 12h16M4 18h16"
-                ></path>
-              </svg>
-            )}
-          </motion.button>
-        </article>
-      </article>
-
-      {/* Mobile Menu */}
-      <motion.article
-        className={`md:hidden ${
-          isOpen
-            ? "fixed block inset-0 min-h-[100vh] top-[80px] transform translate-y-0 transition-transform duration-300 w-full bg-black/90 backdrop-blur-xl"
-            : "fixed hidden inset-0 transform -translate-y-full transition-transform duration-300"
-        }`}
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: isOpen ? 1 : 0, y: isOpen ? 0 : -10 }}
-        transition={{ duration: 0.3 }}
-      >
-        <ul className="flex text-secondary flex-col items-center pt-28 space-y-14">
-          <li className="text-3xl">
-            <Link
-              href="/features"
-              className={isActive("/features")}
-              onClick={toggleMenu}
-            >
-              Features
-            </Link>
-          </li>
-          <li className="text-3xl">
-            <Link
-              href="/premium"
-              className={isActive("/premium")}
-              onClick={toggleMenu}
-            >
-              Pricing
-            </Link>
-          </li>
-          <li className="text-3xl">
-            <Link
-              href="/download"
-              className={isActive("/download")}
-              onClick={toggleMenu}
-            >
-              Download
-            </Link>
-          </li>
-          <li className="text-3xl">
-            <Link
-              href="/mcp"
-              className={isActive("/mcp")}
-              onClick={toggleMenu}
-            >
-              MCP
-            </Link>
-          </li>
-          <li className="text-3xl">
-            <Link
-              href="/docs"
-              className={isActive("/docs")}
-              onClick={toggleMenu}
-            >
-              Docs
-            </Link>
-          </li>
-          <li className="text-3xl">
-            <Link
-              href="/resources"
-              className={isActive("/resources")}
-              onClick={toggleMenu}
-            >
-              Resources
-            </Link>
-          </li>
-          <li className="text-2xl mt-4">
+          {/* Desktop CTA */}
+          <div className="hidden md:flex items-center gap-3">
             {!loading && !user && (
               <Link
                 href="/login"
-                className="px-6 py-3 bg-accent hover:bg-accent/90 text-white font-medium rounded-lg transition-colors"
-                onClick={toggleMenu}
+                className="px-4 py-2 text-sm font-semibold text-white bg-accent hover:bg-accent/90 rounded-lg transition-all duration-200 hover:shadow-[0_0_20px_rgba(35,131,226,0.35)]"
               >
                 Sign in
               </Link>
@@ -245,30 +105,124 @@ const Navbar = () => {
             {!loading && user && (
               <Link
                 href="/dashboard"
-                className="flex items-center gap-3 px-6 py-3 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white font-medium transition-colors"
-                onClick={toggleMenu}
-                aria-label="Go to dashboard"
+                className="flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] text-white transition-all duration-200"
               >
                 {(userProfile?.profileUrl || user.photoURL) ? (
                   <img
                     src={userProfile?.profileUrl || user.photoURL}
                     alt=""
-                    className="h-9 w-9 min-w-[36px] rounded-full object-cover shrink-0"
+                    className="h-6 w-6 rounded-full object-cover shrink-0"
                   />
                 ) : (
-                  <span className="inline-flex h-9 w-9 min-w-[36px] shrink-0 items-center justify-center rounded-full bg-accent text-base font-semibold text-white">
+                  <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent text-[11px] font-bold text-white">
                     {(userProfile?.displayName || user.email || "U").charAt(0).toUpperCase()}
                   </span>
                 )}
-                <span className="max-w-[160px] truncate text-base">
+                <span className="max-w-[120px] truncate text-sm">
                   {userProfile?.displayName || user.email}
                 </span>
               </Link>
             )}
-          </li>
-        </ul>
-      </motion.article>
-    </motion.nav>
+          </div>
+
+          {/* Mobile hamburger */}
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="md:hidden flex items-center justify-center w-9 h-9 text-white/70 hover:text-white transition-colors rounded-lg hover:bg-white/[0.06]"
+            aria-label="Toggle menu"
+          >
+            <div className="w-5 h-[14px] flex flex-col justify-between">
+              <motion.span
+                className="block h-[1.5px] w-full bg-current rounded-full origin-center"
+                animate={isOpen ? { rotate: 45, y: 6.25 } : { rotate: 0, y: 0 }}
+                transition={{ duration: 0.22, ease: "easeInOut" }}
+              />
+              <motion.span
+                className="block h-[1.5px] w-full bg-current rounded-full"
+                animate={isOpen ? { opacity: 0, scaleX: 0.5 } : { opacity: 1, scaleX: 1 }}
+                transition={{ duration: 0.18 }}
+              />
+              <motion.span
+                className="block h-[1.5px] w-full bg-current rounded-full origin-center"
+                animate={isOpen ? { rotate: -45, y: -6.25 } : { rotate: 0, y: 0 }}
+                transition={{ duration: 0.22, ease: "easeInOut" }}
+              />
+            </div>
+          </button>
+        </div>
+      </motion.nav>
+
+      {/* Mobile Menu */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            className="md:hidden fixed top-[68px] left-0 right-0 z-40 bg-[#0a0a0a]/98 backdrop-blur-2xl border-b border-white/[0.06]"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+          >
+            <div className="px-4 pt-3 pb-6 flex flex-col gap-0.5">
+              {navLinks.map((link, i) => {
+                const active = pathname === link.href;
+                return (
+                  <motion.div
+                    key={link.href}
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.04, duration: 0.2 }}
+                  >
+                    <Link
+                      href={link.href}
+                      onClick={() => setIsOpen(false)}
+                      className={`flex items-center px-4 py-3 rounded-xl text-[15px] font-medium transition-colors ${
+                        active
+                          ? "text-white bg-white/[0.08] border border-white/[0.07]"
+                          : "text-white/50 hover:text-white hover:bg-white/[0.04]"
+                      }`}
+                    >
+                      {link.label}
+                    </Link>
+                  </motion.div>
+                );
+              })}
+
+              <div className="mt-4 pt-4 border-t border-white/[0.06]">
+                {!loading && !user && (
+                  <Link
+                    href="/login"
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-center justify-center w-full px-4 py-3 bg-accent hover:bg-accent/90 text-white font-semibold rounded-xl transition-colors text-[15px]"
+                  >
+                    Sign in
+                  </Link>
+                )}
+                {!loading && user && (
+                  <Link
+                    href="/dashboard"
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.08] text-white transition-colors"
+                  >
+                    {(userProfile?.profileUrl || user.photoURL) ? (
+                      <img
+                        src={userProfile?.profileUrl || user.photoURL}
+                        alt=""
+                        className="h-8 w-8 rounded-full object-cover shrink-0"
+                      />
+                    ) : (
+                      <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">
+                        {(userProfile?.displayName || user.email || "U").charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                    <span className="text-sm truncate">{userProfile?.displayName || user.email}</span>
+                  </Link>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 };
 

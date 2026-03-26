@@ -2904,27 +2904,46 @@ export default function DeckDetailPage() {
 
   if (loading || !deck) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-accent"></div>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
+        <div className="h-5 w-24 bg-white/[0.05] rounded-md mb-8 animate-pulse" />
+        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 sm:p-8 mb-6 animate-pulse">
+          <div className="h-8 w-64 bg-white/[0.06] rounded-lg mb-3" />
+          <div className="h-4 w-96 bg-white/[0.04] rounded-md mb-5" />
+          <div className="h-6 w-20 bg-white/[0.05] rounded-full" />
+        </div>
+        <div className="flex gap-2 mb-6">
+          {[80, 72, 80, 100, 96].map((w, i) => (
+            <div key={i} className="h-9 rounded-xl bg-white/[0.04] animate-pulse" style={{ width: w }} />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 animate-pulse">
+              <div className="h-4 w-3/4 bg-white/[0.05] rounded mb-2" />
+              <div className="h-3 w-1/2 bg-white/[0.04] rounded mb-4" />
+              <div className="h-3 w-16 bg-white/[0.03] rounded" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
       <audio ref={deckAudioRef} className="hidden" />
       {/* Header — modern deck hero + actions */}
       <header className="mb-8">
         <Link
           href="/dashboard"
-          className="inline-flex items-center gap-2 text-sm text-white/50 hover:text-white mb-6 transition-colors"
+          className="inline-flex items-center gap-1.5 text-[13px] text-white/35 hover:text-white/70 mb-6 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Decks
         </Link>
 
         {/* Deck hero: view mode (title/desc) or edit mode (form + bulk select) */}
-        <div className="p-6 sm:p-8 mb-6">
+        <div className="p-6 sm:p-8 mb-6 rounded-2xl border border-white/[0.07] bg-white/[0.02]">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div className="min-w-0 flex-1">
               {deckEditMode ? (
@@ -2963,7 +2982,7 @@ export default function DeckDetailPage() {
                 </>
               )}
               <div className="mt-4 flex flex-wrap items-center gap-3">
-                <span className="inline-flex items-center rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white/80">
+                <span className="inline-flex items-center rounded-full bg-white/[0.06] border border-white/[0.07] px-3 py-1 text-[11px] font-medium text-white/50">
                   {cards.length} {cards.length === 1 ? "card" : "cards"}
                 </span>
               </div>
@@ -3006,13 +3025,13 @@ export default function DeckDetailPage() {
                   <ChevronDown className="w-4 h-4 opacity-70" />
                 </button>
                 {showExportMenu && (
-                  <div className="absolute left-0 top-full mt-1 py-1 min-w-[140px] bg-zinc-900 border border-white/15 rounded-xl shadow-xl z-50">
+                  <div className="absolute left-0 top-full mt-1 py-1 min-w-[140px] bg-[#141414] border border-white/[0.09] rounded-xl shadow-xl z-50">
                     <button
                       type="button"
                       onClick={handleExportCSV}
-                      className="flex items-center gap-2 w-full px-4 py-2.5 text-left text-white hover:bg-white/10 text-sm"
+                      className="flex items-center gap-2 w-full px-3.5 py-2.5 text-left text-[13px] text-white/60 hover:text-white/90 hover:bg-white/[0.06] transition-colors"
                     >
-                      <FileSpreadsheet className="w-4 h-4" />
+                      <FileSpreadsheet className="w-3.5 h-3.5" />
                       CSV
                     </button>
                     <button
@@ -3020,9 +3039,9 @@ export default function DeckDetailPage() {
                       onClick={handleExportXLSX}
                       disabled={isProduction && !aiEntitled}
                       title={isProduction && !aiEntitled ? "Pro required" : undefined}
-                      className="flex items-center gap-2 w-full px-4 py-2.5 text-left text-white hover:bg-white/10 text-sm disabled:opacity-50"
+                      className="flex items-center gap-2 w-full px-3.5 py-2.5 text-left text-[13px] text-white/60 hover:text-white/90 hover:bg-white/[0.06] transition-colors disabled:opacity-40"
                     >
-                      <FileSpreadsheet className="w-4 h-4" />
+                      <FileSpreadsheet className="w-3.5 h-3.5" />
                       XLSX
                     </button>
                     <button
@@ -3030,9 +3049,9 @@ export default function DeckDetailPage() {
                       onClick={handleExportAPKG}
                       disabled={exportApkgLoading || (isProduction && !aiEntitled)}
                       title={isProduction && !aiEntitled ? "Pro required" : undefined}
-                      className="flex items-center gap-2 w-full px-4 py-2.5 text-left text-white hover:bg-white/10 text-sm disabled:opacity-50"
+                      className="flex items-center gap-2 w-full px-3.5 py-2.5 text-left text-[13px] text-white/60 hover:text-white/90 hover:bg-white/[0.06] transition-colors disabled:opacity-40"
                     >
-                      <FileSpreadsheet className="w-4 h-4" />
+                      <FileSpreadsheet className="w-3.5 h-3.5" />
                       {exportApkgLoading ? "Exporting…" : "Anki (.apkg)"}
                     </button>
                   </div>
@@ -3148,7 +3167,7 @@ export default function DeckDetailPage() {
                   console.error("Failed to update default template:", err);
                 }
               }}
-              className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-white/90 text-sm focus:outline-none focus:ring-2 focus:ring-white/20"
+              className="rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-white/70 text-[13px] focus:outline-none focus:border-accent/50 focus:bg-white/[0.06] transition-colors"
             >
               <option value="">Most used in deck</option>
               {templates.map((t) => (
@@ -3163,7 +3182,7 @@ export default function DeckDetailPage() {
 
       {/* Bulk selection bar */}
       {bulkSelectMode && filteredCards.length > 0 && (
-        <div className="mb-4 flex flex-wrap items-center gap-3 px-4 py-3 bg-white/5 border border-white/10 rounded-xl">
+        <div className="mb-4 flex flex-wrap items-center gap-3 px-4 py-3 bg-white/[0.03] border border-white/[0.07] rounded-xl">
           <span className="text-white/80 text-sm font-medium">
             {selectedCardIds.size} selected
           </span>
@@ -3203,7 +3222,7 @@ export default function DeckDetailPage() {
             placeholder="Search cards..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-accent/50"
+            className="w-full pl-10 pr-4 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-[14px] text-white placeholder-white/20 focus:outline-none focus:border-accent/50 focus:bg-white/[0.06] transition-colors"
           />
         </div>
       )}
@@ -3211,11 +3230,13 @@ export default function DeckDetailPage() {
       {/* Cards Grid */}
       {filteredCards.length === 0 ? (
         <div className="text-center py-20">
-          <Layers className="w-16 h-16 text-white/20 mx-auto mb-4" />
-          <h3 className="text-xl text-white/70 mb-2">
+          <div className="w-14 h-14 rounded-2xl bg-white/[0.04] border border-white/[0.07] flex items-center justify-center mx-auto mb-5">
+            <Layers className="w-6 h-6 text-white/20" />
+          </div>
+          <h3 className="text-[16px] font-semibold text-white/60 mb-2">
             {searchQuery ? "No cards found" : "No cards yet"}
           </h3>
-          <p className="text-white/40 mb-6">
+          <p className="text-[13px] text-white/30 mb-6">
             {searchQuery
               ? "Try a different search term"
               : "Create your first card to get started"}
@@ -3269,7 +3290,7 @@ export default function DeckDetailPage() {
               animate={{ opacity: 1, y: 0 }}
               className={
                 bulkSelectMode
-                  ? "relative group flex items-stretch bg-white/5 border border-white/10 rounded-xl overflow-hidden"
+                  ? "relative group flex items-stretch bg-white/[0.025] border border-white/[0.07] rounded-xl overflow-hidden"
                   : "relative group"
               }
             >
@@ -3293,7 +3314,7 @@ export default function DeckDetailPage() {
                 className={
                   bulkSelectMode
                     ? "flex-1 min-w-0 block p-4 hover:bg-white/5 transition-colors cursor-pointer"
-                    : "block p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-colors"
+                    : "block p-4 bg-white/[0.025] hover:bg-white/[0.045] border border-white/[0.07] hover:border-white/[0.12] rounded-xl transition-colors"
                 }
               >
                 <div className="flex gap-3 items-stretch min-h-[3rem]">
@@ -3304,7 +3325,7 @@ export default function DeckDetailPage() {
                       const hasQuiz = cardHasQuiz(card);
                       return (
                         <>
-                          <p className="text-white font-medium flex items-center gap-1.5">
+                          <p className="text-[14px] text-white/80 font-medium flex items-center gap-1.5">
                             {incomplete && (
                               <AlertCircle
                                 className="w-4 h-4 shrink-0 text-amber-400"
@@ -3322,11 +3343,11 @@ export default function DeckDetailPage() {
                             <span className="min-w-0 line-clamp-2">{preview.main}</span>
                           </p>
                           {preview.sub && (
-                            <p className="text-white/50 text-sm line-clamp-2 mt-1">
+                            <p className="text-[13px] text-white/35 line-clamp-2 mt-1">
                               {preview.sub}
                             </p>
                           )}
-                          <p className="text-white/30 text-xs mt-2">
+                          <p className="text-[11px] text-white/20 mt-2">
                             {new Date(card.createdAt).toLocaleDateString()}
                           </p>
                         </>
@@ -3382,30 +3403,31 @@ export default function DeckDetailPage() {
                 </button>
 
                 {actionMenuCardId === card.cardId && (
-                  <div className="absolute right-0 top-8 bg-zinc-900 border border-white/10 rounded-lg shadow-xl py-1 z-10 min-w-[140px]">
+                  <div className="absolute right-0 top-8 bg-[#141414] border border-white/[0.09] rounded-xl shadow-xl py-1 z-10 min-w-[140px]">
                     <Link
                       href={`/dashboard/deck/${deckId}/card/${card.cardId}`}
-                      className="flex items-center gap-2 px-3 py-2 text-white/70 hover:bg-white/10 transition-colors"
+                      className="flex items-center gap-2 px-3.5 py-2.5 text-[13px] text-white/60 hover:text-white/90 hover:bg-white/[0.06] transition-colors"
                     >
-                      <Edit2 className="w-4 h-4" />
+                      <Edit2 className="w-3.5 h-3.5" />
                       Edit
                     </Link>
                     <Link
                       href={`/dashboard/deck/${deckId}/card/${card.cardId}/preview`}
-                      className="flex items-center gap-2 px-3 py-2 text-white/70 hover:bg-white/10 transition-colors"
+                      className="flex items-center gap-2 px-3.5 py-2.5 text-[13px] text-white/60 hover:text-white/90 hover:bg-white/[0.06] transition-colors"
                     >
-                      <Eye className="w-4 h-4" />
+                      <Eye className="w-3.5 h-3.5" />
                       Preview
                     </Link>
+                    <div className="h-px bg-white/[0.05]" />
                     <button
                       onClick={() => {
                         setSelectedCard(card);
                         setShowDeleteModal(true);
                         setActionMenuCardId(null);
                       }}
-                      className="flex items-center gap-2 px-3 py-2 text-red-400 hover:bg-white/10 transition-colors w-full"
+                      className="flex items-center gap-2 px-3.5 py-2.5 text-[13px] text-red-400/70 hover:text-red-400 hover:bg-red-500/[0.07] transition-colors w-full"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-3.5 h-3.5" />
                       Delete
                     </button>
                   </div>
@@ -3522,7 +3544,7 @@ export default function DeckDetailPage() {
                         <select
                           value={addCardTemplateId}
                           onChange={(e) => setAddCardTemplateId(e.target.value)}
-                          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-accent/50"
+                          className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2 text-white focus:outline-none focus:border-accent/50 transition-colors"
                         >
                           {templates.map((t) => (
                             <option key={t.templateId} value={t.templateId}>
@@ -3684,7 +3706,7 @@ export default function DeckDetailPage() {
                                         updateGeneratedCardValue(i, vi, e.target.value)
                                       }
                                       rows={2}
-                                      className="w-full px-2 py-1.5 text-sm text-white bg-white/5 border border-white/10 rounded focus:outline-none focus:border-amber-500/50 resize-y"
+                                      className="w-full px-2 py-1.5 text-[13px] text-white bg-white/[0.04] border border-white/[0.08] rounded-lg focus:outline-none focus:border-amber-500/50 resize-y transition-colors"
                                     />
                                   ) : (
                                     <input
@@ -3693,7 +3715,7 @@ export default function DeckDetailPage() {
                                       onChange={(e) =>
                                         updateGeneratedCardValue(i, vi, e.target.value)
                                       }
-                                      className="w-full px-2 py-1.5 text-sm text-white bg-white/5 border border-white/10 rounded focus:outline-none focus:border-amber-500/50"
+                                      className="w-full px-2 py-1.5 text-[13px] text-white bg-white/[0.04] border border-white/[0.08] rounded-lg focus:outline-none focus:border-amber-500/50 transition-colors"
                                     />
                                   )}
                                 </div>
@@ -3846,7 +3868,7 @@ export default function DeckDetailPage() {
                         value={addWithAITemplateId}
                         onChange={(e) => setAddWithAITemplateId(e.target.value)}
                         disabled={addWithAIGenerating}
-                        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-amber-500/50"
+                        className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500/50 transition-colors"
                       >
                         {templates.map((t) => (
                           <option key={t.templateId} value={t.templateId}>
@@ -3885,7 +3907,7 @@ export default function DeckDetailPage() {
                         value={addWithAICount}
                         onChange={(e) => setAddWithAICount(Number(e.target.value))}
                         disabled={addWithAIGenerating}
-                        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-amber-500/50"
+                        className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500/50 transition-colors"
                       >
                         {[1, 2, 3, 4, 5].map((n) => (
                           <option key={n} value={n}>
@@ -4207,7 +4229,7 @@ export default function DeckDetailPage() {
                                           });
                                         }}
                                         placeholder="Question"
-                                        className="w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded text-white text-sm"
+                                        className="w-full px-2 py-1.5 bg-white/[0.04] border border-white/[0.08] rounded-lg text-white text-[13px]"
                                       />
                                     </div>
                                     {!isTextAnswer && (
@@ -4243,7 +4265,7 @@ export default function DeckDetailPage() {
                                           }}
                                           rows={3}
                                           placeholder="Option A\nOption B"
-                                          className="w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded text-white text-sm min-h-[4rem]"
+                                          className="w-full px-2 py-1.5 bg-white/[0.04] border border-white/[0.08] rounded-lg text-white text-[13px] min-h-[4rem]"
                                         />
                                       </div>
                                     )}
@@ -4284,7 +4306,7 @@ export default function DeckDetailPage() {
                                           });
                                         }}
                                         placeholder={isTextAnswer ? "Answer" : "A, B"}
-                                        className="w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded text-white text-sm"
+                                        className="w-full px-2 py-1.5 bg-white/[0.04] border border-white/[0.08] rounded-lg text-white text-[13px]"
                                       />
                                     </div>
                                   </div>
@@ -4316,7 +4338,7 @@ export default function DeckDetailPage() {
                                           return next;
                                         });
                                       }}
-                                      className="w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded text-white text-sm min-h-[4rem]"
+                                      className="w-full px-2 py-1.5 bg-white/[0.04] border border-white/[0.08] rounded-lg text-white text-[13px] min-h-[4rem]"
                                       rows={3}
                                     />
                                   ) : (
@@ -4339,7 +4361,7 @@ export default function DeckDetailPage() {
                                           return next;
                                         });
                                       }}
-                                      className="w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded text-white text-sm"
+                                      className="w-full px-2 py-1.5 bg-white/[0.04] border border-white/[0.08] rounded-lg text-white text-[13px]"
                                     />
                                   )}
                                 </div>
@@ -5538,15 +5560,16 @@ function Modal({ children, onClose, wide = false, large = false }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center z-50 p-4"
       onClick={onClose}
     >
       <motion.div
-        initial={{ scale: 0.95, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.95, opacity: 0 }}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 12 }}
+        transition={{ type: "spring", bounce: 0.15, duration: 0.4 }}
         onClick={(e) => e.stopPropagation()}
-        className={`bg-zinc-900 border border-white/10 rounded-2xl p-6 ${sizeClass}`}
+        className={`bg-[#0e0e0e] border border-white/[0.08] rounded-2xl p-6 shadow-2xl ${sizeClass}`}
       >
         {children}
       </motion.div>

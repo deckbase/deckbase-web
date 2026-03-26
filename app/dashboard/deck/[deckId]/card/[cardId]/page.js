@@ -20,6 +20,7 @@ import {
   Image as ImageIcon,
   Type,
   Eye,
+  EyeOff,
   Save,
   X,
   Upload,
@@ -1246,8 +1247,30 @@ function CardEditorPageInner() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-accent"></div>
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-white/[0.05] animate-pulse" />
+            <div>
+              <div className="h-5 w-24 bg-white/[0.06] rounded mb-1.5 animate-pulse" />
+              <div className="h-3 w-32 bg-white/[0.04] rounded animate-pulse" />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <div className="h-9 w-24 rounded-xl bg-white/[0.04] animate-pulse" />
+            <div className="h-9 w-20 rounded-xl bg-accent/20 animate-pulse" />
+          </div>
+        </div>
+        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] overflow-hidden animate-pulse mb-4">
+          <div className="px-4 py-2.5 border-b border-white/[0.06] bg-white/[0.03]">
+            <div className="h-3 w-12 bg-white/[0.06] rounded" />
+          </div>
+          <div className="p-4 space-y-3">
+            {[1, 2].map((i) => (
+              <div key={i} className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 h-16" />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -1376,21 +1399,21 @@ function CardEditorPageInner() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <Link
             href={`/dashboard/deck/${deckId}`}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+            className="p-2 rounded-xl border border-white/[0.07] bg-white/[0.03] hover:bg-white/[0.07] text-white/50 hover:text-white/90 transition-all"
           >
-            <ArrowLeft className="w-5 h-5 text-white/70" />
+            <ArrowLeft className="w-4 h-4" />
           </Link>
           <div>
-            <h1 className="text-xl font-bold text-white">
+            <h1 className="text-[16px] font-semibold text-white tracking-tight">
               {isNewCard ? "New Card" : "Edit Card"}
             </h1>
-            <p className="text-white/50 text-sm">{deck?.title}</p>
+            <p className="text-[12px] text-white/30 mt-0.5">{deck?.title}</p>
           </div>
         </div>
 
@@ -1398,7 +1421,7 @@ function CardEditorPageInner() {
           <button
             type="button"
             onClick={() => setShowPreviewModal(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-white/20 text-white/90 hover:bg-white/10 hover:border-white/30 transition-colors"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-white/[0.08] bg-white/[0.03] text-[13px] text-white/60 hover:text-white/90 hover:bg-white/[0.07] transition-all"
             title="Preview card"
           >
             <Eye className="w-4 h-4" />
@@ -1407,15 +1430,15 @@ function CardEditorPageInner() {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent/90 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent/90 text-white text-[13px] font-semibold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(35,131,226,0.2)]"
           >
             {saving ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+              <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
             ) : (
               <Save className="w-4 h-4" />
             )}
             <span className="hidden sm:inline">
-              {saving ? "Saving..." : "Save"}
+              {saving ? "Saving…" : "Save"}
             </span>
           </button>
         </div>
@@ -1424,18 +1447,14 @@ function CardEditorPageInner() {
       {cardValidation.errors.length > 0 && (
         <div
           role="alert"
-          className="mb-6 rounded-lg border-2 border-amber-500 bg-amber-500/25 text-amber-200 text-sm px-4 py-4 shadow-lg ring-2 ring-amber-400/30"
+          className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/[0.07] px-4 py-4"
         >
-          <p className="font-semibold mb-1">
-            Please fix the {cardValidation.errors.length} error
-            {cardValidation.errors.length === 1 ? "" : "s"} below before saving.
+          <p className="text-[13px] font-semibold text-amber-300 mb-1">
+            {cardValidation.errors.length} error{cardValidation.errors.length === 1 ? "" : "s"} — fix before saving.
           </p>
-          <p className="text-amber-200/90 text-xs mb-2">
-            See the message under each block that has an error.
-          </p>
-          <ul className="list-disc list-inside text-amber-200/95 space-y-0.5">
+          <ul className="space-y-0.5">
             {cardValidation.errors.slice(0, 8).map((msg, i) => (
-              <li key={i}>{msg}</li>
+              <li key={i} className="text-[12px] text-amber-200/70">{msg}</li>
             ))}
           </ul>
         </div>
@@ -1444,39 +1463,39 @@ function CardEditorPageInner() {
       {/* Blocks — front / back (same pattern as template editor) */}
       <div className="space-y-4 mb-6">
         {blocks.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center bg-white/5 border border-white/10 rounded-xl">
-            <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
-              <Plus className="w-8 h-8 text-white/30" />
+          <div className="flex flex-col items-center justify-center py-16 text-center rounded-2xl border border-white/[0.07] bg-white/[0.02]">
+            <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/[0.07] flex items-center justify-center mb-4">
+              <Plus className="w-5 h-5 text-white/25" />
             </div>
-            <h3 className="text-lg font-semibold text-white mb-2">
+            <h3 className="text-[15px] font-semibold text-white/60 mb-1.5">
               No blocks yet
             </h3>
-            <p className="text-white/50 mb-4 text-sm max-w-sm">
-              Add blocks to fill this card. You can add a back face after the
-              front is set up.
+            <p className="text-[13px] text-white/30 mb-5 max-w-xs leading-relaxed">
+              Add blocks to fill this card. You can add a back face after the front is set up.
             </p>
             <button
               type="button"
               onClick={() => setBlockPickerSide("front")}
-              className="px-4 py-2 rounded-lg bg-accent/20 text-accent hover:bg-accent/30 text-sm font-medium"
+              className="px-4 py-2 rounded-xl bg-accent/[0.12] border border-accent/20 text-accent hover:bg-accent/[0.2] text-[13px] font-medium transition-colors"
             >
               Add block
             </button>
           </div>
         ) : (
           <>
-            <div className="rounded-xl border border-white/10 bg-white/[0.03] overflow-hidden">
-              <div className="px-4 py-2 border-b border-white/10 bg-white/[0.04]">
-                <span className="text-xs font-semibold uppercase tracking-wider text-white/50">
+            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] overflow-hidden">
+              <div className="px-4 py-2.5 border-b border-white/[0.06] bg-white/[0.03] flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-accent/50" />
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-white/40">
                   Front
                 </span>
               </div>
-              <div className="p-4 space-y-4">
+              <div className="p-4 space-y-3">
                 {frontBlocks.map((block) => renderBlockRow(block))}
                 <button
                   type="button"
                   onClick={() => setBlockPickerSide("front")}
-                  className="w-full py-2.5 border border-dashed border-white/15 hover:border-accent/40 rounded-lg text-white/45 hover:text-accent text-sm transition-colors flex items-center justify-center gap-2"
+                  className="w-full py-2.5 border border-dashed border-white/[0.12] hover:border-accent/35 rounded-xl text-[13px] text-white/35 hover:text-accent transition-colors flex items-center justify-center gap-2"
                 >
                   <Plus className="w-4 h-4" />
                   Add block
@@ -1488,30 +1507,33 @@ function CardEditorPageInner() {
               <button
                 type="button"
                 onClick={addBackOfCard}
-                className="w-full py-3 rounded-xl border-2 border-dashed border-white/20 hover:border-accent/50 text-white/50 hover:text-accent text-sm transition-colors"
+                className="w-full py-3 rounded-2xl border border-dashed border-white/[0.10] hover:border-white/[0.20] text-[13px] text-white/30 hover:text-white/60 transition-colors"
               >
                 + Add back of card
               </button>
             ) : (
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] overflow-hidden">
-                <div className="px-4 py-2 border-b border-white/10 bg-white/[0.04] flex items-center justify-between">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-white/50">
-                    Back
-                  </span>
+              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] overflow-hidden">
+                <div className="px-4 py-2.5 border-b border-white/[0.06] bg-white/[0.03] flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-white/25" />
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-white/40">
+                      Back
+                    </span>
+                  </div>
                   <button
                     type="button"
                     onClick={removeBackSection}
-                    className="text-xs text-red-400/90 hover:text-red-300"
+                    className="text-[11px] text-red-400/50 hover:text-red-400 transition-colors"
                   >
                     Remove back
                   </button>
                 </div>
-                <div className="p-4 space-y-4">
+                <div className="p-4 space-y-3">
                   {backBlocks.map((block) => renderBlockRow(block))}
                   <button
                     type="button"
                     onClick={() => setBlockPickerSide("back")}
-                    className="w-full py-2.5 border border-dashed border-white/15 hover:border-accent/40 rounded-lg text-white/45 hover:text-accent text-sm transition-colors flex items-center justify-center gap-2"
+                    className="w-full py-2.5 border border-dashed border-white/[0.12] hover:border-accent/35 rounded-xl text-[13px] text-white/35 hover:text-accent transition-colors flex items-center justify-center gap-2"
                   >
                     <Plus className="w-4 h-4" />
                     Add block
@@ -1532,15 +1554,13 @@ function CardEditorPageInner() {
               onClick={() => setBlockPickerSide(null)}
             />
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              className="absolute bottom-full left-0 right-0 mb-2 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl p-3 z-20"
+              transition={{ duration: 0.15 }}
+              className="absolute bottom-full left-0 right-0 mb-2 bg-[#111111] border border-white/[0.09] rounded-2xl shadow-2xl p-4 z-20"
             >
-              <p className="text-white/45 text-xs mb-3">
-                Adding to:{" "}
-                <span className="text-white/80 font-medium">
-                  {blockPickerSide === "back" ? "Back" : "Front"}
-                </span>
+              <p className="text-[11px] text-white/30 mb-3 uppercase tracking-wider font-medium">
+                Adding to <span className="text-white/60">{blockPickerSide === "back" ? "Back" : "Front"}</span>
               </p>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {Object.entries(BLOCK_TYPES).map(([type, config]) => {
@@ -1550,10 +1570,10 @@ function CardEditorPageInner() {
                       key={type}
                       type="button"
                       onClick={() => addBlock(type, blockPickerSide)}
-                      className="flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-white/10 transition-colors"
+                      className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-white/[0.07] border border-transparent hover:border-white/[0.07] transition-all"
                     >
-                      <Icon className="w-5 h-5 text-accent" />
-                      <span className="text-white/70 text-xs">
+                      <Icon className="w-4 h-4 text-accent/80" />
+                      <span className="text-[11px] text-white/50 hover:text-white/80">
                         {config.label}
                       </span>
                     </button>
@@ -1581,21 +1601,22 @@ function CardEditorPageInner() {
       {/* Preview modal */}
       {showPreviewModal && (
         <div
-          className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4"
           onClick={() => setShowPreviewModal(false)}
         >
           <motion.div
-            initial={{ opacity: 0, scale: 0.96 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-zinc-900 border border-white/10 rounded-xl shadow-2xl w-full max-w-md max-h-[85vh] overflow-hidden flex flex-col"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: "spring", bounce: 0.15, duration: 0.35 }}
+            className="bg-[#0e0e0e] border border-white/[0.08] rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] overflow-hidden flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-3 py-2.5 border-b border-white/10">
-              <h2 className="text-sm font-medium text-white/90">Preview</h2>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.07]">
+              <h2 className="text-[13px] font-semibold text-white/80">Preview</h2>
               <button
                 type="button"
                 onClick={() => setShowPreviewModal(false)}
-                className="p-1.5 rounded-lg hover:bg-white/10 text-white/50 hover:text-white transition-colors"
+                className="p-1.5 rounded-lg hover:bg-white/[0.07] text-white/30 hover:text-white/70 transition-all"
                 aria-label="Close preview"
               >
                 <X className="w-4 h-4" />
@@ -1621,7 +1642,7 @@ function CardEditorPageInner() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 8 }}
             transition={{ duration: 0.2 }}
-            className="fixed bottom-6 left-1/2 z-[100] flex -translate-x-1/2 items-center gap-2 rounded-xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white shadow-lg shadow-black/50"
+            className="fixed bottom-6 left-1/2 z-[100] flex -translate-x-1/2 items-center gap-2 rounded-xl border border-white/[0.09] bg-[#141414] px-4 py-3 text-[13px] text-white shadow-xl shadow-black/60"
           >
             <Check className="h-4 w-4 shrink-0 text-emerald-400" strokeWidth={2.5} />
             Card saved
@@ -1636,8 +1657,8 @@ export default function CardEditorPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-black flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent"></div>
+        <div className="min-h-screen bg-[#080808] flex items-center justify-center">
+          <div className="w-7 h-7 rounded-full border-2 border-white/[0.07] border-t-accent animate-spin" />
         </div>
       }
     >
@@ -1768,7 +1789,7 @@ function BlockEditor({
             value={value?.text || ""}
             onChange={(e) => onValueChange(e.target.value)}
             placeholder={config.placeholder}
-            className="w-full bg-transparent text-2xl font-bold text-white placeholder-white/30 focus:outline-none"
+            className="w-full bg-transparent text-2xl font-bold text-white placeholder-white/20 focus:outline-none leading-tight"
           />
         );
 
@@ -1779,7 +1800,7 @@ function BlockEditor({
             value={value?.text || ""}
             onChange={(e) => onValueChange(e.target.value)}
             placeholder={config.placeholder}
-            className="w-full bg-transparent text-xl font-semibold text-white placeholder-white/30 focus:outline-none"
+            className="w-full bg-transparent text-xl font-semibold text-white placeholder-white/20 focus:outline-none"
           />
         );
 
@@ -1790,31 +1811,47 @@ function BlockEditor({
             value={value?.text || ""}
             onChange={(e) => onValueChange(e.target.value)}
             placeholder={config.placeholder}
-            className="w-full bg-transparent text-lg font-medium text-white placeholder-white/30 focus:outline-none"
+            className="w-full bg-transparent text-[15px] font-semibold text-white/90 placeholder-white/20 focus:outline-none"
           />
         );
 
       case "text":
-      case "hiddenText":
         return (
           <textarea
             value={value?.text || ""}
             onChange={(e) => onValueChange(e.target.value)}
             placeholder={config.placeholder}
             rows={3}
-            className="w-full bg-transparent text-white placeholder-white/30 focus:outline-none resize-none"
+            className="w-full bg-transparent text-[14px] text-white/85 placeholder-white/20 focus:outline-none resize-none leading-relaxed"
           />
         );
 
-      case "example":
+      case "hiddenText":
         return (
-          <div className="border-l-4 border-accent/50 pl-4">
+          <div className="rounded-lg bg-white/[0.03] border border-dashed border-white/[0.10] px-3 py-2.5">
+            <div className="flex items-center gap-1.5 mb-2">
+              <EyeOff className="w-3 h-3 text-white/25" />
+              <span className="text-[10px] text-white/25 uppercase tracking-wider">Hidden until revealed</span>
+            </div>
             <textarea
               value={value?.text || ""}
               onChange={(e) => onValueChange(e.target.value)}
               placeholder={config.placeholder}
               rows={2}
-              className="w-full bg-transparent text-white/80 italic placeholder-white/30 focus:outline-none resize-none"
+              className="w-full bg-transparent text-[14px] text-white/70 placeholder-white/20 focus:outline-none resize-none leading-relaxed"
+            />
+          </div>
+        );
+
+      case "example":
+        return (
+          <div className="border-l-2 border-accent/30 pl-3">
+            <textarea
+              value={value?.text || ""}
+              onChange={(e) => onValueChange(e.target.value)}
+              placeholder={config.placeholder}
+              rows={2}
+              className="w-full bg-transparent text-[14px] text-white/65 italic placeholder-white/20 focus:outline-none resize-none leading-relaxed"
             />
           </div>
         );
@@ -1825,35 +1862,24 @@ function BlockEditor({
         const imageBlockConfig = getBlockConfig(block) || {};
         const imageCropAspect = getCropAspectFromConfig(imageBlockConfig);
         return (
-          <div>
-            {/* Image block settings: display aspect (applies to all images in block; no crop/zoom) */}
-            <div className="mb-3">
-              <span className="text-white/60 text-xs block mb-1.5">
-                Display aspect
-              </span>
-              <div className="flex flex-wrap gap-2">
+          <div className="space-y-3">
+            {/* Display aspect pills */}
+            <div>
+              <span className="text-[11px] text-white/30 block mb-2 uppercase tracking-wider">Display aspect</span>
+              <div className="flex flex-wrap gap-1.5">
                 {CROP_ASPECT_OPTIONS.map((opt) => (
                   <button
                     key={opt.label}
                     type="button"
                     onClick={() => {
-                      const nextConfig = {
-                        ...imageBlockConfig,
-                        cropAspect: opt.value,
-                      };
-                      console.log("[RATIO] button clicked", {
-                        blockId: block.blockId,
-                        cropAspect: opt.value,
-                        label: opt.label,
-                        hasOnConfigChange: !!onConfigChange,
-                        nextConfig,
-                      });
+                      const nextConfig = { ...imageBlockConfig, cropAspect: opt.value };
+                      console.log("[RATIO] button clicked", { blockId: block.blockId, cropAspect: opt.value, label: opt.label, hasOnConfigChange: !!onConfigChange, nextConfig });
                       onConfigChange?.(nextConfig);
                     }}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    className={`px-2.5 py-1 rounded-lg text-[12px] font-medium transition-all ${
                       imageCropAspect === opt.value
-                        ? "bg-accent/20 text-accent"
-                        : "bg-white/5 text-white/70 hover:bg-white/10"
+                        ? "bg-accent/[0.15] border border-accent/30 text-accent"
+                        : "bg-white/[0.04] border border-white/[0.07] text-white/45 hover:text-white/70 hover:bg-white/[0.07]"
                     }`}
                   >
                     {opt.label}
@@ -1861,50 +1887,30 @@ function BlockEditor({
                 ))}
               </div>
             </div>
-            {/* Image Preview Grid (centered) */}
+
+            {/* Image preview grid */}
             {value?.mediaIds && value.mediaIds.length > 0 && (
-              <div className="flex justify-center mb-3">
-                <div
-                  className={`gap-2 ${value.mediaIds.length === 1 ? "w-full max-w-[280px]" : "grid grid-cols-2 sm:grid-cols-3 w-full max-w-[320px] sm:max-w-md"}`}
-                >
+              <div className="flex justify-center">
+                <div className={`gap-2 ${value.mediaIds.length === 1 ? "w-full max-w-[260px]" : "grid grid-cols-2 sm:grid-cols-3 w-full max-w-[320px] sm:max-w-md"}`}>
                   {value.mediaIds.map((mediaId) => {
                     const media = mediaCache[mediaId];
                     if (!media?.downloadUrl) return null;
                     const isEditLoading = imageEditLoading === mediaId;
                     return (
-                      <div
-                        key={mediaId}
-                        className="relative group w-full overflow-hidden rounded-xl"
-                        style={{ aspectRatio: imageCropAspect }}
-                      >
-                        <Image
-                          src={media.downloadUrl}
-                          alt=""
-                          fill
-                          className="object-cover rounded-xl"
-                        />
-                        <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div key={mediaId} className="relative group w-full overflow-hidden rounded-xl border border-white/[0.07]" style={{ aspectRatio: imageCropAspect }}>
+                        <Image src={media.downloadUrl} alt="" fill className="object-cover" />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors rounded-xl" />
+                        <div className="absolute top-1.5 right-1.5 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           {onImageEdit && (
-                            <button
-                              type="button"
-                              onClick={() => onImageEdit(mediaId)}
-                              disabled={isEditLoading}
-                              className="p-1 bg-white/20 hover:bg-white/30 rounded-full transition-colors disabled:opacity-50"
-                              title="Edit / re-crop"
-                            >
-                              {isEditLoading ? (
-                                <span className="inline-block w-3 h-3 border-2 border-white/80 border-t-transparent rounded-full animate-spin" />
-                              ) : (
-                                <Pencil className="w-3 h-3 text-white" />
-                              )}
+                            <button type="button" onClick={() => onImageEdit(mediaId)} disabled={isEditLoading}
+                              className="p-1.5 bg-black/60 hover:bg-black/80 rounded-lg transition-colors disabled:opacity-50" title="Edit / re-crop">
+                              {isEditLoading
+                                ? <span className="inline-block w-3 h-3 border-2 border-white/80 border-t-transparent rounded-full animate-spin" />
+                                : <Pencil className="w-3 h-3 text-white" />}
                             </button>
                           )}
-                          <button
-                            type="button"
-                            onClick={() => onImageRemove(mediaId)}
-                            className="p-1 bg-red-500 rounded-full hover:bg-red-600 transition-colors"
-                            title="Remove"
-                          >
+                          <button type="button" onClick={() => onImageRemove(mediaId)}
+                            className="p-1.5 bg-red-500/80 hover:bg-red-500 rounded-lg transition-colors" title="Remove">
                             <X className="w-3 h-3 text-white" />
                           </button>
                         </div>
@@ -1915,40 +1921,23 @@ function BlockEditor({
               </div>
             )}
 
-            {/* Upload progress bar */}
+            {/* Upload progress */}
             {isUploading && (
-              <div className="mb-3">
-                <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-accent transition-all duration-300"
-                    style={{ width: `${Math.min(100, progress)}%` }}
-                  />
+              <div>
+                <div className="h-1 bg-white/[0.07] rounded-full overflow-hidden mb-1">
+                  <div className="h-full bg-accent transition-all duration-300 rounded-full" style={{ width: `${Math.min(100, progress)}%` }} />
                 </div>
-                <p className="text-white/60 text-xs mt-1">
-                  Uploading… {Math.round(progress)}%
-                </p>
+                <p className="text-[12px] text-white/40">Uploading… {Math.round(progress)}%</p>
               </div>
             )}
 
-            {/* Upload Area */}
-            <label
-              className={`flex items-center justify-center gap-2 py-4 border-2 border-dashed border-white/20 hover:border-accent/50 rounded-lg cursor-pointer transition-colors ${isUploading ? "pointer-events-none opacity-60" : ""}`}
-            >
-              <Upload className="w-5 h-5 text-white/50" />
-              <span className="text-white/50 text-sm">
-                Click to upload images (crop before upload)
-              </span>
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={(e) => {
-                  const files = e.target.files;
-                  if (files?.length) onImageFileSelect(files);
-                  e.target.value = "";
-                }}
-                className="hidden"
-              />
+            {/* Upload area */}
+            <label className={`flex flex-col items-center justify-center gap-2 py-5 border border-dashed border-white/[0.12] hover:border-accent/35 rounded-xl cursor-pointer transition-colors group ${isUploading ? "pointer-events-none opacity-50" : ""}`}>
+              <div className="w-8 h-8 rounded-xl bg-white/[0.04] group-hover:bg-accent/[0.08] flex items-center justify-center transition-colors">
+                <Upload className="w-4 h-4 text-white/30 group-hover:text-accent/70 transition-colors" />
+              </div>
+              <span className="text-[12px] text-white/30 group-hover:text-white/50 transition-colors">Click to upload images</span>
+              <input type="file" accept="image/*" multiple onChange={(e) => { const files = e.target.files; if (files?.length) onImageFileSelect(files); e.target.value = ""; }} className="hidden" />
             </label>
           </div>
         );
@@ -1957,197 +1946,148 @@ function BlockEditor({
       case "audio": {
         const audioMediaIds = value?.mediaIds || [];
         return (
-          <div>
+          <div className="space-y-3">
+            {/* Existing audio tracks */}
             {audioMediaIds.length > 0 && (
-              <div className="space-y-2 mb-3">
+              <div className="space-y-2">
                 {audioMediaIds.map((mediaId) => {
                   const media = mediaCache[mediaId];
                   if (!media?.downloadUrl) return null;
                   const isLoading = loadingAudioMediaIds.has(mediaId);
                   const src = audioBlobUrls[mediaId];
                   return (
-                    <div key={mediaId} className="flex items-center gap-2">
+                    <div key={mediaId} className="flex items-center gap-2 p-2 rounded-xl bg-white/[0.03] border border-white/[0.07]">
                       {isLoading && (
-                        <span
-                          className="w-4 h-4 border-2 border-white/50 border-t-transparent rounded-full animate-spin flex-shrink-0"
-                          aria-hidden
-                        />
+                        <span className="w-4 h-4 border-2 border-white/40 border-t-transparent rounded-full animate-spin flex-shrink-0" aria-hidden />
                       )}
-                      <audio
-                        src={src ?? undefined}
-                        controls
-                        className="flex-1 rounded-lg bg-white/5 h-10 min-w-0"
-                        style={{ minWidth: 0 }}
-                      />
-                      <button
-                        onClick={() => onAudioRemove(mediaId)}
-                        className="p-1 bg-red-500 rounded-full flex-shrink-0"
-                      >
-                        <X className="w-3 h-3 text-white" />
+                      <audio src={src ?? undefined} controls className="flex-1 rounded-lg h-8 min-w-0" style={{ minWidth: 0 }} />
+                      <button onClick={() => onAudioRemove(mediaId)}
+                        className="p-1.5 bg-red-500/[0.12] hover:bg-red-500/25 border border-red-500/20 rounded-lg flex-shrink-0 transition-colors">
+                        <X className="w-3 h-3 text-red-400" />
                       </button>
                     </div>
                   );
                 })}
               </div>
             )}
-            <div className="space-y-3">
-              <label className="flex items-center justify-center gap-2 py-4 border-2 border-dashed border-white/20 hover:border-accent/50 rounded-lg cursor-pointer transition-colors">
-                <Upload className="w-5 h-5 text-white/50" />
-                <span className="text-white/50 text-sm">
-                  Click to upload audio
+
+            {/* Upload area */}
+            <label className="flex flex-col items-center justify-center gap-2 py-4 border border-dashed border-white/[0.12] hover:border-accent/35 rounded-xl cursor-pointer transition-colors group">
+              <div className="w-8 h-8 rounded-xl bg-white/[0.04] group-hover:bg-accent/[0.08] flex items-center justify-center transition-colors">
+                <Upload className="w-4 h-4 text-white/30 group-hover:text-accent/70 transition-colors" />
+              </div>
+              <span className="text-[12px] text-white/30 group-hover:text-white/50 transition-colors">Click to upload audio</span>
+              <input type="file" accept="audio/*" multiple onChange={(e) => onAudioUpload(e.target.files)} className="hidden" />
+            </label>
+
+            {/* AI generate section */}
+            {generateAudioProRequired ? (
+              <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-3.5">
+                <span className="text-[12px] text-amber-300/80 font-medium flex items-center gap-1.5 mb-2">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  Generate with AI (Pro)
                 </span>
-                <input
-                  type="file"
-                  accept="audio/*"
-                  multiple
-                  onChange={(e) => onAudioUpload(e.target.files)}
-                  className="hidden"
-                />
-              </label>
-              {generateAudioProRequired ? (
-                <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
-                  <span className="text-amber-200/90 text-xs font-medium flex items-center gap-1.5 mb-2">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                    Generate with AI (Pro)
-                  </span>
-                  <Link
-                    href="/dashboard/subscription"
-                    className="text-amber-400 hover:text-amber-300 text-sm font-medium"
-                  >
-                    Upgrade to Pro to generate audio
-                  </Link>
-                </div>
-              ) : onGenerateAudio ? (
-                <div className="rounded-lg border border-white/10 bg-white/5 p-3 space-y-2">
-                  <span className="text-white/60 text-xs font-medium uppercase tracking-wide flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                    Generate with AI
-                  </span>
-                  {/* Voice: Deckbase curated list; sample playback uses cached /api/elevenlabs/voice-sample */}
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap items-start gap-2">
-                      <span className="text-white/50 text-xs shrink-0 pt-1">
-                        Voice
-                      </span>
-                      <div className="flex-1 min-w-[12rem]">
-                        <ElevenlabsVoicePicker
-                          value={selectedVoiceId}
-                          onChange={setSelectedVoiceId}
-                          size="sm"
-                          disabled={generatingAudio}
-                        />
-                      </div>
-                    </div>
+                <Link href="/dashboard/subscription" className="text-[13px] text-amber-400 hover:text-amber-300 font-medium transition-colors">
+                  Upgrade to Pro →
+                </Link>
+              </div>
+            ) : onGenerateAudio ? (
+              <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-3.5 space-y-3">
+                <span className="text-[11px] text-white/40 font-semibold uppercase tracking-wider flex items-center gap-1.5">
+                  <Sparkles className="w-3 h-3 text-amber-400" />
+                  Generate with AI
+                </span>
+
+                {/* Voice picker */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[12px] text-white/40 shrink-0">Voice</span>
+                  <div className="flex-1 min-w-[12rem]">
+                    <ElevenlabsVoicePicker value={selectedVoiceId} onChange={setSelectedVoiceId} size="sm" disabled={generatingAudio} />
                   </div>
-                  {/* Copy text from other blocks */}
-                  {allBlocks &&
-                    allValues &&
-                    (() => {
-                      const norm = (t) =>
-                        typeof t === "number" && BlockTypeNames[t] != null
-                          ? BlockTypeNames[t]
-                          : t;
-                      const otherBlocks = (allBlocks || []).filter(
-                        (b) =>
-                          b.blockId !== block.blockId &&
-                          TEXT_BLOCK_TYPES.has(norm(b.type)),
-                      );
-                      if (otherBlocks.length === 0) return null;
-                      return (
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-white/50 text-xs">
-                            Copy from:
-                          </span>
-                          <select
-                            value=""
-                            onChange={(e) => {
-                              const bid = e.target.value;
-                              if (!bid) return;
-                              e.target.value = "";
-                              const t = (allValues[bid]?.text || "").trim();
-                              if (t)
-                                setGenerateAudioText((prev) =>
-                                  prev ? prev + "\n\n" + t : t,
-                                );
-                            }}
-                            className="bg-black/30 border border-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-accent/50"
-                          >
-                            <option value="">— Choose block —</option>
-                            {otherBlocks.map((b) => (
-                              <option key={b.blockId} value={b.blockId}>
-                                {b.label}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      );
-                    })()}
-                  <textarea
-                    value={generateAudioText}
-                    onChange={(e) => setGenerateAudioText(e.target.value)}
-                    placeholder="Enter text to convert to speech, or copy from a block above..."
-                    rows={3}
-                    className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-accent/50 resize-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={() =>
-                      onGenerateAudio(generateAudioText, selectedVoiceId)
-                    }
-                    disabled={generatingAudio || !generateAudioText.trim()}
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {generatingAudio ? (
-                      <>
-                        <span className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-white border-t-transparent" />
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-3.5 h-3.5" />
-                        Generate audio
-                      </>
-                    )}
-                  </button>
                 </div>
-              ) : null}
-            </div>
+
+                {/* Copy from block */}
+                {allBlocks && allValues && (() => {
+                  const norm = (t) => typeof t === "number" && BlockTypeNames[t] != null ? BlockTypeNames[t] : t;
+                  const otherBlocks = (allBlocks || []).filter((b) => b.blockId !== block.blockId && TEXT_BLOCK_TYPES.has(norm(b.type)));
+                  if (otherBlocks.length === 0) return null;
+                  return (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-[12px] text-white/35">Copy from:</span>
+                      <select
+                        value=""
+                        onChange={(e) => {
+                          const bid = e.target.value;
+                          if (!bid) return;
+                          e.target.value = "";
+                          const t = (allValues[bid]?.text || "").trim();
+                          if (t) setGenerateAudioText((prev) => prev ? prev + "\n\n" + t : t);
+                        }}
+                        className="bg-white/[0.04] border border-white/[0.08] rounded-lg px-2 py-1 text-[12px] text-white/60 focus:outline-none focus:border-accent/50 transition-colors"
+                      >
+                        <option value="">— Choose block —</option>
+                        {otherBlocks.map((b) => (
+                          <option key={b.blockId} value={b.blockId}>{b.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                })()}
+
+                <textarea
+                  value={generateAudioText}
+                  onChange={(e) => setGenerateAudioText(e.target.value)}
+                  placeholder="Enter text to convert to speech…"
+                  rows={3}
+                  className="w-full bg-white/[0.03] border border-white/[0.07] rounded-xl px-3 py-2.5 text-[13px] text-white/80 placeholder-white/20 focus:outline-none focus:border-accent/40 resize-none transition-colors"
+                />
+                <button
+                  type="button"
+                  onClick={() => onGenerateAudio(generateAudioText, selectedVoiceId)}
+                  disabled={generatingAudio || !generateAudioText.trim()}
+                  className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-amber-600/90 hover:bg-amber-500 text-white text-[13px] font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {generatingAudio ? (
+                    <><span className="w-3.5 h-3.5 rounded-full border-2 border-white/40 border-t-white animate-spin" />Generating…</>
+                  ) : (
+                    <><Sparkles className="w-3.5 h-3.5" />Generate audio</>
+                  )}
+                </button>
+              </div>
+            ) : null}
           </div>
         );
       }
 
       case "divider":
-        return <hr className="border-white/20" />;
+        return (
+          <div className="py-1 flex items-center gap-3">
+            <div className="flex-1 h-px bg-white/[0.10]" />
+            <div className="w-1 h-1 rounded-full bg-white/20" />
+            <div className="flex-1 h-px bg-white/[0.10]" />
+          </div>
+        );
 
       case "space": {
         const spaceConfig = getBlockConfig(block) || { height: 32 };
         return (
           <div className="flex items-center gap-3">
-            <span className="text-white/40 text-sm">Height:</span>
+            <span className="text-[12px] text-white/35">Height</span>
             <input
               type="number"
               min={8}
               max={200}
               value={spaceConfig.height || 32}
-              onChange={(e) =>
-                onConfigChange({
-                  ...spaceConfig,
-                  height: Number(e.target.value),
-                })
-              }
-              className="w-20 bg-white/10 text-white text-sm rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-accent/50"
+              onChange={(e) => onConfigChange({ ...spaceConfig, height: Number(e.target.value) })}
+              className="w-16 bg-white/[0.04] border border-white/[0.08] text-white text-[13px] rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-accent/50 transition-colors"
             />
-            <span className="text-white/40 text-sm">px</span>
+            <span className="text-[12px] text-white/30">px</span>
           </div>
         );
       }
 
       case "quizSingleSelect": {
-        const qConfig = getBlockConfig(block) || {
-          question: "",
-          options: ["", ""],
-          correctAnswers: [],
-        };
+        const qConfig = getBlockConfig(block) || { question: "", options: ["", ""], correctAnswers: [] };
         const options = qConfig.options || ["", ""];
         const correct = qConfig.correctAnswers || [];
         return (
@@ -2155,98 +2095,61 @@ function BlockEditor({
             <input
               type="text"
               value={qConfig.question || ""}
-              onChange={(e) =>
-                onConfigChange({ ...qConfig, question: e.target.value })
-              }
-              placeholder="Question..."
-              className="w-full bg-transparent text-white placeholder-white/30 focus:outline-none border-b border-white/20 pb-1"
+              onChange={(e) => onConfigChange({ ...qConfig, question: e.target.value })}
+              placeholder="Question…"
+              className="w-full bg-transparent text-[14px] text-white placeholder-white/20 focus:outline-none border-b border-white/[0.10] pb-2 focus:border-white/25 transition-colors"
             />
-            <div className="space-y-2">
-              <span className="text-white/40 text-xs uppercase tracking-wide">
-                Options — click circle to mark correct
-              </span>
-              {options.map((option, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      onConfigChange({
-                        ...qConfig,
-                        options,
-                        correctAnswers: [option],
-                      })
-                    }
-                    className={`w-4 h-4 rounded-full border-2 flex-shrink-0 transition-colors ${
-                      correct.includes(option) && option
-                        ? "border-accent bg-accent"
-                        : "border-white/30"
-                    }`}
-                  />
-                  <input
-                    type="text"
-                    value={option}
-                    onChange={(e) => {
-                      const newOptions = [...options];
-                      const wasCorrect = correct.includes(option);
-                      newOptions[i] = e.target.value;
-                      onConfigChange({
-                        ...qConfig,
-                        options: newOptions,
-                        correctAnswers: wasCorrect ? [e.target.value] : correct,
-                      });
-                    }}
-                    placeholder={`Option ${i + 1}`}
-                    className="flex-1 bg-transparent text-white placeholder-white/30 focus:outline-none"
-                  />
-                  {options.length > 2 && (
+            <div className="space-y-1.5">
+              <span className="text-[11px] text-white/30 uppercase tracking-wider block">Options — tap circle to mark correct</span>
+              {options.map((option, i) => {
+                const isCorrect = correct.includes(option) && option;
+                return (
+                  <div key={i} className={`flex items-center gap-2.5 px-3 py-2 rounded-xl border transition-colors ${isCorrect ? "bg-accent/[0.07] border-accent/25" : "bg-white/[0.02] border-white/[0.07]"}`}>
                     <button
                       type="button"
-                      onClick={() => {
-                        const newOptions = options.filter(
-                          (_, idx) => idx !== i,
-                        );
-                        onConfigChange({
-                          ...qConfig,
-                          options: newOptions,
-                          correctAnswers: correct.filter((a) => a !== option),
-                        });
+                      onClick={() => onConfigChange({ ...qConfig, options, correctAnswers: [option] })}
+                      className={`w-4 h-4 rounded-full border-2 flex-shrink-0 transition-all ${isCorrect ? "border-accent bg-accent shadow-[0_0_8px_rgba(35,131,226,0.4)]" : "border-white/25 hover:border-white/50"}`}
+                    />
+                    <input
+                      type="text"
+                      value={option}
+                      onChange={(e) => {
+                        const newOptions = [...options];
+                        const wasCorrect = correct.includes(option);
+                        newOptions[i] = e.target.value;
+                        onConfigChange({ ...qConfig, options: newOptions, correctAnswers: wasCorrect ? [e.target.value] : correct });
                       }}
-                      className="text-white/30 hover:text-red-400"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  )}
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={() =>
-                  onConfigChange({ ...qConfig, options: [...options, ""] })
-                }
-                className="flex items-center gap-1 text-xs text-accent"
-              >
+                      placeholder={`Option ${i + 1}`}
+                      className="flex-1 bg-transparent text-[14px] text-white placeholder-white/20 focus:outline-none"
+                    />
+                    {options.length > 2 && (
+                      <button type="button"
+                        onClick={() => { const newOptions = options.filter((_, idx) => idx !== i); onConfigChange({ ...qConfig, options: newOptions, correctAnswers: correct.filter((a) => a !== option) }); }}
+                        className="p-1 rounded-lg text-white/20 hover:text-red-400 hover:bg-red-500/[0.08] transition-all">
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+              <button type="button" onClick={() => onConfigChange({ ...qConfig, options: [...options, ""] })}
+                className="flex items-center gap-1.5 text-[12px] text-accent/70 hover:text-accent transition-colors mt-1 px-1">
                 <Plus className="w-3 h-3" /> Add option
               </button>
             </div>
             <input
               type="text"
               value={qConfig.hint || ""}
-              onChange={(e) =>
-                onConfigChange({ ...qConfig, hint: e.target.value })
-              }
-              placeholder="Hint (optional)..."
-              className="w-full bg-transparent text-white/50 text-sm placeholder-white/20 focus:outline-none"
+              onChange={(e) => onConfigChange({ ...qConfig, hint: e.target.value })}
+              placeholder="Hint (optional)…"
+              className="w-full bg-transparent text-[13px] text-white/40 placeholder-white/15 focus:outline-none"
             />
           </div>
         );
       }
 
       case "quizMultiSelect": {
-        const qConfig = getBlockConfig(block) || {
-          question: "",
-          options: ["", ""],
-          correctAnswers: [],
-        };
+        const qConfig = getBlockConfig(block) || { question: "", options: ["", ""], correctAnswers: [] };
         const options = qConfig.options || ["", ""];
         const correct = new Set(qConfig.correctAnswers || []);
         return (
@@ -2254,156 +2157,101 @@ function BlockEditor({
             <input
               type="text"
               value={qConfig.question || ""}
-              onChange={(e) =>
-                onConfigChange({ ...qConfig, question: e.target.value })
-              }
-              placeholder="Question..."
-              className="w-full bg-transparent text-white placeholder-white/30 focus:outline-none border-b border-white/20 pb-1"
+              onChange={(e) => onConfigChange({ ...qConfig, question: e.target.value })}
+              placeholder="Question…"
+              className="w-full bg-transparent text-[14px] text-white placeholder-white/20 focus:outline-none border-b border-white/[0.10] pb-2 focus:border-white/25 transition-colors"
             />
-            <div className="space-y-2">
-              <span className="text-white/40 text-xs uppercase tracking-wide">
-                Options — check to mark correct
-              </span>
-              {options.map((option, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const next = new Set(correct);
-                      if (next.has(option)) {
-                        next.delete(option);
-                      } else {
-                        next.add(option);
-                      }
-                      onConfigChange({
-                        ...qConfig,
-                        options,
-                        correctAnswers: Array.from(next),
-                      });
-                    }}
-                    className={`w-5 h-5 rounded border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
-                      correct.has(option) && option
-                        ? "border-accent bg-accent text-white"
-                        : "border-white/30 text-transparent"
-                    }`}
-                  >
-                    {correct.has(option) && option && (
-                      <Check className="w-3 h-3" strokeWidth={2.5} />
-                    )}
-                  </button>
-                  <input
-                    type="text"
-                    value={option}
-                    onChange={(e) => {
-                      const newOptions = [...options];
-                      const wasCorrect = correct.has(option);
-                      newOptions[i] = e.target.value;
-                      const newCorrect = new Set(correct);
-                      if (wasCorrect) {
-                        newCorrect.delete(option);
-                        newCorrect.add(e.target.value);
-                      }
-                      onConfigChange({
-                        ...qConfig,
-                        options: newOptions,
-                        correctAnswers: Array.from(newCorrect),
-                      });
-                    }}
-                    placeholder={`Option ${i + 1}`}
-                    className="flex-1 bg-transparent text-white placeholder-white/30 focus:outline-none"
-                  />
-                  {options.length > 2 && (
+            <div className="space-y-1.5">
+              <span className="text-[11px] text-white/30 uppercase tracking-wider block">Options — check to mark correct</span>
+              {options.map((option, i) => {
+                const isCorrect = correct.has(option) && option;
+                return (
+                  <div key={i} className={`flex items-center gap-2.5 px-3 py-2 rounded-xl border transition-colors ${isCorrect ? "bg-accent/[0.07] border-accent/25" : "bg-white/[0.02] border-white/[0.07]"}`}>
                     <button
                       type="button"
                       onClick={() => {
-                        const newOptions = options.filter(
-                          (_, idx) => idx !== i,
-                        );
-                        const newCorrect = new Set(correct);
-                        newCorrect.delete(option);
-                        onConfigChange({
-                          ...qConfig,
-                          options: newOptions,
-                          correctAnswers: Array.from(newCorrect),
-                        });
+                        const next = new Set(correct);
+                        if (next.has(option)) next.delete(option); else next.add(option);
+                        onConfigChange({ ...qConfig, options, correctAnswers: Array.from(next) });
                       }}
-                      className="text-white/30 hover:text-red-400"
+                      className={`w-4 h-4 rounded flex-shrink-0 flex items-center justify-center transition-all ${isCorrect ? "bg-accent border-2 border-accent shadow-[0_0_8px_rgba(35,131,226,0.4)]" : "border-2 border-white/25 hover:border-white/50"}`}
                     >
-                      <X className="w-3 h-3" />
+                      {isCorrect && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}
                     </button>
-                  )}
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={() =>
-                  onConfigChange({ ...qConfig, options: [...options, ""] })
-                }
-                className="flex items-center gap-1 text-xs text-accent"
-              >
+                    <input
+                      type="text"
+                      value={option}
+                      onChange={(e) => {
+                        const newOptions = [...options];
+                        const wasCorrect = correct.has(option);
+                        newOptions[i] = e.target.value;
+                        const newCorrect = new Set(correct);
+                        if (wasCorrect) { newCorrect.delete(option); newCorrect.add(e.target.value); }
+                        onConfigChange({ ...qConfig, options: newOptions, correctAnswers: Array.from(newCorrect) });
+                      }}
+                      placeholder={`Option ${i + 1}`}
+                      className="flex-1 bg-transparent text-[14px] text-white placeholder-white/20 focus:outline-none"
+                    />
+                    {options.length > 2 && (
+                      <button type="button"
+                        onClick={() => { const newOptions = options.filter((_, idx) => idx !== i); const newCorrect = new Set(correct); newCorrect.delete(option); onConfigChange({ ...qConfig, options: newOptions, correctAnswers: Array.from(newCorrect) }); }}
+                        className="p-1 rounded-lg text-white/20 hover:text-red-400 hover:bg-red-500/[0.08] transition-all">
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+              <button type="button" onClick={() => onConfigChange({ ...qConfig, options: [...options, ""] })}
+                className="flex items-center gap-1.5 text-[12px] text-accent/70 hover:text-accent transition-colors mt-1 px-1">
                 <Plus className="w-3 h-3" /> Add option
               </button>
             </div>
             <input
               type="text"
               value={qConfig.hint || ""}
-              onChange={(e) =>
-                onConfigChange({ ...qConfig, hint: e.target.value })
-              }
-              placeholder="Hint (optional)..."
-              className="w-full bg-transparent text-white/50 text-sm placeholder-white/20 focus:outline-none"
+              onChange={(e) => onConfigChange({ ...qConfig, hint: e.target.value })}
+              placeholder="Hint (optional)…"
+              className="w-full bg-transparent text-[13px] text-white/40 placeholder-white/15 focus:outline-none"
             />
           </div>
         );
       }
 
       case "quizTextAnswer": {
-        const qConfig = getBlockConfig(block) || {
-          question: "",
-          correctAnswer: "",
-          hint: "",
-          caseSensitive: false,
-        };
+        const qConfig = getBlockConfig(block) || { question: "", correctAnswer: "", hint: "", caseSensitive: false };
         return (
           <div className="space-y-3">
             <input
               type="text"
               value={qConfig.question || ""}
-              onChange={(e) =>
-                onConfigChange({ ...qConfig, question: e.target.value })
-              }
-              placeholder="Question..."
-              className="w-full bg-transparent text-white placeholder-white/30 focus:outline-none border-b border-white/20 pb-1"
+              onChange={(e) => onConfigChange({ ...qConfig, question: e.target.value })}
+              placeholder="Question…"
+              className="w-full bg-transparent text-[14px] text-white placeholder-white/20 focus:outline-none border-b border-white/[0.10] pb-2 focus:border-white/25 transition-colors"
             />
-            <input
-              type="text"
-              value={qConfig.correctAnswer || ""}
-              onChange={(e) =>
-                onConfigChange({ ...qConfig, correctAnswer: e.target.value })
-              }
-              placeholder="Correct answer..."
-              className="w-full bg-transparent text-white/80 placeholder-white/30 focus:outline-none"
-            />
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04]">
+              <Check className="w-3.5 h-3.5 text-emerald-400/60 flex-shrink-0" />
+              <input
+                type="text"
+                value={qConfig.correctAnswer || ""}
+                onChange={(e) => onConfigChange({ ...qConfig, correctAnswer: e.target.value })}
+                placeholder="Correct answer…"
+                className="flex-1 bg-transparent text-[14px] text-white/80 placeholder-white/20 focus:outline-none"
+              />
+            </div>
+            <div className="flex items-center gap-3">
               <input
                 type="text"
                 value={qConfig.hint || ""}
-                onChange={(e) =>
-                  onConfigChange({ ...qConfig, hint: e.target.value })
-                }
-                placeholder="Hint (optional)..."
-                className="flex-1 bg-transparent text-white/50 text-sm placeholder-white/20 focus:outline-none"
+                onChange={(e) => onConfigChange({ ...qConfig, hint: e.target.value })}
+                placeholder="Hint (optional)…"
+                className="flex-1 bg-transparent text-[13px] text-white/40 placeholder-white/15 focus:outline-none"
               />
-              <label className="flex items-center gap-1.5 text-white/40 text-xs cursor-pointer">
+              <label className="flex items-center gap-1.5 text-[12px] text-white/35 cursor-pointer shrink-0">
                 <input
                   type="checkbox"
                   checked={qConfig.caseSensitive || false}
-                  onChange={(e) =>
-                    onConfigChange({
-                      ...qConfig,
-                      caseSensitive: e.target.checked,
-                    })
-                  }
+                  onChange={(e) => onConfigChange({ ...qConfig, caseSensitive: e.target.checked })}
                   className="accent-accent"
                 />
                 Case sensitive
@@ -2419,8 +2267,8 @@ function BlockEditor({
             type="text"
             value={value?.text || ""}
             onChange={(e) => onValueChange(e.target.value)}
-            placeholder="Enter content..."
-            className="w-full bg-transparent text-white placeholder-white/30 focus:outline-none"
+            placeholder="Enter content…"
+            className="w-full bg-transparent text-[14px] text-white placeholder-white/20 focus:outline-none"
           />
         );
     }
@@ -2428,32 +2276,34 @@ function BlockEditor({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white/5 border border-white/10 rounded-xl p-4 group"
+      className="bg-white/[0.025] border border-white/[0.07] hover:border-white/[0.11] rounded-xl p-4 group transition-colors"
     >
       <div className="flex items-start gap-3">
         {/* Drag Handle & Icon */}
-        <div className="flex items-center gap-1 pt-1">
-          <GripVertical className="w-4 h-4 text-white/20 cursor-grab" />
-          <Icon className="w-4 h-4 text-white/40" />
+        <div className="flex items-center gap-1.5 pt-0.5 flex-shrink-0">
+          <GripVertical className="w-4 h-4 text-white/15 cursor-grab active:cursor-grabbing" />
+          <div className="w-6 h-6 rounded-lg bg-white/[0.05] flex items-center justify-center">
+            <Icon className="w-3.5 h-3.5 text-white/35" />
+          </div>
         </div>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-2.5">
             <div className="flex items-center gap-2">
-              <span className="text-white/40 text-xs uppercase tracking-wide">
+              <span className="text-[11px] font-medium text-white/35 uppercase tracking-wider">
                 {block.label}
-                {block.required && <span className="text-accent ml-1">*</span>}
+                {block.required && <span className="text-accent/70 ml-0.5">*</span>}
               </span>
               {isMainBlock && (
-                <span className="px-2 py-0.5 bg-accent/20 text-accent text-xs rounded-full">
+                <span className="px-1.5 py-0.5 bg-accent/[0.12] border border-accent/20 text-accent text-[10px] rounded-md font-medium">
                   Main
                 </span>
               )}
               {isSubBlock && (
-                <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 text-xs rounded-full">
+                <span className="px-1.5 py-0.5 bg-purple-500/[0.12] border border-purple-500/20 text-purple-400 text-[10px] rounded-md font-medium">
                   Sub
                 </span>
               )}
@@ -2461,9 +2311,9 @@ function BlockEditor({
             {!block.required && (
               <button
                 onClick={onRemove}
-                className="p-1 opacity-0 group-hover:opacity-100 hover:bg-white/10 rounded transition-all"
+                className="p-1.5 opacity-0 group-hover:opacity-100 hover:bg-red-500/[0.08] rounded-lg transition-all"
               >
-                <Trash2 className="w-4 h-4 text-red-400" />
+                <Trash2 className="w-3.5 h-3.5 text-red-400/60 hover:text-red-400" />
               </button>
             )}
           </div>

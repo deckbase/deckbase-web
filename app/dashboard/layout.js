@@ -1,20 +1,27 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
 import Image from "next/image";
-import { LogOut, Home, LayoutTemplate, Settings, Crown, Key } from "lucide-react";
+import { motion } from "framer-motion";
+import { LogOut, Home, LayoutTemplate, Settings, User } from "lucide-react";
+
+const navItems = [
+  { href: "/dashboard", label: "Home", icon: Home, exact: true },
+  { href: "/dashboard/templates", label: "Templates", icon: LayoutTemplate },
+  { href: "/dashboard/profile", label: "Profile", icon: User },
+  { href: "/dashboard/admin", label: "Admin", icon: Settings },
+];
 
 export default function DashboardLayout({ children }) {
   const { user, userProfile, loading, logout } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push("/login");
-    }
+    if (!loading && !user) router.push("/login");
   }, [user, loading, router]);
 
   const handleLogout = async () => {
@@ -26,108 +33,107 @@ export default function DashboardLayout({ children }) {
     }
   };
 
+  const isActive = (item) =>
+    item.exact ? pathname === item.href : pathname.startsWith(item.href);
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent"></div>
+      <div className="min-h-screen bg-[#080808] flex items-center justify-center">
+        <div className="w-7 h-7 rounded-full border-2 border-white/[0.07] border-t-accent animate-spin" />
       </div>
     );
   }
 
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
+
+  const displayName = userProfile?.displayName || user?.email || "U";
+  const avatarUrl = userProfile?.profileUrl || user?.photoURL;
 
   return (
-    <div className="min-h-screen bg-black">
-      {/* Top Navigation */}
-      <nav className="fixed top-0 left-0 right-0 h-16 bg-black/80 backdrop-blur-lg border-b border-white/10 z-50">
-        <div className="h-full max-w-7xl mx-auto px-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
+    <div className="min-h-screen bg-[#080808] text-white">
+      {/* Top nav */}
+      <nav className="fixed top-0 left-0 right-0 h-14 z-50 bg-black/75 backdrop-blur-xl border-b border-white/[0.06]">
+        <div className="h-full max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between gap-3">
+
+          {/* Logo */}
+          <Link href="/" className="flex items-center gap-2 flex-shrink-0 group">
             <Image
               src="/app_logo.webp"
               alt="Deckbase"
-              width={32}
-              height={32}
-              className="rounded-lg"
+              width={26}
+              height={26}
+              className="group-hover:scale-105 transition-transform duration-200"
               priority
             />
-            <span className="text-white font-bold text-lg hidden sm:block">
+            <span className="font-bold text-[15px] text-white hidden sm:block tracking-tight">
               Deckbase
             </span>
           </Link>
 
-          <div className="flex items-center gap-4">
-            <Link
-              href="/dashboard"
-              className="text-white/70 hover:text-white transition-colors p-2"
-              title="Home"
-            >
-              <Home className="w-5 h-5" />
-            </Link>
+          {/* Nav links */}
+          <div className="flex items-center gap-0.5 overflow-x-auto">
+            {navItems.map((item) => {
+              const active = isActive(item);
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  title={item.label}
+                  className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors duration-150 whitespace-nowrap ${
+                    active
+                      ? "text-white"
+                      : "text-white/40 hover:text-white/80 hover:bg-white/[0.04]"
+                  }`}
+                >
+                  {active && (
+                    <motion.span
+                      layoutId="dash-nav-pill"
+                      className="absolute inset-0 rounded-lg bg-white/[0.08] border border-white/[0.08]"
+                      transition={{ type: "spring", bounce: 0.2, duration: 0.35 }}
+                    />
+                  )}
+                  <Icon className="w-[15px] h-[15px] flex-shrink-0 relative" />
+                  <span className="hidden md:inline relative">{item.label}</span>
+                </Link>
+              );
+            })}
+          </div>
 
-            <Link
-              href="/dashboard/templates"
-              className="text-white/70 hover:text-white transition-colors p-2"
-              title="Templates"
-            >
-              <LayoutTemplate className="w-5 h-5" />
-            </Link>
-            <Link
-              href="/dashboard/api-keys"
-              className="text-white/70 hover:text-white transition-colors p-2"
-              title="API keys"
-            >
-              <Key className="w-5 h-5" />
-            </Link>
-            <Link
-              href="/dashboard/subscription"
-              className="text-white/70 hover:text-white transition-colors p-2"
-              title="Subscription"
-            >
-              <Crown className="w-5 h-5" />
-            </Link>
-            <Link
-              href="/dashboard/admin"
-              className="text-white/70 hover:text-white transition-colors p-2"
-              title="Admin"
-            >
-              <Settings className="w-5 h-5" />
-            </Link>
-
+          {/* Profile + logout */}
+          <div className="flex items-center gap-1.5 flex-shrink-0">
             <Link
               href="/dashboard/profile"
-              className="flex items-center gap-3 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
+              className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.09] border border-white/[0.07] transition-all duration-150"
             >
-              {(userProfile?.profileUrl || user?.photoURL) ? (
+              {avatarUrl ? (
                 <img
-                  src={userProfile?.profileUrl || user?.photoURL}
+                  src={avatarUrl}
                   alt=""
-                  className="h-7 w-7 min-w-[28px] rounded-full object-cover shrink-0"
+                  className="h-6 w-6 rounded-full object-cover flex-shrink-0"
                 />
               ) : (
-                <span className="inline-flex h-7 w-7 min-w-[28px] shrink-0 items-center justify-center rounded-full bg-accent text-sm font-semibold text-white">
-                  {(userProfile?.displayName || user?.email || "U").charAt(0).toUpperCase()}
+                <span className="inline-flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-accent text-[11px] font-bold">
+                  {displayName.charAt(0).toUpperCase()}
                 </span>
               )}
-              <span className="text-white/80 text-sm hidden sm:block truncate max-w-[140px]">
-                {userProfile?.displayName || user?.email}
+              <span className="text-[13px] text-white/65 hidden sm:block truncate max-w-[110px]">
+                {displayName}
               </span>
             </Link>
 
             <button
               onClick={handleLogout}
-              className="text-white/70 hover:text-red-400 transition-colors p-2"
-              title="Sign Out"
+              title="Sign out"
+              className="p-2 rounded-lg text-white/30 hover:text-red-400 hover:bg-red-500/[0.07] transition-all duration-150"
             >
-              <LogOut className="w-5 h-5" />
+              <LogOut className="w-4 h-4" />
             </button>
           </div>
         </div>
       </nav>
 
-      {/* Main Content */}
-      <main className="pt-16 min-h-screen">{children}</main>
+      <main className="pt-14 min-h-screen">{children}</main>
     </div>
   );
 }

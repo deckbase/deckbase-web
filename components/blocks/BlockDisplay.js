@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import Image from "next/image";
-import { Eye, EyeOff, ChevronLeft, ChevronRight } from "lucide-react";
+import { Eye, EyeOff, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { BlockTypeNames } from "@/utils/firestore";
 import { getCropAspectFromConfig } from "@/lib/image-block-config";
 
@@ -85,12 +85,13 @@ function BlockDisplayAudio({ value, mediaCache }) {
         return (
           <div key={mediaId} className="flex items-center gap-2">
             {isLoading && (
-              <span className="w-4 h-4 border-2 border-white/50 border-t-transparent rounded-full animate-spin flex-shrink-0" aria-hidden />
+              <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-accent rounded-full animate-spin flex-shrink-0" aria-hidden />
             )}
             <audio
               src={src ?? undefined}
               controls
-              className="flex-1 rounded-lg bg-white/5 h-10 min-w-0"
+              className="flex-1 min-w-0 h-8"
+              style={{ colorScheme: "dark" }}
             />
           </div>
         );
@@ -130,70 +131,66 @@ export default function BlockDisplay({
   const type = blockType(block);
   if (!value && type !== "divider" && type !== "space") return null;
 
-  const commonClass = "mb-4";
   const content = (() => {
     switch (type) {
       case "header1":
         return (
-          <h1 className="text-3xl font-bold text-white">
+          <h1 className="text-[22px] font-bold text-white leading-tight tracking-tight">
             {value?.text}
           </h1>
         );
       case "header2":
         return (
-          <h2 className="text-2xl font-semibold text-white">
+          <h2 className="text-[18px] font-semibold text-white leading-snug">
             {value?.text}
           </h2>
         );
       case "header3":
         return (
-          <h3 className="text-xl font-medium text-white">
+          <h3 className="text-[15px] font-semibold text-white/85 leading-snug">
             {value?.text}
           </h3>
         );
       case "text":
         return (
-          <p className="text-white/80 whitespace-pre-wrap">
+          <p className="text-[14px] text-white/70 whitespace-pre-wrap leading-relaxed">
             {value?.text}
           </p>
         );
       case "example":
         return (
-          <blockquote className="border-l-4 border-accent/50 pl-4 text-white/70 italic">
-            {value?.text}
-          </blockquote>
+          <div className="flex gap-3 px-4 py-3 rounded-xl border border-white/[0.07] bg-white/[0.02]">
+            <div className="w-0.5 rounded-full bg-accent/40 flex-shrink-0 self-stretch" />
+            <p className="text-[14px] text-white/60 italic leading-relaxed">{value?.text}</p>
+          </div>
         );
       case "hiddenText": {
         const isRevealed = revealedBlocks[block.blockId];
         return (
-          <div>
+          <div className="space-y-2">
             {onToggleReveal && (
               <button
                 type="button"
                 onClick={() => onToggleReveal(block.blockId)}
-                className="flex items-center gap-2 text-accent hover:text-accent/80 transition-colors mb-2"
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-[12px] font-medium transition-all ${
+                  isRevealed
+                    ? "border-white/[0.08] bg-white/[0.03] text-white/40 hover:text-white/60"
+                    : "border-accent/30 bg-accent/[0.06] text-accent hover:bg-accent/[0.10]"
+                }`}
               >
                 {isRevealed ? (
-                  <>
-                    <EyeOff className="w-4 h-4" />
-                    <span className="text-sm">Hide</span>
-                  </>
+                  <><EyeOff className="w-3.5 h-3.5" /><span>Hide</span></>
                 ) : (
-                  <>
-                    <Eye className="w-4 h-4" />
-                    <span className="text-sm">Reveal</span>
-                  </>
+                  <><Eye className="w-3.5 h-3.5" /><span>Reveal</span></>
                 )}
               </button>
             )}
             <div
-              className={`transition-all duration-300 ${
-                isRevealed
-                  ? "opacity-100 max-h-[500px]"
-                  : "opacity-0 max-h-0 overflow-hidden"
+              className={`transition-all duration-300 overflow-hidden ${
+                isRevealed ? "opacity-100 max-h-[500px]" : "opacity-0 max-h-0"
               }`}
             >
-              <p className="text-white/80 bg-accent/10 p-3 rounded-lg whitespace-pre-wrap">
+              <p className="text-[14px] text-white/75 bg-white/[0.03] border border-white/[0.07] px-4 py-3 rounded-xl whitespace-pre-wrap leading-relaxed">
                 {value?.text}
               </p>
             </div>
@@ -324,38 +321,49 @@ export default function BlockDisplay({
         );
       }
       case "divider":
-        return <hr className="border-white/20 my-6" />;
+        return (
+          <div className="py-1 flex items-center gap-3">
+            <div className="flex-1 h-px bg-white/[0.08]" />
+            <div className="w-1 h-1 rounded-full bg-white/20" />
+            <div className="flex-1 h-px bg-white/[0.08]" />
+          </div>
+        );
       case "space":
-        return <div style={{ height: 24 }} />;
+        return <div style={{ height: 20 }} />;
       case "quizSingleSelect":
       case "quizMultiSelect":
       case "quizTextAnswer": {
-        const rawConfig = value?.configJson ?? block?.configJson;
-        console.log("[BlockDisplay] quiz block", block.blockId, "type", type, "rawConfig type", typeof rawConfig, "value?.configJson?", !!value?.configJson, "block?.configJson?", !!block?.configJson, "rawConfig preview", typeof rawConfig === "string" ? rawConfig?.slice?.(0, 60) : rawConfig ? JSON.stringify(rawConfig).slice(0, 60) : "(none)");
+        const rawConfig = value?.configJson ?? block?.configJson ?? block?.config_json;
         try {
-          const config = typeof rawConfig === "string"
-            ? JSON.parse(rawConfig || "{}")
-            : rawConfig || {};
+          const config = rawConfig != null && typeof rawConfig === "object"
+            ? rawConfig
+            : (typeof rawConfig === "string" ? JSON.parse(rawConfig || "{}") : {});
           const question = config.question || "";
-          console.log("[BlockDisplay] quiz block", block.blockId, "parsed config keys", Object.keys(config || {}), "question", question?.slice?.(0, 30) || "(empty)", "options length", config?.options?.length);
-          if (!question) {
-            console.warn("[BlockDisplay] quiz block", block.blockId, "RETURN NULL: no question");
-            return null;
-          }
+          const options = Array.isArray(config.options) ? config.options.filter(Boolean) : [];
+          if (!question || (type !== "quizTextAnswer" && !options.length)) return null;
+          const isMulti = type === "quizMultiSelect";
           return (
-            <div className="text-white/80">
-              <p className="font-medium mb-2">{question}</p>
-              {config.options && (
-                <ul className="list-disc list-inside text-white/60 text-sm">
-                  {config.options.filter(Boolean).map((opt, i) => (
-                    <li key={i}>{opt}</li>
+            <div className="space-y-2.5">
+              <p className="text-[14px] font-semibold text-white leading-snug">{question}</p>
+              {options.length > 0 && (
+                <div className="space-y-1.5">
+                  {options.map((opt, i) => (
+                    <div key={i} className="flex items-center gap-2.5 px-3 py-2 rounded-lg border border-white/[0.07] bg-white/[0.02]">
+                      {isMulti ? (
+                        <span className="w-3.5 h-3.5 rounded flex-shrink-0 border border-white/20 flex items-center justify-center">
+                          <Check className="w-2.5 h-2.5 text-white/20" strokeWidth={3} />
+                        </span>
+                      ) : (
+                        <span className="w-3.5 h-3.5 rounded-full flex-shrink-0 border border-white/20" />
+                      )}
+                      <span className="text-[13px] text-white/60">{opt}</span>
+                    </div>
                   ))}
-                </ul>
+                </div>
               )}
             </div>
           );
         } catch (e) {
-          console.warn("[BlockDisplay] quiz block", block.blockId, "RETURN NULL: parse error", e.message);
           return null;
         }
       }
@@ -367,12 +375,5 @@ export default function BlockDisplay({
   })();
 
   if (content === null) return null;
-  if (type === "divider" || type === "space")
-    return <div key={block.blockId}>{content}</div>;
-
-  return (
-    <div key={block.blockId} className={commonClass}>
-      {content}
-    </div>
-  );
+  return <div>{content}</div>;
 }

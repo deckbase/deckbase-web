@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, useRef } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, BookOpen, Check, CheckCircle2, RefreshCcw } from "lucide-react";
+import { ArrowLeft, BookOpen, CheckCircle2, RefreshCcw } from "lucide-react";
+import CardBlockList from "@/components/CardBlockList";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   getDeck,
@@ -14,7 +14,6 @@ import {
   getMedia,
   updateCardReview,
 } from "@/utils/firestore";
-import { getCropAspectFromConfig } from "@/lib/image-block-config";
 
 const MS_MINUTE = 60 * 1000;
 const MS_HOUR = 60 * MS_MINUTE;
@@ -104,15 +103,6 @@ const SRS_STATE_STYLES = {
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
-const safeJsonParse = (value) => {
-  if (!value || typeof value !== "string") return null;
-  try {
-    return JSON.parse(value);
-  } catch (error) {
-    return null;
-  }
-};
-
 const toMillis = (value) => {
   if (!value) return null;
   if (typeof value === "number") return value;
@@ -169,40 +159,6 @@ const formatTimeAgo = (timeMs) => {
   const diffMs = Date.now() - resolvedTime;
   const label = formatInterval(Math.abs(diffMs));
   return `${label} ago`;
-};
-
-const getQuizData = (block, value) => {
-  const config = safeJsonParse(block?.configJson);
-  const rawOptions = Array.isArray(config?.options)
-    ? config.options
-    : Array.isArray(value?.items)
-    ? value.items
-    : [];
-  const options = rawOptions.map((option) => String(option));
-  let correctAnswers = [];
-
-  if (Array.isArray(config?.correctAnswers)) {
-    correctAnswers = config.correctAnswers.map((answer) => String(answer));
-  } else if (Array.isArray(config?.correctAnswerIndices)) {
-    correctAnswers = config.correctAnswerIndices
-      .map((index) => options[index])
-      .filter(Boolean);
-  } else if (typeof config?.correctAnswerIndex === "number") {
-    const answer = options[config.correctAnswerIndex];
-    if (answer) correctAnswers = [answer];
-  } else if (typeof config?.correctAnswer === "string") {
-    correctAnswers = [config.correctAnswer];
-  } else if (Array.isArray(value?.correctAnswers)) {
-    correctAnswers = value.correctAnswers.map((answer) => String(answer));
-  }
-
-  return {
-    question: config?.question || value?.text || block?.label || "Question",
-    hint: config?.hint,
-    options,
-    correctAnswers,
-    caseSensitive: Boolean(config?.caseSensitive),
-  };
 };
 
 const computeSchedule = (card, rating, nowMs, scheduler = DEFAULT_SCHEDULER) => {
@@ -527,67 +483,8 @@ export default function StudySessionPage() {
 
   const handleRate = async (rating) => {
     if (!currentCard || !user || sessionComplete || isSaving) return;
-
-    // Two-sided card: optional front reveal (quiz), then flip; optional back reveal (quiz), then SRS.
-    if (hasFlipBack) {
-      if (!flipRevealed) {
-        if (frontNeedsQuizRatingReveal && !showAnswer) {
-          const multiFront = frontBlocks.filter(
-            (b) => resolveBlockType(b.type) === "quizMultiSelect",
-          );
-          for (const block of multiFront) {
-            const selected = quizState[block.blockId];
-            const count = Array.isArray(selected) ? selected.length : 0;
-            if (count === 0) {
-              setError("Please select at least one option.");
-              return;
-            }
-          }
-          setError("");
-          triggerReveal();
-          return;
-        }
-        setError("");
-        setIsRevealing(true);
-        setFlipRevealed(true);
-        setShowAnswer(false);
-        setTimeout(() => setIsRevealing(false), 650);
-        return;
-      }
-      if (hasRevealableOnBack && !showAnswer) {
-        const multiBack = (currentCard.blocksSnapshot || []).filter(
-          (b) =>
-            effectiveStudySide(b) === "back" &&
-            resolveBlockType(b.type) === "quizMultiSelect",
-        );
-        for (const block of multiBack) {
-          const selected = quizState[block.blockId];
-          const count = Array.isArray(selected) ? selected.length : 0;
-          if (count === 0) {
-            setError("Please select at least one option.");
-            return;
-          }
-        }
-        setError("");
-        triggerReveal();
-        return;
-      }
-    } else if (hasLegacyFlatRevealable && !showAnswer) {
-      const multiSelectBlocks = (currentCard.blocksSnapshot || []).filter(
-        (b) => resolveBlockType(b.type) === "quizMultiSelect",
-      );
-      for (const block of multiSelectBlocks) {
-        const selected = quizState[block.blockId];
-        const count = Array.isArray(selected) ? selected.length : 0;
-        if (count === 0) {
-          setError("Please select at least one option.");
-          return;
-        }
-      }
-      setError("");
-      triggerReveal();
-      return;
-    }
+    // Direct rating mode: one tap rates and advances.
+    setError("");
 
     setIsSaving(true);
     const nowMs = Date.now();
@@ -712,8 +609,26 @@ export default function StudySessionPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-accent"></div>
+      <div className="max-w-2xl mx-auto px-4 py-8 space-y-6 animate-pulse">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-xl bg-white/[0.05]" />
+          <div className="h-3.5 w-32 bg-white/[0.04] rounded" />
+        </div>
+        <div className="h-px bg-white/[0.05] rounded" />
+        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="h-3 w-16 bg-white/[0.06] rounded-full" />
+            <div className="h-3 w-24 bg-white/[0.04] rounded" />
+          </div>
+          <div className="space-y-2.5 pt-2">
+            <div className="h-6 w-3/4 bg-white/[0.06] rounded-lg" />
+            <div className="h-4 w-full bg-white/[0.04] rounded" />
+            <div className="h-4 w-5/6 bg-white/[0.04] rounded" />
+          </div>
+        </div>
+        <div className="grid grid-cols-4 gap-3">
+          {[0,1,2,3].map((i) => <div key={i} className="h-20 rounded-xl bg-white/[0.03] border border-white/[0.06]" />)}
+        </div>
       </div>
     );
   }
@@ -723,122 +638,133 @@ export default function StudySessionPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-6">
-        <div>
+    <div className={
+      sessionCards.length > 0
+        ? "h-[100dvh] flex flex-col overflow-hidden"
+        : "max-w-2xl mx-auto px-4 pt-3 min-h-[100dvh] flex flex-col"
+    }>
+
+      {/* Header — only shown on the empty/no-cards state */}
+      {sessionCards.length === 0 && (
+        <div className="flex items-center gap-2 mb-3">
           <Link
             href={`/dashboard/deck/${deckId}`}
-            className="inline-flex items-center gap-2 text-white/50 hover:text-white mb-3 transition-colors"
+            className="p-2 rounded-xl border border-white/[0.07] bg-white/[0.03] hover:bg-white/[0.07] text-white/40 hover:text-white/80 transition-all flex-shrink-0"
+            aria-label="Back to deck"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to Deck
           </Link>
-          <h1 className="text-3xl font-bold text-white">
-            {deck.title || "Study Session"}
-          </h1>
-          <div className="flex flex-wrap items-center gap-2 text-sm text-white/50 mt-2">
-            <span className="px-2 py-1 rounded-full bg-white/5 border border-white/10">
-              {mode === "due" ? "Due cards" : "All cards"}
-            </span>
-            <span>{progressText}</span>
-            {cardShownAt && (
-              <span>
-                • Started {formatTimeAgo(cardShownAt).replace(" ago", "")} ago
-              </span>
-            )}
-          </div>
-          {mode === "all" && dueCards.length > 0 && (
-            <button
-              onClick={handleStudyDue}
-              className="mt-2 text-xs text-accent hover:underline"
-            >
-              Switch back to due cards
-            </button>
-          )}
+          <span className="text-[13px] text-white/35 truncate flex-1 min-w-0">{deck.title}</span>
         </div>
-
-        <div className="flex items-center gap-2">
-          {dueCards.length === 0 && allCards.length > 0 && mode === "due" && (
-            <button
-              onClick={handleStudyAll}
-              disabled={isSwitchingMode}
-              className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm transition-colors disabled:opacity-50"
-            >
-              {isSwitchingMode ? "Loading..." : "Study all cards"}
-            </button>
-          )}
-        </div>
-      </div>
+      )}
 
       {error && (
-        <div className="mb-6 rounded-lg border border-red-500/40 bg-red-500/10 text-red-200 text-sm px-4 py-3">
+        <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/[0.07] text-red-300 text-[13px] px-4 py-3">
           {error}
         </div>
       )}
 
       {sessionCards.length === 0 ? (
-        <div className="text-center py-20">
-          <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-white/5 flex items-center justify-center">
-            <BookOpen className="w-8 h-8 text-white/30" />
+        <div className="text-center py-16">
+          <div className="mx-auto mb-5 w-14 h-14 rounded-2xl border border-white/[0.07] bg-white/[0.03] flex items-center justify-center">
+            <BookOpen className="w-6 h-6 text-white/30" />
           </div>
-          <h2 className="text-xl text-white/70 mb-2">
-            {allCards.length === 0
-              ? "No cards to study"
-              : "No cards due right now"}
+          <h2 className="text-[16px] font-semibold text-white/60 mb-2">
+            {allCards.length === 0 ? "No cards to study" : "All caught up"}
           </h2>
-          <p className="text-white/40 mb-6">
+          <p className="text-[13px] text-white/35 mb-7 max-w-xs mx-auto">
             {allCards.length === 0
               ? "Add some cards to start a study session."
-              : "You are all caught up. Study all cards if you want extra practice."}
+              : "No cards are due right now. Study all cards for extra practice."}
           </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5">
             {allCards.length > 0 && (
               <button
                 onClick={handleStudyAll}
                 disabled={isSwitchingMode}
-                className="px-5 py-2 rounded-lg bg-accent hover:bg-accent/90 text-white transition-colors disabled:opacity-50"
+                className="px-5 py-2.5 rounded-xl bg-accent hover:bg-accent/90 text-white text-[13px] font-semibold transition-colors disabled:opacity-50 shadow-[0_0_20px_rgba(35,131,226,0.2)]"
               >
-                {isSwitchingMode ? "Loading..." : "Study all cards"}
+                {isSwitchingMode ? "Loading…" : "Study all cards"}
               </button>
             )}
             <Link
               href={`/dashboard/deck/${deckId}`}
-              className="px-5 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white transition-colors"
+              className="px-5 py-2.5 rounded-xl border border-white/[0.07] bg-white/[0.025] hover:bg-white/[0.05] text-white/60 hover:text-white/90 text-[13px] font-medium transition-all"
             >
               Back to deck
             </Link>
           </div>
         </div>
       ) : (
-        <>
-          {/* Progress Bar */}
-          <div className="mb-6">
-            <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-accent transition-all"
-                style={{ width: `${Math.round(progress * 100)}%` }}
-              />
-            </div>
-          </div>
-
-          {/* Card */}
+        <div className="flex-1 min-h-0 flex items-start justify-center px-3 pt-1 pb-[max(env(safe-area-inset-bottom),0.5rem)]">
+          <div className="w-auto flex items-start justify-center gap-3">
+          <div className="flex-shrink-0">
+          {/* Strict 9:16 portrait frame for study card */}
           <motion.div
-            key={currentCard?.cardId}
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.2 }}
-            className="bg-white/5 border border-white/10 rounded-2xl p-6 sm:p-8"
-          >
-            <SrsInfoBar card={currentCard} />
-            <div className="mt-6">
-              {hasFlipBack ? (
-                <div
-                  className="relative mx-auto max-w-2xl"
-                  style={{ perspective: "1200px" }}
+              key={currentCard?.cardId}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.25 }}
+              style={{
+                aspectRatio: "9 / 16",
+                width: "min(96vw, calc((100dvh - 5.5rem) * 9 / 16))",
+                maxWidth: "32rem",
+              }}
+              className="rounded-2xl border border-white/[0.08] bg-white/[0.025] overflow-hidden shadow-xl shadow-black/20 flex flex-col"
+            >
+            {/* ── Integrated card header ── */}
+            <div className="px-4 pt-3 pb-2.5 flex-shrink-0 border-b border-white/[0.05]">
+              <div className="flex items-center gap-2 mb-2">
+                <Link
+                  href={`/dashboard/deck/${deckId}`}
+                  className="p-1 rounded-lg border border-white/[0.07] bg-white/[0.03] hover:bg-white/[0.07] text-white/40 hover:text-white/80 transition-all flex-shrink-0"
+                  aria-label="Back to deck"
                 >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                </Link>
+                <span className="text-[12px] text-white/35 truncate flex-1 min-w-0">{deck.title}</span>
+                <span className="text-[11px] text-white/30 tabular-nums flex-shrink-0">{progressText}</span>
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-white/[0.05] border border-white/[0.07] text-white/40 flex-shrink-0">
+                  {mode === "due" ? "Due" : "All"}
+                </span>
+                {dueCards.length === 0 && allCards.length > 0 && mode === "due" && (
+                  <button
+                    onClick={handleStudyAll}
+                    disabled={isSwitchingMode}
+                    className="px-2 py-0.5 rounded-lg text-[11px] font-medium border border-white/[0.07] bg-white/[0.03] hover:bg-white/[0.06] text-white/50 hover:text-white/80 transition-all disabled:opacity-50 flex-shrink-0"
+                  >
+                    {isSwitchingMode ? "…" : "All"}
+                  </button>
+                )}
+                {mode === "all" && dueCards.length > 0 && (
+                  <button
+                    onClick={handleStudyDue}
+                    className="px-2 py-0.5 rounded-lg text-[11px] font-medium border border-white/[0.07] bg-white/[0.03] hover:bg-white/[0.06] text-white/50 hover:text-white/80 transition-all flex-shrink-0"
+                  >
+                    Due
+                  </button>
+                )}
+              </div>
+              {/* Progress bar */}
+              <div className="h-0.5 bg-white/[0.07] rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-accent transition-all duration-300 rounded-full"
+                  style={{ width: `${Math.round(progress * 100)}%` }}
+                />
+              </div>
+            </div>
+
+            {/* ── SRS info ── */}
+            <div className="px-4 pt-3 pb-0 flex-shrink-0">
+              <SrsInfoBar card={currentCard} />
+            </div>
+
+            {/* ── Scrollable content ── */}
+            <div className="flex-1 overflow-y-auto p-4 pt-3">
+              {hasFlipBack ? (
+                <div className="relative w-full" style={{ perspective: "1200px" }}>
                   <motion.div
-                    className="relative w-full min-h-[8rem]"
+                    className="relative w-full"
                     style={{ transformStyle: "preserve-3d" }}
                     animate={{ rotateY: flipRevealed ? 180 : 0 }}
                     transition={{ duration: 0.55, ease: [0.4, 0, 0.2, 1] }}
@@ -851,9 +777,9 @@ export default function StudySessionPage() {
                         transform: "rotateY(0deg) translateZ(1px)",
                       }}
                     >
-                      <FlashcardContent
-                        card={currentCard}
+                      <CardBlockList
                         blocks={frontBlocks}
+                        getValue={(blockId) => currentCard?.values?.find((v) => v.blockId === blockId)}
                         showAnswer={showAnswer}
                         revealedBlocks={revealedBlocks}
                         onToggleReveal={handleToggleReveal}
@@ -870,9 +796,9 @@ export default function StudySessionPage() {
                         transform: "rotateY(180deg) translateZ(1px)",
                       }}
                     >
-                      <FlashcardContent
-                        card={currentCard}
+                      <CardBlockList
                         blocks={backBlocks}
+                        getValue={(blockId) => currentCard?.values?.find((v) => v.blockId === blockId)}
                         showAnswer={showAnswer}
                         revealedBlocks={revealedBlocks}
                         onToggleReveal={handleToggleReveal}
@@ -884,8 +810,9 @@ export default function StudySessionPage() {
                   </motion.div>
                 </div>
               ) : (
-                <FlashcardContent
-                  card={currentCard}
+                <CardBlockList
+                  blocks={currentCard?.blocksSnapshot ?? []}
+                  getValue={(blockId) => currentCard?.values?.find((v) => v.blockId === blockId)}
                   showAnswer={showAnswer}
                   revealedBlocks={revealedBlocks}
                   onToggleReveal={handleToggleReveal}
@@ -896,39 +823,47 @@ export default function StudySessionPage() {
               )}
             </div>
           </motion.div>
+          </div>
+          <div className="hidden md:flex w-24 ml-0 flex-col justify-center gap-2 flex-shrink-0">
+            <p className="text-center text-[11px] text-white/30 mb-1">{ratingHint}</p>
+            {RATINGS.map((rating) => (
+              <button
+                key={rating.value}
+                onClick={() => handleRate(rating.value)}
+                disabled={isSaving || isRevealing}
+                className={`flex flex-col items-center gap-0.5 px-2 py-2.5 rounded-xl border transition-all ${rating.bg} ${rating.border} ${rating.hover} ${
+                  isSaving || isRevealing ? "opacity-50 cursor-not-allowed" : "cursor-pointer active:scale-95"
+                }`}
+              >
+                <span className="text-lg leading-none">{rating.emoji}</span>
+                <span className={`text-[11px] font-semibold ${rating.text}`}>{rating.label}</span>
+                <span className="text-[10px] text-white/30 tabular-nums">{ratingPreviews[rating.value] || "--"}</span>
+              </button>
+            ))}
+          </div>
 
-          {/* Rating Buttons */}
-          <div className="mt-6">
-            {error === "Please select at least one option." && (
-              <div className="mb-4 rounded-lg border border-red-500/50 bg-red-500/15 text-red-200 text-sm px-4 py-3 text-center">
-                Please select at least one option before revealing.
-              </div>
-            )}
-            <p className="text-center text-white/40 text-xs mb-3">{ratingHint}</p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {/* Mobile fallback: keep ratings at bottom */}
+          <div className="md:hidden w-full max-w-[32rem] flex-shrink-0">
+            <p className="text-center text-[11px] text-white/30 mb-2">{ratingHint}</p>
+            <div className="grid grid-cols-4 gap-2">
               {RATINGS.map((rating) => (
                 <button
                   key={rating.value}
                   onClick={() => handleRate(rating.value)}
                   disabled={isSaving || isRevealing}
-                  className={`flex flex-col items-center gap-1.5 px-3 py-3 rounded-xl border text-sm transition-colors ${rating.bg} ${rating.border} ${rating.hover} ${
-                    isSaving || isRevealing
-                      ? "opacity-60 cursor-not-allowed"
-                      : "cursor-pointer"
+                  className={`flex flex-col items-center gap-0.5 px-2 py-2.5 rounded-xl border transition-all ${rating.bg} ${rating.border} ${rating.hover} ${
+                    isSaving || isRevealing ? "opacity-50 cursor-not-allowed" : "cursor-pointer active:scale-95"
                   }`}
                 >
-                  <span className="text-2xl">{rating.emoji}</span>
-                  <span className={`font-semibold ${rating.text}`}>
-                    {rating.label}
-                  </span>
-                  <span className="text-[11px] text-white/40">
-                    {ratingPreviews[rating.value] || "--"}
-                  </span>
+                  <span className="text-xl leading-none">{rating.emoji}</span>
+                  <span className={`text-[12px] font-semibold ${rating.text}`}>{rating.label}</span>
+                  <span className="text-[10px] text-white/30 tabular-nums">{ratingPreviews[rating.value] || "--"}</span>
                 </button>
               ))}
             </div>
           </div>
-        </>
+          </div>
+        </div>
       )}
 
       {/* Completion Modal */}
@@ -938,40 +873,40 @@ export default function StudySessionPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center z-50 p-4"
             onClick={() => setSessionComplete(false)}
           >
             <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 12 }}
+              transition={{ type: "spring", bounce: 0.15, duration: 0.4 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-zinc-900 border border-white/10 rounded-2xl p-6 w-full max-w-md text-center"
+              className="bg-[#0e0e0e] border border-white/[0.08] rounded-2xl w-full max-w-md shadow-2xl overflow-hidden"
             >
-              <div className="mx-auto mb-4 w-14 h-14 rounded-full bg-accent/20 flex items-center justify-center">
-                <CheckCircle2 className="w-7 h-7 text-accent" />
-              </div>
-              <h2 className="text-xl font-bold text-white mb-2">
-                Session complete!
-              </h2>
-              <p className="text-white/60 mb-6">
-                You reviewed {reviewedCount} card
-                {reviewedCount === 1 ? "" : "s"}.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <button
-                  onClick={handleStudyAgain}
-                  className="flex-1 px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg transition-colors flex items-center justify-center gap-2"
-                >
-                  <RefreshCcw className="w-4 h-4" />
-                  Study again
-                </button>
-                <Link
-                  href={`/dashboard/deck/${deckId}`}
-                  className="flex-1 px-4 py-2 bg-accent hover:bg-accent/90 text-white rounded-lg transition-colors"
-                >
-                  Done
-                </Link>
+              <div className="px-6 pt-8 pb-6 text-center">
+                <div className="mx-auto mb-4 w-12 h-12 rounded-2xl bg-accent/[0.12] border border-accent/20 flex items-center justify-center">
+                  <CheckCircle2 className="w-6 h-6 text-accent" />
+                </div>
+                <h2 className="text-[17px] font-bold text-white mb-1.5">Session complete!</h2>
+                <p className="text-[13px] text-white/45 mb-7">
+                  You reviewed {reviewedCount} card{reviewedCount === 1 ? "" : "s"}.
+                </p>
+                <div className="flex gap-2.5">
+                  <button
+                    onClick={handleStudyAgain}
+                    className="flex-1 px-4 py-2.5 bg-white/[0.04] hover:bg-white/[0.08] text-white/60 hover:text-white text-[13px] font-medium rounded-xl border border-white/[0.07] transition-colors flex items-center justify-center gap-2"
+                  >
+                    <RefreshCcw className="w-3.5 h-3.5" />
+                    Study again
+                  </button>
+                  <Link
+                    href={`/dashboard/deck/${deckId}`}
+                    className="flex-1 px-4 py-2.5 bg-accent hover:bg-accent/90 text-white text-[13px] font-semibold rounded-xl transition-colors shadow-[0_0_20px_rgba(35,131,226,0.2)]"
+                  >
+                    Done
+                  </Link>
+                </div>
               </div>
             </motion.div>
           </motion.div>
@@ -994,16 +929,14 @@ function SrsInfoBar({ card }) {
   const stateClass = SRS_STATE_STYLES[stateLabel] || SRS_STATE_STYLES.New;
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-white/5 border border-white/10">
+    <div className="flex flex-wrap items-center justify-between gap-2">
       <div className="flex items-center gap-2">
-        <span
-          className={`px-2.5 py-1 text-xs font-semibold rounded-full border ${stateClass}`}
-        >
+        <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full border ${stateClass}`}>
           {stateLabel}
         </span>
-        <span className="text-xs text-white/60">{formatDueTime(card.srsDue)}</span>
+        <span className="text-[11px] text-white/40">{formatDueTime(card.srsDue)}</span>
       </div>
-      <div className="flex items-center gap-4 text-xs text-white/40">
+      <div className="flex items-center gap-3 text-[11px] text-white/25">
         <span>{card.reviewCount || 0} reviews</span>
         <span>{formatTimeAgo(card.srsLastReview)}</span>
       </div>
@@ -1011,393 +944,3 @@ function SrsInfoBar({ card }) {
   );
 }
 
-function StudyAudioBlock({ value, mediaCache }) {
-  const [audioSrcByMediaId, setAudioSrcByMediaId] = useState({});
-  const [loadingMediaIds, setLoadingMediaIds] = useState(() => new Set());
-  const objectUrlsRef = useRef({});
-
-  useEffect(() => {
-    const mediaIds = value?.mediaIds ?? [];
-    const hasAllMedia = mediaIds.length > 0 && mediaIds.every((id) => mediaCache[id]?.downloadUrl);
-    if (!hasAllMedia) return;
-
-    let cancelled = false;
-    const prev = objectUrlsRef.current;
-    objectUrlsRef.current = {};
-    Object.values(prev).forEach((u) => URL.revokeObjectURL(u));
-
-    const load = async () => {
-      for (const mediaId of mediaIds) {
-        const media = mediaCache[mediaId];
-        if (!media?.downloadUrl || cancelled) continue;
-        setLoadingMediaIds((prev) => new Set(prev).add(mediaId));
-        try {
-          const res = await fetch("/api/proxy-media", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ url: media.downloadUrl }),
-          });
-          if (!res.ok || cancelled) return;
-          const blob = await res.blob();
-          if (cancelled) return;
-          const objectUrl = URL.createObjectURL(blob);
-          objectUrlsRef.current[mediaId] = objectUrl;
-          setAudioSrcByMediaId((prev) => ({ ...prev, [mediaId]: objectUrl }));
-        } catch (err) {
-          console.warn("[StudyAudioBlock] preload failed", mediaId, err);
-        } finally {
-          if (!cancelled) {
-            setLoadingMediaIds((prev) => {
-              const next = new Set(prev);
-              next.delete(mediaId);
-              return next;
-            });
-          }
-        }
-      }
-    };
-    load();
-
-    return () => {
-      cancelled = true;
-      Object.values(objectUrlsRef.current).forEach((u) => URL.revokeObjectURL(u));
-      objectUrlsRef.current = {};
-    };
-  }, [
-    value?.mediaIds?.join(","),
-    (value?.mediaIds ?? []).map((id) => (mediaCache[id]?.downloadUrl ? "1" : "0")).join(","),
-  ]);
-
-  if (!value?.mediaIds?.length) return null;
-  return (
-    <div className="space-y-3">
-      {value.mediaIds.map((mediaId) => {
-        const media = mediaCache[mediaId];
-        if (!media?.downloadUrl) return null;
-        const src = audioSrcByMediaId[mediaId];
-        const isLoading = loadingMediaIds.has(mediaId);
-        return (
-          <div key={mediaId} className="flex items-center gap-2">
-            {isLoading && (
-              <span className="w-4 h-4 border-2 border-white/50 border-t-transparent rounded-full animate-spin flex-shrink-0" aria-hidden />
-            )}
-            <audio
-              src={src ?? undefined}
-              controls
-              className="flex-1 rounded-lg bg-white/5 h-10 min-w-0"
-            />
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function FlashcardContent({
-  card,
-  blocks: blocksProp,
-  showAnswer,
-  revealedBlocks,
-  onToggleReveal,
-  mediaCache,
-  quizState,
-  onQuizChange,
-}) {
-  const blocksToRender = blocksProp ?? card?.blocksSnapshot ?? [];
-
-  if (!blocksToRender.length) {
-    return (
-      <p className="text-white/50 text-sm">This card does not have content.</p>
-    );
-  }
-
-  const getValueForBlock = (blockId) =>
-    card?.values?.find((value) => value.blockId === blockId);
-
-  return (
-    <div className="space-y-4">
-      {blocksToRender.map((block) => {
-        const type = resolveBlockType(block.type);
-        const value = getValueForBlock(block.blockId);
-
-        switch (type) {
-          case "header1":
-            return value?.text ? (
-              <h1
-                key={block.blockId}
-                className="text-3xl font-bold text-white"
-              >
-                {value.text}
-              </h1>
-            ) : null;
-          case "header2":
-            return value?.text ? (
-              <h2
-                key={block.blockId}
-                className="text-2xl font-semibold text-white"
-              >
-                {value.text}
-              </h2>
-            ) : null;
-          case "header3":
-            return value?.text ? (
-              <h3
-                key={block.blockId}
-                className="text-xl font-medium text-white"
-              >
-                {value.text}
-              </h3>
-            ) : null;
-          case "text":
-            return value?.text ? (
-              <p key={block.blockId} className="text-white/80 whitespace-pre-wrap">
-                {value.text}
-              </p>
-            ) : null;
-          case "quote":
-          case "example":
-            return value?.text ? (
-              <blockquote
-                key={block.blockId}
-                className="border-l-4 border-accent/50 pl-4 text-white/70 italic whitespace-pre-wrap"
-              >
-                {value.text}
-              </blockquote>
-            ) : null;
-          case "hiddenText": {
-            const isRevealed = showAnswer || revealedBlocks[block.blockId];
-            return (
-              <div key={block.blockId} className="rounded-xl border border-white/10 p-4">
-                <button
-                  onClick={() => onToggleReveal(block.blockId)}
-                  disabled={showAnswer}
-                  className="text-sm text-accent hover:text-accent/80 transition-colors mb-2 disabled:cursor-default"
-                >
-                  {isRevealed ? "Hide answer" : "Tap to reveal"}
-                </button>
-                {isRevealed && (
-                  <p className="text-white/80 whitespace-pre-wrap">
-                    {value?.text || "No answer provided."}
-                  </p>
-                )}
-              </div>
-            );
-          }
-          case "image": {
-            if (!value?.mediaIds?.length) return null;
-            const config = safeJsonParse(block.configJson);
-            const layout = config?.imageLayout || "horizontal";
-            const containerClass =
-              layout === "vertical"
-                ? "flex flex-col gap-3"
-                : "flex gap-3 overflow-x-auto";
-            const imageNodes = value.mediaIds.map((mediaId) => {
-              const media = mediaCache[mediaId];
-              if (!media?.downloadUrl) return null;
-              return (
-                <div
-                  key={mediaId}
-                  className="relative w-full sm:w-72 flex-shrink-0 overflow-hidden rounded-xl"
-                  style={{ aspectRatio: getCropAspectFromConfig(config) }}
-                >
-                  <Image
-                    src={media.downloadUrl}
-                    alt=""
-                    fill
-                    className="object-cover rounded-xl"
-                  />
-                </div>
-              );
-            }).filter(Boolean);
-            return (
-              <div key={block.blockId} className="flex justify-center">
-                <div className={containerClass}>
-                  {imageNodes}
-                </div>
-              </div>
-            );
-          }
-          case "audio": {
-            return (
-              <div key={block.blockId}>
-                <StudyAudioBlock value={value} mediaCache={mediaCache} />
-              </div>
-            );
-          }
-          case "quizSingleSelect": {
-            const quiz = getQuizData(block, value);
-            const selected = quizState[block.blockId] || "";
-            const correctSet = new Set(quiz.correctAnswers);
-            return (
-              <div key={block.blockId} className="space-y-3">
-                <p className="text-white font-semibold">{quiz.question}</p>
-                <div className="space-y-2">
-                  {quiz.options.map((option) => {
-                    const isSelected = selected === option;
-                    const isCorrect = showAnswer && correctSet.has(option);
-                    const isWrong = showAnswer && isSelected && !isCorrect;
-                    return (
-                      <button
-                        key={option}
-                        onClick={() => onQuizChange(block.blockId, option)}
-                        disabled={showAnswer}
-                        className={`w-full text-left px-3 py-2 rounded-lg border transition-colors ${
-                          isCorrect
-                            ? "border-green-400 bg-green-500/10 text-green-100"
-                            : isWrong
-                            ? "border-red-400 bg-red-500/10 text-red-100"
-                            : isSelected
-                            ? "border-accent/60 bg-accent/10 text-white"
-                            : "border-white/10 text-white/70 hover:border-white/30"
-                        }`}
-                      >
-                        {option}
-                      </button>
-                    );
-                  })}
-                </div>
-                {quiz.hint && (
-                  <details className="text-sm text-white/50">
-                    <summary className="cursor-pointer hover:text-white">
-                      Hint
-                    </summary>
-                    <p className="mt-2 text-white/70">{quiz.hint}</p>
-                  </details>
-                )}
-              </div>
-            );
-          }
-          case "quizMultiSelect": {
-            const quiz = getQuizData(block, value);
-            const selected = new Set(quizState[block.blockId] || []);
-            const correctSet = new Set(quiz.correctAnswers);
-
-            const toggleOption = (option) => {
-              if (showAnswer) return;
-              const next = new Set(selected);
-              if (next.has(option)) {
-                next.delete(option);
-              } else {
-                next.add(option);
-              }
-              onQuizChange(block.blockId, Array.from(next));
-            };
-
-            return (
-              <div key={block.blockId} className="space-y-3">
-                <p className="text-white font-semibold">{quiz.question}</p>
-                <div className="space-y-2">
-                  {quiz.options.map((option) => {
-                    const isSelected = selected.has(option);
-                    const isCorrect = showAnswer && correctSet.has(option);
-                    const isWrong = showAnswer && isSelected && !isCorrect;
-                    const showCheck = isSelected || isCorrect;
-                    return (
-                      <button
-                        key={option}
-                        onClick={() => toggleOption(option)}
-                        disabled={showAnswer}
-                        className={`w-full text-left px-3 py-2 rounded-lg border transition-colors flex items-center gap-2 ${
-                          isCorrect
-                            ? "border-green-400 bg-green-500/10 text-green-100"
-                            : isWrong
-                            ? "border-red-400 bg-red-500/10 text-red-100"
-                            : isSelected
-                            ? "border-accent/60 bg-accent/10 text-white"
-                            : "border-white/10 text-white/70 hover:border-white/30"
-                        }`}
-                      >
-                        {showCheck && (
-                          <Check className="w-4 h-4 shrink-0" strokeWidth={2.5} />
-                        )}
-                        <span>{option}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-                {quiz.hint && (
-                  <details className="text-sm text-white/50">
-                    <summary className="cursor-pointer hover:text-white">
-                      Hint
-                    </summary>
-                    <p className="mt-2 text-white/70">{quiz.hint}</p>
-                  </details>
-                )}
-              </div>
-            );
-          }
-          case "quizTextAnswer": {
-            const quiz = getQuizData(block, value);
-            const answer = quizState[block.blockId] || "";
-            const correctAnswer = quiz.correctAnswers[0] || "";
-            const isCorrect = showAnswer
-              ? quiz.caseSensitive
-                ? answer === correctAnswer
-                : answer.toLowerCase() === correctAnswer.toLowerCase()
-              : false;
-
-            return (
-              <div key={block.blockId} className="space-y-3">
-                <p className="text-white font-semibold">{quiz.question}</p>
-                <input
-                  type="text"
-                  value={answer}
-                  onChange={(event) =>
-                    onQuizChange(block.blockId, event.target.value)
-                  }
-                  disabled={showAnswer}
-                  placeholder="Type your answer..."
-                  className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white placeholder-white/30 focus:outline-none focus:border-accent/50"
-                />
-                {showAnswer && correctAnswer && (
-                  <div className="text-sm">
-                    <p
-                      className={
-                        isCorrect ? "text-green-300" : "text-red-300"
-                      }
-                    >
-                      {isCorrect ? "Correct!" : "Correct answer:"}{" "}
-                      <span className="text-white">{correctAnswer}</span>
-                    </p>
-                  </div>
-                )}
-                {quiz.hint && (
-                  <details className="text-sm text-white/50">
-                    <summary className="cursor-pointer hover:text-white">
-                      Hint
-                    </summary>
-                    <p className="mt-2 text-white/70">{quiz.hint}</p>
-                  </details>
-                )}
-              </div>
-            );
-          }
-          case "divider":
-            return (
-              <hr
-                key={block.blockId}
-                className="border-white/20 my-4"
-              />
-            );
-          case "space": {
-            const config = safeJsonParse(block.configJson);
-            const height = Number(config?.height) || 16;
-            return (
-              <div
-                key={block.blockId}
-                style={{ height }}
-                aria-hidden="true"
-              />
-            );
-          }
-          default:
-            return value?.text ? (
-              <p key={block.blockId} className="text-white/80">
-                {value.text}
-              </p>
-            ) : null;
-        }
-      })}
-    </div>
-  );
-}

@@ -49,14 +49,17 @@ export async function GET() {
 
 export async function POST(request) {
   const authHeader = request.headers.get("authorization") || "";
-  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+  const token = authHeader.startsWith("Bearer ")
+    ? authHeader.slice(7).trim()
+    : "";
   if (!token) {
     return mcpUnauthorizedJson({
       jsonrpc: "2.0",
       id: null,
       error: {
         code: -32001,
-        message: "Missing Authorization: Bearer <API key or OAuth access token>",
+        message:
+          "Missing Authorization: Bearer <API key or OAuth access token>",
       },
     });
   }
@@ -79,8 +82,12 @@ export async function POST(request) {
     body = await request.json();
   } catch {
     return NextResponse.json(
-      { jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error" } },
-      { status: 400, headers: mcpJsonHeaders() }
+      {
+        jsonrpc: "2.0",
+        id: null,
+        error: { code: -32700, message: "Parse error" },
+      },
+      { status: 400, headers: mcpJsonHeaders() },
     );
   }
 
@@ -93,8 +100,15 @@ export async function POST(request) {
     const entitled = await isBasicOrProOrVip(uid);
     if (!entitled) {
       return NextResponse.json(
-        { jsonrpc: "2.0", id: null, error: { code: -32002, message: "MCP is available for Pro and VIP subscribers only" } },
-        { status: 403, headers: mcpJsonHeaders() }
+        {
+          jsonrpc: "2.0",
+          id: null,
+          error: {
+            code: -32002,
+            message: "MCP is available for Pro and VIP subscribers only",
+          },
+        },
+        { status: 403, headers: mcpJsonHeaders() },
       );
     }
   }
@@ -104,13 +118,16 @@ export async function POST(request) {
   const { result, error } = await handleMcpRequest(rootPath, body, context);
 
   incrementMcpRequests(uid, 1).catch((err) =>
-    console.warn("[api/mcp] mcp usage increment failed", err?.message)
+    console.warn("[api/mcp] mcp usage increment failed", err?.message),
   );
 
   const response = { jsonrpc: "2.0", id };
   if (error) {
     response.error = error;
-    return NextResponse.json(response, { status: 200, headers: mcpJsonHeaders() });
+    return NextResponse.json(response, {
+      status: 200,
+      headers: mcpJsonHeaders(),
+    });
   }
   response.result = result ?? {};
   return NextResponse.json(response, { headers: mcpJsonHeaders() });

@@ -1,164 +1,160 @@
 "use client";
-import { useState, Fragment } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { Check, Minus, Zap } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 const MONTHLY = "monthly";
 const YEARLY = "yearly";
 
-const plans = [
-  {
-    id: "01",
-    title: "Free",
-    price: "$0",
-    priceYearly: null,
-    billing: "Free forever",
-    billingYearly: null,
-    benefits: [
-      "No AI card generation",
-      "Unlimited OCR",
-      "Unlimited decks",
-      "Unlimited cards",
-      "Unlimited spaced repetition",
-      "Unlimited quizzes",
-      "Supported media: Image, Audio",
-      "No text-to-speech",
-      "No MCP",
-      "Import: CSV only",
-      "Export: CSV only",
-      "Import from file: —",
-      "No cloud backup",
-    ],
-    bestFor: "Manual card testing",
-  },
-  {
-    id: "02",
-    title: "Basic",
-    popular: true,
-    price: "$5.99",
-    priceYearly: "$59",
-    billing: "Per month",
-    billingYearly: "Save 18%",
-    benefits: [
-      "250 AI card generations/month",
-      "Unlimited OCR",
-      "Unlimited decks",
-      "Unlimited cards",
-      "Unlimited spaced repetition",
-      "Unlimited quizzes",
-      "Supported media: Image, Audio",
-      "Premium voices + speed (up to 30K chars/mo)",
-      "MCP",
-      "Import: CSV, Excel, Anki",
-      "Export: CSV, Excel, Anki",
-      "Import from file: PDF, DOCX, PNG, JPEG",
-      "2GB cloud backup",
-    ],
-    bestFor: "Regular students",
-  },
-  {
-    id: "03",
-    title: "Pro",
-    price: "$11.99",
-    priceYearly: "$119",
-    billing: "Per month",
-    billingYearly: "Save 17%",
-    benefits: [
-      "600 AI card generations/month",
-      "Unlimited OCR",
-      "Unlimited decks",
-      "Unlimited cards",
-      "Unlimited spaced repetition",
-      "Unlimited quizzes",
-      "Supported media: Image, Audio",
-      "Premium voices (up to 50K chars/mo)",
-      "MCP",
-      "Import: CSV, Excel, Anki",
-      "Export: CSV, Excel, Anki",
-      "Import from file: PDF, DOCX, PNG, JPEG",
-      "20GB cloud backup",
-    ],
-    bestFor: "Exam prep, heavy users",
-  },
-];
-
 const SUBSCRIPTION_REDIRECT = "/dashboard/subscription";
 const LOGIN_REDIRECT = `/login?redirect=${encodeURIComponent(SUBSCRIPTION_REDIRECT)}`;
 
-const FREE_CHECKMARKS = [
-  "Unlimited OCR",
-  "Unlimited decks",
-  "Unlimited cards",
-  "Unlimited spaced repetition",
-  "Unlimited quizzes",
-  "Supported media: Image, Audio",
-  "Import: CSV only",
-  "Export: CSV only",
-  "Import from file: —",
+const plans = [
+  {
+    id: "free",
+    title: "Free",
+    price: { monthly: 0, yearly: 0 },
+    billing: { monthly: "Free forever", yearly: "Free forever" },
+    saveLabel: null,
+    bestFor: "Manual card testing",
+    popular: false,
+    cta: "Get started",
+    features: [
+      { label: "AI card generation", included: false },
+      { label: "Unlimited OCR", included: true },
+      { label: "Unlimited decks & cards", included: true },
+      { label: "Spaced repetition", included: true },
+      { label: "Unlimited quizzes", included: true },
+      { label: "Image & Audio media", included: true },
+      { label: "Text-to-speech", included: false },
+      { label: "MCP integration", included: false },
+      { label: "CSV import & export", included: true },
+      { label: "PDF, DOCX, PNG import", included: false },
+      { label: "Cloud backup", included: false },
+    ],
+  },
+  {
+    id: "basic",
+    title: "Basic",
+    price: { monthly: 5.99, yearly: 59 },
+    billing: {
+      monthly: "per month",
+      yearly: "per year",
+    },
+    saveLabel: "Save 18%",
+    yearlyMonthly: (59 / 12).toFixed(2),
+    bestFor: "Regular students",
+    popular: true,
+    cta: "Get Basic",
+    features: [
+      { label: "250 AI generations / month", included: true },
+      { label: "Unlimited OCR", included: true },
+      { label: "Unlimited decks & cards", included: true },
+      { label: "Spaced repetition", included: true },
+      { label: "Unlimited quizzes", included: true },
+      { label: "Image & Audio media", included: true },
+      { label: "Premium voices · 30K chars/mo", included: true },
+      { label: "MCP integration", included: true },
+      { label: "CSV, Excel, Anki import & export", included: true },
+      { label: "PDF, DOCX, PNG, JPEG import", included: true },
+      { label: "2 GB cloud backup", included: true },
+    ],
+  },
+  {
+    id: "pro",
+    title: "Pro",
+    price: { monthly: 11.99, yearly: 119 },
+    billing: {
+      monthly: "per month",
+      yearly: "per year",
+    },
+    saveLabel: "Save 17%",
+    yearlyMonthly: (119 / 12).toFixed(2),
+    bestFor: "Exam prep & heavy users",
+    popular: false,
+    cta: "Get Pro",
+    features: [
+      { label: "600 AI generations / month", included: true },
+      { label: "Unlimited OCR", included: true },
+      { label: "Unlimited decks & cards", included: true },
+      { label: "Spaced repetition", included: true },
+      { label: "Unlimited quizzes", included: true },
+      { label: "Image & Audio media", included: true },
+      { label: "Premium voices · 50K chars/mo", included: true },
+      { label: "MCP integration", included: true },
+      { label: "CSV, Excel, Anki import & export", included: true },
+      { label: "PDF, DOCX, PNG, JPEG import", included: true },
+      { label: "20 GB cloud backup", included: true },
+    ],
+  },
 ];
 
-function BenefitCell({ benefit, isFree, planTitle }) {
-  const showCheck = !isFree || FREE_CHECKMARKS.includes(benefit);
-  return (
-    <div className="flex items-start gap-3 py-3 px-4 md:px-6 min-h-[3rem]">
-      <span className="w-5 h-5 mt-0.5 flex-shrink-0 flex items-center justify-center rounded-full bg-slate-100">
-        {showCheck ? (
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="w-3.5 h-3.5 text-violet-600"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2.5}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-          </svg>
-        ) : (
-          <span className="w-1.5 h-1.5 rounded-full bg-slate-300" aria-hidden />
-        )}
-      </span>
-      <span className="text-slate-600 text-sm leading-snug">
-        {planTitle ? (
-          <>
-            <span className="md:hidden font-medium text-slate-500 mr-1.5">{planTitle}:</span>
-            {benefit}
-          </>
-        ) : (
-          benefit
-        )}
-      </span>
-    </div>
-  );
-}
+const cardVariants = {
+  hidden: { opacity: 0, y: 28 },
+  visible: (i) => ({
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, delay: i * 0.1, ease: [0.25, 0.1, 0.25, 1] },
+  }),
+};
 
 const PricingPlans = () => {
   const [billingPeriod, setBillingPeriod] = useState(MONTHLY);
   const { user } = useAuth();
   const subscribeHref = user ? SUBSCRIPTION_REDIRECT : LOGIN_REDIRECT;
-  const benefitCount = plans[0].benefits.length;
+
+  const getPrice = (plan) => {
+    if (plan.price.monthly === 0) return "$0";
+    if (billingPeriod === YEARLY) return `$${plan.yearlyMonthly}`;
+    return `$${plan.price.monthly.toFixed(2)}`;
+  };
+
+  const getBilling = (plan) => {
+    if (plan.price.monthly === 0) return "Free forever";
+    if (billingPeriod === YEARLY) {
+      return `Billed $${plan.price.yearly}/year`;
+    }
+    return "per month";
+  };
 
   return (
-    <motion.section
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1, transition: { duration: 0.8 } }}
-      className="relative z-10 w-full bg-black pt-24 md:pt-32 pb-20"
-    >
-      <article className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl">
-        <div className="text-center max-w-2xl mx-auto">
-          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">
+    <section className="relative w-full text-white overflow-hidden pt-24 md:pt-32 pb-24">
+      {/* Ambient glow */}
+      <div className="pointer-events-none absolute inset-0 -z-10">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] rounded-full bg-accent/[0.06] blur-[140px]" />
+        <div className="absolute bottom-0 right-1/4 w-[500px] h-[300px] rounded-full bg-violet-600/[0.04] blur-[120px]" />
+      </div>
+
+      <div className="mx-auto px-5 md:px-[5%] max-w-[1200px]">
+        {/* Header */}
+        <motion.div
+          className="text-center mb-14"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55, ease: "easeOut" }}
+        >
+          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold tracking-widest uppercase text-accent border border-accent/25 bg-accent/[0.07] mb-5">
+            <Zap className="w-3 h-3" />
+            Pricing
+          </span>
+          <h1 className="text-h2 lg:text-h3 font-bold tracking-tight leading-tight">
             Simple, transparent pricing
-          </h2>
-          <p className="mt-4 text-slate-400 text-lg max-w-xl mx-auto">
-            Compare Free, Basic, and Pro. Pick the plan that fits your learning.
+          </h1>
+          <p className="mt-4 text-white/50 text-base md:text-lg max-w-[480px] mx-auto leading-relaxed">
+            Start free. Upgrade when you're ready to unlock AI and advanced features.
           </p>
 
-          <div className="mt-8 inline-flex p-1 rounded-full bg-slate-800 border border-slate-700">
+          {/* Billing toggle */}
+          <div className="mt-8 inline-flex p-1 rounded-full bg-white/[0.05] border border-white/[0.08]">
             <button
               type="button"
               onClick={() => setBillingPeriod(MONTHLY)}
               className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                billingPeriod === MONTHLY ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-white"
+                billingPeriod === MONTHLY
+                  ? "bg-white text-black shadow-sm"
+                  : "text-white/50 hover:text-white"
               }`}
             >
               Monthly
@@ -166,132 +162,146 @@ const PricingPlans = () => {
             <button
               type="button"
               onClick={() => setBillingPeriod(YEARLY)}
-              className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                billingPeriod === YEARLY ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-white"
+              className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                billingPeriod === YEARLY
+                  ? "bg-white text-black shadow-sm"
+                  : "text-white/50 hover:text-white"
               }`}
             >
               Yearly
-              <span className="ml-1.5 text-xs font-semibold text-violet-400">Save up to 18%</span>
+              <span className="text-[10px] font-bold tracking-wide text-accent bg-accent/10 px-1.5 py-0.5 rounded-md">
+                −18%
+              </span>
             </button>
           </div>
-        </div>
+        </motion.div>
 
-        {/* Plan cards + comparison table in one grid so columns align */}
-        <div className="mt-14 w-full min-w-0 overflow-x-auto">
-          <div
-            className="grid grid-cols-3 gap-0 min-w-[320px] w-full rounded-2xl overflow-hidden bg-white shadow-xl shadow-slate-200/50 border border-slate-200/80"
-            style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}
-          >
-            {/* Row 0: Plan cards */}
-            {plans.map((plan, colIndex) => (
-              <motion.div
-                key={plan.id}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0, transition: { duration: 0.35, delay: colIndex * 0.05 } }}
-                viewport={{ once: true }}
-                className={`flex flex-col p-6 md:p-8 relative bg-white ${colIndex === 0 ? "rounded-tl-2xl" : ""} ${colIndex === 2 ? "rounded-tr-2xl" : ""}`}
-              >
-                <div className="min-h-[2.5rem] flex items-center justify-center mb-4">
-                  {plan.popular && (
-                    <span className="inline-flex px-3 py-1 bg-violet-600 text-white text-xs font-semibold rounded-full shadow-lg shadow-violet-500/25">
-                      Most popular
-                    </span>
+        {/* Plan cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-5 items-start">
+          {plans.map((plan, i) => (
+            <motion.div
+              key={plan.id}
+              custom={i}
+              variants={cardVariants}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-40px" }}
+              className={`relative flex flex-col rounded-2xl p-6 lg:p-7 transition-all duration-300 ${
+                plan.popular
+                  ? "bg-white/[0.06] border border-accent/40 shadow-[0_0_60px_rgba(35,131,226,0.14)] md:-translate-y-3"
+                  : "bg-white/[0.02] border border-white/[0.07] hover:bg-white/[0.04] hover:border-white/[0.12]"
+              }`}
+            >
+              {/* Popular badge */}
+              {plan.popular && (
+                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold tracking-wide text-white bg-accent shadow-[0_0_20px_rgba(35,131,226,0.5)]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-white/80 animate-pulse" />
+                    Most popular
+                  </span>
+                </div>
+              )}
+
+              {/* Plan header */}
+              <div className="mb-6">
+                <p className="text-xs font-bold tracking-widest uppercase text-white/40 mb-3">
+                  {plan.title}
+                </p>
+
+                <div className="flex items-baseline gap-1.5 mb-1.5">
+                  <span className="text-4xl font-bold tabular-nums text-white">
+                    {getPrice(plan)}
+                  </span>
+                  {plan.price.monthly !== 0 && (
+                    <span className="text-white/40 text-sm">/mo</span>
                   )}
                 </div>
-                <div className={`flex flex-col ${billingPeriod === YEARLY ? "min-h-[10rem]" : "min-h-[7.5rem]"}`}>
-                  <p className="text-sm font-medium text-slate-500 uppercase tracking-wider">
-                    {plan.title}
-                  </p>
-                  <div className="mt-2 flex items-baseline gap-1">
-                    <span className="text-3xl md:text-4xl font-bold text-slate-900 tabular-nums">
-                      {billingPeriod === YEARLY && plan.priceYearly
-                        ? (() => {
-                            const annualNum = parseFloat(plan.priceYearly.replace(/[$,]/g, ""));
-                            return `$${(annualNum / 12).toFixed(2)}`;
-                          })()
-                        : plan.price.replace("$", "")}
-                    </span>
-                    {plan.price !== "$0" && (
-                      <span className="text-slate-500 text-base font-medium">/mo</span>
-                    )}
-                  </div>
-                  <p className="mt-1 text-slate-600 text-sm">
-                    {billingPeriod === YEARLY && plan.priceYearly ? (
-                      <>
-                        Billed ${parseFloat(plan.priceYearly.replace(/[$,]/g, "")).toFixed(0)}/year
-                        <span className="ml-1.5 inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-violet-100 text-violet-700">
-                          {plan.billingYearly}
-                        </span>
-                      </>
-                    ) : (
-                      plan.billing
-                    )}
-                  </p>
-                  {billingPeriod === YEARLY && plan.priceYearly && plan.price !== "$0" && (() => {
-                    const monthlyNum = parseFloat(plan.price.replace(/[$,]/g, ""));
-                    const annualNum = parseFloat(plan.priceYearly.replace(/[$,]/g, ""));
-                    const savePerYear = ((monthlyNum * 12) - annualNum).toFixed(0);
-                    return (
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        Save ${savePerYear}/yr
-                      </p>
-                    );
-                  })()}
+
+                <div className="flex items-center gap-2 min-h-[1.5rem]">
+                  <p className="text-white/40 text-sm">{getBilling(plan)}</p>
+                  {billingPeriod === YEARLY && plan.saveLabel && (
+                    <motion.span
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="text-[10px] font-bold tracking-wide text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-1.5 py-0.5 rounded-md"
+                    >
+                      {plan.saveLabel}
+                    </motion.span>
+                  )}
                 </div>
-                <p className="text-slate-500 text-sm mt-4 pt-4 border-t border-slate-100">
-                  Best for: <span className="text-slate-700 font-medium">{plan.bestFor}</span>
+
+                <p className="mt-3 text-[13px] text-white/35">
+                  Best for{" "}
+                  <span className="text-white/60">{plan.bestFor}</span>
                 </p>
-              </motion.div>
-            ))}
+              </div>
 
-            {/* Benefit rows */}
-            {Array.from({ length: benefitCount }, (_, i) => (
-              <Fragment key={i}>
-                <div
-                  role="cell"
-                  className={`border-l border-slate-200/80 ${i % 2 === 0 ? "bg-white" : "bg-slate-50/40"}`}
-                >
-                  <BenefitCell benefit={plans[0].benefits[i]} isFree={true} planTitle="Free" />
-                </div>
-                <div
-                  role="cell"
-                  className={`border-l border-slate-200/80 ${i % 2 === 0 ? "bg-white" : "bg-slate-50/40"}`}
-                >
-                  <BenefitCell benefit={plans[1].benefits[i]} isFree={false} planTitle="Basic" />
-                </div>
-                <div
-                  role="cell"
-                  className={`border-l border-slate-200/80 ${i % 2 === 0 ? "bg-white" : "bg-slate-50/40"}`}
-                >
-                  <BenefitCell benefit={plans[2].benefits[i]} isFree={false} planTitle="Pro" />
-                </div>
-              </Fragment>
-            ))}
+              {/* CTA button */}
+              <Link
+                href={plan.price.monthly === 0 ? "/login" : subscribeHref}
+                className={`block w-full text-center py-2.5 px-4 rounded-xl text-sm font-semibold transition-all duration-200 mb-6 ${
+                  plan.popular
+                    ? "bg-accent hover:bg-accent/90 text-white shadow-[0_0_24px_rgba(35,131,226,0.3)] hover:shadow-[0_0_32px_rgba(35,131,226,0.45)]"
+                    : plan.id === "pro"
+                    ? "bg-white/[0.08] hover:bg-white/[0.14] text-white border border-white/[0.1]"
+                    : "bg-white/[0.05] hover:bg-white/[0.09] text-white/70 hover:text-white border border-white/[0.07]"
+                }`}
+              >
+                {plan.price.monthly === 0
+                  ? "Get started free"
+                  : user
+                  ? plan.cta
+                  : "Sign in to subscribe"}
+              </Link>
 
-            {/* Subscribe row */}
-            <div className="bg-slate-50/90 border-l border-b border-slate-200/80 rounded-bl-2xl py-6 px-4 md:px-6">
-              <span className="text-slate-400 text-sm">—</span>
-            </div>
-            <div className="bg-slate-50/90 border-l border-b border-slate-200/80 py-6 px-4 md:px-6">
-              <Link
-                href={subscribeHref}
-                className="block w-full py-3 px-4 rounded-xl text-center text-sm font-semibold text-white bg-violet-600 hover:bg-violet-500 transition-colors shadow-sm"
-              >
-                {user ? "Get Basic" : "Sign in to subscribe"}
-              </Link>
-            </div>
-            <div className="bg-slate-50/90 border-l border-b border-slate-200/80 rounded-br-2xl py-6 px-4 md:px-6">
-              <Link
-                href={subscribeHref}
-                className="block w-full py-3 px-4 rounded-xl text-center text-sm font-semibold text-white bg-slate-900 hover:bg-slate-800 transition-colors shadow-sm"
-              >
-                {user ? "Get Pro" : "Sign in to subscribe"}
-              </Link>
-            </div>
-          </div>
+              {/* Divider */}
+              <div className="border-t border-white/[0.06] mb-5" />
+
+              {/* Feature list */}
+              <ul className="flex flex-col gap-3">
+                {plan.features.map((feature, fi) => (
+                  <li key={fi} className="flex items-start gap-3">
+                    <span
+                      className={`mt-[1px] flex-shrink-0 w-4 h-4 rounded-full flex items-center justify-center ${
+                        feature.included
+                          ? plan.popular
+                            ? "bg-accent/15 text-accent"
+                            : "bg-white/[0.07] text-white/60"
+                          : "bg-white/[0.03] text-white/20"
+                      }`}
+                    >
+                      {feature.included ? (
+                        <Check className="w-2.5 h-2.5" strokeWidth={3} />
+                      ) : (
+                        <Minus className="w-2.5 h-2.5" strokeWidth={2.5} />
+                      )}
+                    </span>
+                    <span
+                      className={`text-[13px] leading-snug ${
+                        feature.included ? "text-white/70" : "text-white/25 line-through"
+                      }`}
+                    >
+                      {feature.label}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </motion.div>
+          ))}
         </div>
-      </article>
-    </motion.section>
+
+        {/* Bottom note */}
+        <motion.p
+          className="text-center text-white/25 text-xs mt-10"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.4 }}
+        >
+          All plans include access on iOS. Cancel or change your plan anytime.
+        </motion.p>
+      </div>
+    </section>
   );
 };
 

@@ -4,9 +4,9 @@ MCP (Model Context Protocol) server for the Deckbase project. Exposes project do
 
 **Two ways to use it:**
 
-| Mode | Use case |
-|------|----------|
-| **Local (stdio)** | Run `node mcp-server/index.js`; Cursor starts it as a subprocess. No auth. |
+| Mode              | Use case                                                                                                                                |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| **Local (stdio)** | Run `node mcp-server/index.js`; Cursor starts it as a subprocess. No auth.                                                              |
 | **Hosted (HTTP)** | Your deployed app exposes `POST /api/mcp`; clients send an API key (Bearer). Use this to share MCP with your team or use from anywhere. |
 
 ---
@@ -35,8 +35,8 @@ The app exposes **POST /api/mcp** (JSON-RPC over HTTP). Auth is **API key only**
 
 1. **Create an API key** in the dashboard (API keys / MCP page). Copy the key (shown once).
 2. **Send a JSON-RPC 2.0 request** to `https://your-app.com/api/mcp`:
-   - **Method:** POST  
-   - **Headers:** `Content-Type: application/json`, `Authorization: Bearer <API key>`  
+   - **Method:** POST
+   - **Headers:** `Content-Type: application/json`, `Authorization: Bearer <API key>`
    - **Body:** One JSON-RPC request per POST, e.g.  
      `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}`  
      or `{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}`  
@@ -46,11 +46,11 @@ The app exposes **POST /api/mcp** (JSON-RPC over HTTP). Auth is **API key only**
 
 ### Errors
 
-| HTTP | JSON-RPC error | Meaning |
-|------|----------------|--------|
-| 401 | `Missing Authorization: Bearer <API key>` | No or invalid header |
-| 401 | `Invalid or unknown API key` | Key not found or invalid |
-| 503 | Server not configured | Backend not set up |
+| HTTP | JSON-RPC error                            | Meaning                  |
+| ---- | ----------------------------------------- | ------------------------ |
+| 401  | `Missing Authorization: Bearer <API key>` | No or invalid header     |
+| 401  | `Invalid or unknown API key`              | Key not found or invalid |
+| 503  | Server not configured                     | Backend not set up       |
 
 ### Cursor with hosted MCP
 
