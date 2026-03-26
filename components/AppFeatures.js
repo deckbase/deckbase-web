@@ -4,8 +4,8 @@ import {
   Sparkles,
   Clock,
   BookOpen,
-  BarChart3,
-  Share2,
+  LayoutTemplate,
+  ArrowLeftRight,
   Brain,
 } from "lucide-react";
 import AppStoreDownloadButton from "./AppStoreDownloadButton";
@@ -49,19 +49,19 @@ const features = [
     borderHover: "hover:border-notion-purple/30",
   },
   {
-    icon: <BarChart3 className="w-6 h-6" />,
-    title: "Learning Analytics",
+    icon: <LayoutTemplate className="w-6 h-6" />,
+    title: "Template-Based Editing",
     description:
-      "Track your progress with detailed insights. See mastery levels, review streaks, and areas that need more attention.",
+      "Create beautiful flashcards quickly with ready-made templates and an intuitive editing experience. Customize layout and style in seconds while keeping every card clean, consistent, and easy to review.",
     iconBg: "bg-notion-red/10",
     iconColor: "text-notion-red",
     borderHover: "hover:border-notion-red/30",
   },
   {
-    icon: <Share2 className="w-6 h-6" />,
-    title: "Deck Sharing",
+    icon: <ArrowLeftRight className="w-6 h-6" />,
+    title: "Anki Import & Export",
     description:
-      "Share your decks with friends, classmates, or the community. Learn together and benefit from crowd-sourced knowledge.",
+      "Move between Deckbase and Anki with APKG import/export, so you can keep your existing study workflow without starting over.",
     iconBg: "bg-notion-pink/10",
     iconColor: "text-notion-pink",
     borderHover: "hover:border-notion-pink/30",

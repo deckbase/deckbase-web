@@ -37,9 +37,8 @@ const Start = () => {
             transition={{ duration: 0.8, delay: 0.1 }}
             className="text-h3 lg:text-h4 font-bold text-center md:text-left leading-tight"
           >
-            Start Learning Smarter Today.{" "}
             <span className="bg-gradient-to-r from-accent to-purple-500 bg-clip-text text-transparent">
-              Turn What You Read Into Knowledge That Lasts.
+              Automate with MCP and move seamlessly with Anki APKG import/export.
             </span>
           </motion.h2>
           <motion.div

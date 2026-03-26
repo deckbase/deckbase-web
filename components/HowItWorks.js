@@ -4,33 +4,33 @@ import { motion } from "framer-motion";
 const steps = [
   {
     number: "01",
-    title: "Capture Any Text",
+    title: "Import Your Learning Content",
     description:
-      "Highlight and capture text from articles, PDFs, books, web pages, or your own notes—anywhere you find valuable information.",
+      "Bring in notes, articles, table files (CSV/XLSX), files like PDF/DOCX/images, and Anki APKG imports from the material you already study.",
   },
   {
     number: "02",
-    title: "AI Generates Flashcards",
+    title: "Use App or MCP Workflow",
     description:
-      "Our AI analyzes the content, extracts key concepts, and automatically creates well-structured flashcards optimized for learning.",
+      "Create cards directly in the app or through Deckbase MCP integrations, then target the right deck and template.",
   },
   {
     number: "03",
-    title: "Review with Spaced Repetition",
+    title: "Generate Cards with AI",
     description:
-      "Cards are scheduled using proven spaced repetition algorithms, so you review at the optimal time for long-term retention.",
+      "Deckbase AI maps extracted content into your template fields and creates study-ready flashcards in seconds.",
   },
   {
     number: "04",
-    title: "Track Your Progress",
+    title: "Review and Add to Deck",
     description:
-      "Monitor your learning with detailed analytics. See which topics you've mastered and where you need more practice.",
+      "Preview generated cards, edit anything you want, then add selected cards to your deck with full control.",
   },
   {
     number: "05",
-    title: "Remember Forever",
+    title: "Study with Spaced Repetition",
     description:
-      "With consistent review sessions, transform fleeting information into lasting knowledge that stays with you.",
+      "Practice at the right time using proven spaced repetition so concepts move from short-term memory to long-term retention.",
   },
 ];
 
@@ -53,7 +53,7 @@ const HowItWorks = () => {
             How Deckbase Works
           </h2>
           <p className="text-secondary text-lg max-w-2xl mx-auto">
-            Turn any content into lasting knowledge with AI-powered flashcards
+            From notes, table files, or MCP workflows to retention-focused review in five clear steps
           </p>
         </motion.div>
 
@@ -130,10 +130,11 @@ const HowItWorks = () => {
           <div className="inline-block bg-gradient-to-r from-accent/5 to-purple-600/5 border border-accent/15 rounded-xl px-8 py-4">
             <p className="text-primary text-sm">
               <span className="font-semibold text-accent">
-                Powered by advanced AI
+                Built for real study workflows
               </span>{" "}
-              — Deckbase understands context and creates flashcards that focus
-              on what matters most for effective learning
+              — import source material through the app or MCP, generate cards in
+              your template, and move smoothly with Anki APKG import/export plus
+              consistent spaced repetition
             </p>
           </div>
         </motion.div>
