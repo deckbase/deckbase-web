@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRevenueCat } from "@/contexts/RevenueCatContext";
-import { Crown, Loader2, ExternalLink, ArrowLeft, Check, Minus, Zap, Sparkles } from "lucide-react";
+import { Crown, Loader2, ExternalLink, ArrowLeft, Check, Minus, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import PlanCard from "@/components/pricing/PlanCard";
@@ -291,7 +291,7 @@ export default function SubscriptionPage() {
           Unlock your full potential
         </h1>
         <p className="text-white/35 text-[15px] max-w-md leading-relaxed">
-          More AI generations, premium voices, and expanded cloud storage — upgrade when you're ready.
+          More AI generations, premium voices, and expanded cloud storage — upgrade when you&apos;re ready.
         </p>
       </motion.div>
 
@@ -366,26 +366,20 @@ export default function SubscriptionPage() {
             Available plans
           </p>
 
-          <div className="flex flex-col items-center gap-3 mb-7">
-            <div className="flex items-center gap-3">
-              {billingPeriod === YEARLY && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[11px] font-semibold">
-                  <Zap className="w-2.5 h-2.5" />
-                  Save ~20%
-                </span>
-              )}
-              <div className="inline-flex p-0.5 rounded-full bg-white/[0.04] border border-white/[0.07]">
-                <button
-                  type="button"
-                  onClick={() => setBillingPeriod(MONTHLY)}
-                  className={`px-4 py-1.5 rounded-full text-[13px] font-medium transition-all duration-200 ${
-                    billingPeriod === MONTHLY
-                      ? "bg-white text-black shadow-sm"
-                      : "text-white/40 hover:text-white/70"
-                  }`}
-                >
-                  Monthly
-                </button>
+          <div className="flex justify-center mb-7">
+            <div className="inline-flex p-0.5 rounded-full bg-white/[0.04] border border-white/[0.07] overflow-visible">
+              <button
+                type="button"
+                onClick={() => setBillingPeriod(MONTHLY)}
+                className={`px-4 py-1.5 rounded-full text-[13px] font-medium transition-all duration-200 ${
+                  billingPeriod === MONTHLY
+                    ? "bg-white text-black shadow-sm"
+                    : "text-white/40 hover:text-white/70"
+                }`}
+              >
+                Monthly
+              </button>
+              <div className="relative">
                 <button
                   type="button"
                   onClick={() => setBillingPeriod(YEARLY)}
@@ -397,6 +391,9 @@ export default function SubscriptionPage() {
                 >
                   Yearly
                 </button>
+                <span className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/4 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-emerald-500 text-white text-[9px] font-bold leading-none whitespace-nowrap z-10">
+                  -20%
+                </span>
               </div>
             </div>
           </div>
@@ -452,7 +449,7 @@ export default function SubscriptionPage() {
                               className={`mt-[1px] flex-shrink-0 w-[18px] h-[18px] rounded-full flex items-center justify-center ${
                                 feature.included
                                   ? isFeatured
-                                    ? "bg-amber-500/15 text-amber-400"
+                                    ? "bg-accent/15 text-accent"
                                     : "bg-white/[0.06] text-white/50"
                                   : "bg-white/[0.03] text-white/15"
                               }`}
@@ -467,7 +464,7 @@ export default function SubscriptionPage() {
                               className={`text-[13px] leading-snug ${
                                 feature.included
                                   ? isFeatured
-                                    ? "text-amber-100/60"
+                                    ? "text-white/70"
                                     : "text-white/55"
                                   : "text-white/20 line-through"
                               }`}
