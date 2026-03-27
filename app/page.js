@@ -12,6 +12,20 @@ import AppFeatures from "@/components/AppFeatures";
 import UserTestimonials from "@/components/UserTestimonials";
 import Start from "@/components/Start";
 import Faqs from "@/components/Faqs";
+import faqs from "@/components/data/faqs";
+
+const homeFaqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: faqs.map((faq) => ({
+    "@type": "Question",
+    name: faq.question,
+    acceptedAnswer: {
+      "@type": "Answer",
+      text: faq.answer,
+    },
+  })),
+};
 
 export default function Home() {
   useEffect(() => {
@@ -20,6 +34,10 @@ export default function Home() {
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(homeFaqJsonLd) }}
+      />
       {/* Hero Section */}
       <motion.section
         initial={{ opacity: 0 }}

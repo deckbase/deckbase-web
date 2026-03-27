@@ -51,6 +51,15 @@ const jsonLd = {
       name: "Deckbase vs Anki: AI Flashcards vs Manual SRS (2026)",
       description:
         "Honest head-to-head comparison of Deckbase and Anki — AI card generation, FSRS vs SM-2, pricing, and ease of use.",
+      datePublished: "2026-03-11",
+      dateModified: "2026-03-27",
+      author: {
+        "@type": "Organization",
+        "@id": "https://www.deckbase.co/#organization",
+      },
+      publisher: {
+        "@id": "https://www.deckbase.co/#organization",
+      },
       breadcrumb: {
         "@type": "BreadcrumbList",
         itemListElement: [
@@ -168,6 +177,7 @@ export default function DeckbaseVsAnki() {
             else — how you create cards, how long setup takes, and how much you&apos;ll actually
             use it.
           </p>
+          <p className="text-sm text-gray-400 mb-8">By Deckbase Editorial Team · Updated March 2026</p>
           {/* Quick verdict badges */}
           <div className="flex flex-wrap justify-center gap-4">
             <div className="px-4 py-2 rounded-lg bg-accent/10 border border-accent/30 text-sm text-gray-200">
@@ -253,6 +263,58 @@ export default function DeckbaseVsAnki() {
                 </tbody>
               </table>
             </div>
+          </section>
+
+          {/* Pricing comparison table */}
+          <section>
+            <h2 className="text-2xl md:text-3xl font-bold mb-2">Pricing at a Glance</h2>
+            <p className="text-sm text-gray-400 mb-6">
+              Pricing as of March 2026. Check{" "}
+              <Link
+                href="https://www.deckbase.co/premium"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-gray-200"
+              >
+                deckbase.co/premium
+              </Link>{" "}
+              for current plans.
+            </p>
+            <div className="overflow-x-auto rounded-2xl border border-gray-800">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-900 text-left">
+                    <th className="px-4 py-3 font-semibold text-gray-300 w-1/2">Category</th>
+                    <th className="px-4 py-3 font-semibold text-accent text-center w-1/4">
+                      Deckbase
+                    </th>
+                    <th className="px-4 py-3 font-semibold text-gray-200 text-center w-1/4">
+                      Anki
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    { label: "Free tier", deckbase: "500 cards", anki: "Full (desktop + AnkiDroid)" },
+                    { label: "iOS cost", deckbase: "$4.99/mo or $49.99/yr", anki: "$24.99 one-time" },
+                    { label: "Android cost", deckbase: "$4.99/mo or $49.99/yr", anki: "Free (AnkiDroid)" },
+                    { label: "Total cost year 1 (iOS)", deckbase: "$49.99", anki: "$24.99" },
+                    { label: "Total cost year 2+ (iOS)", deckbase: "$49.99/yr", anki: "$0" },
+                    { label: "Desktop app", deckbase: "—", anki: "Free" },
+                  ].map((row, i) => (
+                    <tr key={row.label} className={i % 2 === 0 ? "bg-black" : "bg-gray-950"}>
+                      <td className="px-4 py-3 text-gray-300">{row.label}</td>
+                      <td className="px-4 py-3 text-center text-gray-200">{row.deckbase}</td>
+                      <td className="px-4 py-3 text-center text-gray-200">{row.anki}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-sm text-gray-300 mt-4">
+              Anki is cheaper long-term; Deckbase costs more but removes the card creation
+              bottleneck entirely.
+            </p>
           </section>
 
           {/* Deep dive sections */}
@@ -413,10 +475,22 @@ export default function DeckbaseVsAnki() {
                 Deckbase vs Quizlet →
               </Link>
               <Link
+                href="/deckbase-vs-remnote"
+                className="px-4 py-2 rounded-lg bg-gray-900 border border-gray-800 text-gray-300 text-sm hover:border-gray-600 transition-colors"
+              >
+                Deckbase vs RemNote →
+              </Link>
+              <Link
                 href="/anki-alternatives"
                 className="px-4 py-2 rounded-lg bg-gray-900 border border-gray-800 text-gray-300 text-sm hover:border-gray-600 transition-colors"
               >
                 Best Anki alternatives →
+              </Link>
+              <Link
+                href="/quizlet-alternatives"
+                className="px-4 py-2 rounded-lg bg-gray-900 border border-gray-800 text-gray-300 text-sm hover:border-gray-600 transition-colors"
+              >
+                Best Quizlet alternatives →
               </Link>
               <Link
                 href="/best-flashcard-apps"

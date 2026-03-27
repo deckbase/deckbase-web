@@ -224,6 +224,13 @@ export default function BestFlashcardAppsPage() {
             >
               Deckbase vs Quizlet
             </Link>
+            ,{" "}
+            <Link
+              href="/deckbase-vs-remnote"
+              className="text-accent hover:underline underline-offset-2"
+            >
+              Deckbase vs RemNote
+            </Link>
             .
           </ArticleBody>
         </ArticleSection>
@@ -249,8 +256,10 @@ export default function BestFlashcardAppsPage() {
           <ArticleRelated
             links={[
               { href: "/anki-alternatives", label: "Best Anki alternatives" },
+              { href: "/quizlet-alternatives", label: "Best Quizlet alternatives" },
               { href: "/deckbase-vs-anki", label: "Deckbase vs Anki" },
               { href: "/deckbase-vs-quizlet", label: "Deckbase vs Quizlet" },
+              { href: "/deckbase-vs-remnote", label: "Deckbase vs RemNote" },
             ]}
           />
         </ArticleSection>

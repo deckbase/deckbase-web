@@ -1,9 +1,9 @@
 "use client";
 import { useState } from "react";
-import Link from "next/link";
 import { motion } from "framer-motion";
 import { Check, Minus, Zap } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import PlanCard from "@/components/pricing/PlanCard";
 
 const MONTHLY = "monthly";
 const YEARLY = "yearly";
@@ -186,106 +186,54 @@ const PricingPlans = () => {
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true, margin: "-40px" }}
-              className={`relative flex flex-col rounded-2xl p-6 lg:p-7 transition-all duration-300 ${
-                plan.popular
-                  ? "bg-white/[0.06] border border-accent/40 shadow-[0_0_60px_rgba(35,131,226,0.14)] md:-translate-y-3"
-                  : "bg-white/[0.02] border border-white/[0.07] hover:bg-white/[0.04] hover:border-white/[0.12]"
-              }`}
+              className="h-full"
             >
-              {/* Popular badge */}
-              {plan.popular && (
-                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold tracking-wide text-white bg-accent shadow-[0_0_20px_rgba(35,131,226,0.5)]">
-                    <span className="w-1.5 h-1.5 rounded-full bg-white/80 animate-pulse" />
-                    Most popular
-                  </span>
-                </div>
-              )}
-
-              {/* Plan header */}
-              <div className="mb-6">
-                <p className="text-xs font-bold tracking-widest uppercase text-white/40 mb-3">
-                  {plan.title}
-                </p>
-
-                <div className="flex items-baseline gap-1.5 mb-1.5">
-                  <span className="text-4xl font-bold tabular-nums text-white">
-                    {getPrice(plan)}
-                  </span>
-                  {plan.price.monthly !== 0 && (
-                    <span className="text-white/40 text-sm">/mo</span>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2 min-h-[1.5rem]">
-                  <p className="text-white/40 text-sm">{getBilling(plan)}</p>
-                  {billingPeriod === YEARLY && plan.saveLabel && (
-                    <motion.span
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="text-[10px] font-bold tracking-wide text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-1.5 py-0.5 rounded-md"
-                    >
-                      {plan.saveLabel}
-                    </motion.span>
-                  )}
-                </div>
-
-                <p className="mt-3 text-[13px] text-white/35">
-                  Best for{" "}
-                  <span className="text-white/60">{plan.bestFor}</span>
-                </p>
-              </div>
-
-              {/* CTA button */}
-              <Link
+              <PlanCard
+                title={plan.title}
+                description={`Best for ${plan.bestFor}`}
+                price={getPrice(plan)}
+                priceSuffix={plan.price.monthly !== 0 ? "/mo" : null}
+                billingText={getBilling(plan)}
+                badge={plan.popular ? "Most popular" : billingPeriod === YEARLY ? plan.saveLabel : null}
+                tone={plan.popular ? "featured" : "default"}
                 href={plan.price.monthly === 0 ? "/login" : subscribeHref}
-                className={`block w-full text-center py-2.5 px-4 rounded-xl text-sm font-semibold transition-all duration-200 mb-6 ${
-                  plan.popular
-                    ? "bg-accent hover:bg-accent/90 text-white shadow-[0_0_24px_rgba(35,131,226,0.3)] hover:shadow-[0_0_32px_rgba(35,131,226,0.45)]"
-                    : plan.id === "pro"
-                    ? "bg-white/[0.08] hover:bg-white/[0.14] text-white border border-white/[0.1]"
-                    : "bg-white/[0.05] hover:bg-white/[0.09] text-white/70 hover:text-white border border-white/[0.07]"
-                }`}
+                ctaLabel={
+                  plan.price.monthly === 0
+                    ? "Get started free"
+                    : user
+                    ? plan.cta
+                    : "Sign in to subscribe"
+                }
               >
-                {plan.price.monthly === 0
-                  ? "Get started free"
-                  : user
-                  ? plan.cta
-                  : "Sign in to subscribe"}
-              </Link>
-
-              {/* Divider */}
-              <div className="border-t border-white/[0.06] mb-5" />
-
-              {/* Feature list */}
-              <ul className="flex flex-col gap-3">
-                {plan.features.map((feature, fi) => (
-                  <li key={fi} className="flex items-start gap-3">
-                    <span
-                      className={`mt-[1px] flex-shrink-0 w-4 h-4 rounded-full flex items-center justify-center ${
-                        feature.included
-                          ? plan.popular
-                            ? "bg-accent/15 text-accent"
-                            : "bg-white/[0.07] text-white/60"
-                          : "bg-white/[0.03] text-white/20"
-                      }`}
-                    >
-                      {feature.included ? (
-                        <Check className="w-2.5 h-2.5" strokeWidth={3} />
-                      ) : (
-                        <Minus className="w-2.5 h-2.5" strokeWidth={2.5} />
-                      )}
-                    </span>
-                    <span
-                      className={`text-[13px] leading-snug ${
-                        feature.included ? "text-white/70" : "text-white/25 line-through"
-                      }`}
-                    >
-                      {feature.label}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+                <ul className="flex flex-col gap-3">
+                  {plan.features.map((feature, fi) => (
+                    <li key={fi} className="flex items-start gap-3">
+                      <span
+                        className={`mt-[1px] flex-shrink-0 w-4 h-4 rounded-full flex items-center justify-center ${
+                          feature.included
+                            ? plan.popular
+                              ? "bg-accent/15 text-accent"
+                              : "bg-white/[0.07] text-white/60"
+                            : "bg-white/[0.03] text-white/20"
+                        }`}
+                      >
+                        {feature.included ? (
+                          <Check className="w-2.5 h-2.5" strokeWidth={3} />
+                        ) : (
+                          <Minus className="w-2.5 h-2.5" strokeWidth={2.5} />
+                        )}
+                      </span>
+                      <span
+                        className={`text-[13px] leading-snug ${
+                          feature.included ? "text-white/70" : "text-white/25 line-through"
+                        }`}
+                      >
+                        {feature.label}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </PlanCard>
             </motion.div>
           ))}
         </div>

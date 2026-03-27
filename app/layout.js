@@ -97,6 +97,13 @@ export const metadata = {
 };
 
 const orgId = `${SITE_URL}/#organization`;
+const founderId = `${SITE_URL}/#founder`;
+const founderName = process.env.NEXT_PUBLIC_FOUNDER_NAME?.trim();
+const founderUrl = process.env.NEXT_PUBLIC_FOUNDER_URL?.trim();
+const founderSameAs = process.env.NEXT_PUBLIC_FOUNDER_SAME_AS?.split(",")
+  .map((url) => url.trim())
+  .filter(Boolean);
+const hasFounder = Boolean(founderName);
 
 // ✅ Structured data for Google rich results (SoftwareApplication + Organization + WebSite)
 const jsonLd = {
@@ -132,7 +139,20 @@ const jsonLd = {
         email: "support@deckbase.co",
         contactType: "customer support",
       },
+      ...(hasFounder ? { founder: { "@id": founderId } } : {}),
     },
+    ...(hasFounder
+      ? [
+          {
+            "@type": "Person",
+            "@id": founderId,
+            name: founderName,
+            ...(founderUrl ? { url: founderUrl } : {}),
+            ...(founderSameAs?.length ? { sameAs: founderSameAs } : {}),
+            worksFor: { "@id": orgId },
+          },
+        ]
+      : []),
     {
       "@type": "WebSite",
       name: "Deckbase",

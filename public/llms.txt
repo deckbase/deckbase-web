@@ -12,6 +12,14 @@
 - [MCP for flashcards (resources guide)](https://www.deckbase.co/resources/mcp)
 - [Documentation](https://www.deckbase.co/docs)
 
+## Comparison & resource pages
+
+- [Deckbase vs Anki](https://www.deckbase.co/deckbase-vs-anki): Side-by-side comparison of AI card generation, FSRS vs SM-2 scheduling, pricing
+- [Deckbase vs Quizlet](https://www.deckbase.co/deckbase-vs-quizlet): Feature comparison for spaced repetition, AI workflows, and retention outcomes
+- [Best Anki Alternatives (2026)](https://www.deckbase.co/anki-alternatives): Roundup of top flashcard apps with strengths, trade-offs, and use cases
+- [Best Flashcard Apps (2026)](https://www.deckbase.co/best-flashcard-apps): Practical guide covering AI, FSRS, mobile, and student workflows
+- [MCP for Flashcards Guide](https://www.deckbase.co/resources/mcp): How Deckbase MCP compares to other MCP servers with example workflows
+
 ## About
 
 Deckbase is an iOS and Android app with a free tier and Premium plans. It scans physical books and digital documents to generate flashcard decks and schedules reviews using FSRS (Free Spaced Repetition Scheduler) for retention.

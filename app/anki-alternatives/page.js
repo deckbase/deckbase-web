@@ -21,6 +21,7 @@ import {
 const PAGE_PATH = "/anki-alternatives";
 const pageUrl = absoluteUrl(PAGE_PATH);
 const homeUrl = absoluteUrl("/");
+const organizationId = "https://www.deckbase.co/#organization";
 
 export const metadata = {
   title: "Best Anki Alternatives (2026): AI Flashcards, FSRS & Mobile",
@@ -78,12 +79,40 @@ const jsonLd = {
       url: pageUrl,
       name: "Best Anki Alternatives (2026): AI Flashcards, FSRS & Mobile",
       description: "Guide to Anki alternatives: AI flashcards, FSRS scheduling, mobile apps, and how Deckbase compares.",
+      datePublished: "2026-03-21",
+      dateModified: "2026-03-27",
+      author: {
+        "@type": "Organization",
+        "@id": organizationId,
+      },
+      publisher: {
+        "@id": organizationId,
+      },
       breadcrumb: {
         "@type": "BreadcrumbList",
         itemListElement: [
           { "@type": "ListItem", position: 1, name: "Home", item: homeUrl },
           { "@type": "ListItem", position: 2, name: "Anki alternatives", item: pageUrl },
         ],
+      },
+    },
+    {
+      "@type": "Article",
+      "@id": `${pageUrl}#article`,
+      headline: "Best Anki Alternatives (2026): AI Flashcards, FSRS & Mobile",
+      description:
+        "Compare top Anki alternatives: AI card generation, FSRS scheduling, and mobile experience — and where Deckbase fits.",
+      datePublished: "2026-03-21",
+      dateModified: "2026-03-27",
+      author: {
+        "@type": "Organization",
+        "@id": organizationId,
+      },
+      publisher: {
+        "@id": organizationId,
+      },
+      mainEntityOfPage: {
+        "@id": pageUrl,
       },
     },
     {
@@ -192,6 +221,7 @@ export default function AnkiAlternativesPage() {
             links={[
               { href: "/deckbase-vs-anki", label: "Deckbase vs Anki" },
               { href: "/deckbase-vs-quizlet", label: "Deckbase vs Quizlet" },
+              { href: "/quizlet-alternatives", label: "Best Quizlet alternatives" },
               { href: "/best-flashcard-apps", label: "Best flashcard apps" },
             ]}
           />

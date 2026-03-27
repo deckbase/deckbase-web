@@ -51,6 +51,15 @@ const jsonLd = {
       name: "Deckbase vs Quizlet: Real Spaced Repetition vs Study Modes (2026)",
       description:
         "Honest comparison of Deckbase and Quizlet — FSRS algorithm, AI card generation, pricing, and which app is better for long-term retention.",
+      datePublished: "2026-03-11",
+      dateModified: "2026-03-27",
+      author: {
+        "@type": "Organization",
+        "@id": "https://www.deckbase.co/#organization",
+      },
+      publisher: {
+        "@id": "https://www.deckbase.co/#organization",
+      },
       breadcrumb: {
         "@type": "BreadcrumbList",
         itemListElement: [
@@ -189,6 +198,7 @@ export default function DeckbaseVsQuizlet() {
             Quizlet makes studying feel like a game. Deckbase makes studying actually stick.
             Here&apos;s the honest difference between the two.
           </p>
+          <p className="text-sm text-gray-400 mb-8">By Deckbase Editorial Team · Updated March 2026</p>
           <div className="flex flex-wrap justify-center gap-4">
             <div className="px-4 py-2 rounded-lg bg-accent/10 border border-accent/30 text-sm text-gray-200">
               <span className="text-accent font-semibold">Deckbase</span> — Best for: long-term
@@ -268,6 +278,47 @@ export default function DeckbaseVsQuizlet() {
                 </tbody>
               </table>
             </div>
+          </section>
+
+          {/* Pricing comparison table */}
+          <section>
+            <h2 className="text-2xl md:text-3xl font-bold mb-2">Pricing at a Glance</h2>
+            <p className="text-sm text-gray-400 mb-6">Pricing as of March 2026.</p>
+            <div className="overflow-x-auto rounded-2xl border border-gray-800">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-900 text-left">
+                    <th className="px-4 py-3 font-semibold text-gray-300 w-1/2">Category</th>
+                    <th className="px-4 py-3 font-semibold text-accent text-center w-1/4">
+                      Deckbase
+                    </th>
+                    <th className="px-4 py-3 font-semibold text-gray-200 text-center w-1/4">
+                      Quizlet
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    { label: "Free tier", deckbase: "500 cards, FSRS included", quizlet: "Core features" },
+                    { label: "Monthly (billed monthly)", deckbase: "$4.99", quizlet: "~$7.99" },
+                    { label: "Annual", deckbase: "$49.99 ($4.17/mo)", quizlet: "$35.99 ($3.00/mo)" },
+                    { label: "AI features", deckbase: "Included in free tier", quizlet: "Plus plan only" },
+                    { label: "Offline access", deckbase: "Included", quizlet: "Plus plan only" },
+                    { label: "Anki import", deckbase: "Yes", quizlet: "No" },
+                  ].map((row, i) => (
+                    <tr key={row.label} className={i % 2 === 0 ? "bg-black" : "bg-gray-950"}>
+                      <td className="px-4 py-3 text-gray-300">{row.label}</td>
+                      <td className="px-4 py-3 text-center text-gray-200">{row.deckbase}</td>
+                      <td className="px-4 py-3 text-center text-gray-200">{row.quizlet}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-sm text-gray-300 mt-4">
+              Quizlet is cheaper per month on annual plans; Deckbase includes AI and offline at
+              lower tiers.
+            </p>
           </section>
 
           {/* Deep dive */}
@@ -453,6 +504,12 @@ export default function DeckbaseVsQuizlet() {
                 className="px-4 py-2 rounded-lg bg-gray-900 border border-gray-800 text-gray-300 text-sm hover:border-gray-600 transition-colors"
               >
                 Best Anki alternatives →
+              </Link>
+              <Link
+                href="/quizlet-alternatives"
+                className="px-4 py-2 rounded-lg bg-gray-900 border border-gray-800 text-gray-300 text-sm hover:border-gray-600 transition-colors"
+              >
+                Best Quizlet alternatives →
               </Link>
               <Link
                 href="/best-flashcard-apps"
