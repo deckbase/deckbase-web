@@ -10,6 +10,10 @@
 - [Download](https://www.deckbase.co/download)
 - [MCP integration](https://www.deckbase.co/mcp)
 - [MCP for flashcards (resources guide)](https://www.deckbase.co/resources/mcp)
+- [What is FSRS? Practical guide](https://www.deckbase.co/resources/fsrs-guide)
+- [Anki import/export migration guide](https://www.deckbase.co/resources/anki-import-export)
+- [OCR study workflows](https://www.deckbase.co/resources/ocr-study-workflows)
+- [MCP study automation examples](https://www.deckbase.co/resources/mcp-study-automation-examples)
 - [Documentation](https://www.deckbase.co/docs)
 
 ## Comparison & resource pages
@@ -19,6 +23,10 @@
 - [Best Anki Alternatives (2026)](https://www.deckbase.co/anki-alternatives): Roundup of top flashcard apps with strengths, trade-offs, and use cases
 - [Best Flashcard Apps (2026)](https://www.deckbase.co/best-flashcard-apps): Practical guide covering AI, FSRS, mobile, and student workflows
 - [MCP for Flashcards Guide](https://www.deckbase.co/resources/mcp): How Deckbase MCP compares to other MCP servers with example workflows
+- [FSRS practical guide](https://www.deckbase.co/resources/fsrs-guide): Plain-English explanation of FSRS, scheduling logic, and daily review workflow
+- [Anki migration guide](https://www.deckbase.co/resources/anki-import-export): Step-by-step .apkg import/export workflow between Anki and Deckbase
+- [OCR study workflows](https://www.deckbase.co/resources/ocr-study-workflows): Capture, clean, and convert textbook/PDF content into better cards
+- [MCP automation examples](https://www.deckbase.co/resources/mcp-study-automation-examples): Practical sequence for template-safe, batch card creation
 
 ## About
 

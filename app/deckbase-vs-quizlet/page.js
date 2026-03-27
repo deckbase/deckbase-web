@@ -213,7 +213,7 @@ export default function DeckbaseVsQuizlet() {
 
         <main className="max-w-4xl mx-auto px-4 pb-24 space-y-20">
           {/* Summary */}
-          <section>
+          <section id="summary">
             <h2 className="text-2xl md:text-3xl font-bold mb-6">Quick Summary</h2>
             <div className="grid md:grid-cols-2 gap-6">
               <div className="rounded-2xl bg-gray-900 border border-gray-800 p-6">
@@ -240,7 +240,7 @@ export default function DeckbaseVsQuizlet() {
           </section>
 
           {/* Feature comparison table */}
-          <section>
+          <section id="feature-comparison">
             <h2 className="text-2xl md:text-3xl font-bold mb-2">Feature Comparison Table</h2>
             <p className="text-sm text-gray-400 mb-6">
               As of March 2026 — based on publicly available product information.{" "}
@@ -281,7 +281,7 @@ export default function DeckbaseVsQuizlet() {
           </section>
 
           {/* Pricing comparison table */}
-          <section>
+          <section id="pricing">
             <h2 className="text-2xl md:text-3xl font-bold mb-2">Pricing at a Glance</h2>
             <p className="text-sm text-gray-400 mb-6">Pricing as of March 2026.</p>
             <div className="overflow-x-auto rounded-2xl border border-gray-800">
@@ -322,7 +322,7 @@ export default function DeckbaseVsQuizlet() {
           </section>
 
           {/* Deep dive */}
-          <section>
+          <section id="deep-dive">
             <h2 className="text-2xl md:text-3xl font-bold mb-8">
               Deep Dive: The Real Differences
             </h2>
@@ -456,7 +456,7 @@ export default function DeckbaseVsQuizlet() {
           </section>
 
           {/* FAQ */}
-          <section>
+          <section id="faq">
             <h2 className="text-2xl md:text-3xl font-bold mb-8">Frequently Asked Questions</h2>
             <div className="space-y-6">
               {[
@@ -490,7 +490,7 @@ export default function DeckbaseVsQuizlet() {
           </section>
 
           {/* Related comparisons */}
-          <section>
+          <section id="related">
             <h2 className="text-xl font-bold mb-4 text-gray-200">Related Comparisons</h2>
             <div className="flex flex-wrap gap-3">
               <Link
@@ -516,6 +516,18 @@ export default function DeckbaseVsQuizlet() {
                 className="px-4 py-2 rounded-lg bg-gray-900 border border-gray-800 text-gray-300 text-sm hover:border-gray-600 transition-colors"
               >
                 Best flashcard apps →
+              </Link>
+              <Link
+                href="/resources/ocr-study-workflows"
+                className="px-4 py-2 rounded-lg bg-gray-900 border border-gray-800 text-gray-300 text-sm hover:border-gray-600 transition-colors"
+              >
+                OCR study workflows →
+              </Link>
+              <Link
+                href="/resources/mcp-study-automation-examples"
+                className="px-4 py-2 rounded-lg bg-gray-900 border border-gray-800 text-gray-300 text-sm hover:border-gray-600 transition-colors"
+              >
+                MCP automation examples →
               </Link>
             </div>
           </section>

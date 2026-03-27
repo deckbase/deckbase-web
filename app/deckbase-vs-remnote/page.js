@@ -172,7 +172,7 @@ export default function DeckbaseVsRemNote() {
         </header>
 
         <main className="max-w-4xl mx-auto px-4 pb-24 space-y-20">
-          <section>
+          <section id="summary">
             <h2 className="text-2xl md:text-3xl font-bold mb-6">Quick Summary</h2>
             <div className="grid md:grid-cols-2 gap-6">
               <div className="rounded-2xl bg-gray-900 border border-gray-800 p-6">
@@ -196,7 +196,7 @@ export default function DeckbaseVsRemNote() {
             </div>
           </section>
 
-          <section>
+          <section id="feature-comparison">
             <h2 className="text-2xl md:text-3xl font-bold mb-2">Feature Comparison Table</h2>
             <p className="text-sm text-gray-400 mb-6">
               As of March 2026 — based on publicly available product information from{" "}
@@ -232,7 +232,7 @@ export default function DeckbaseVsRemNote() {
             </div>
           </section>
 
-          <section>
+          <section id="pricing">
             <h2 className="text-2xl md:text-3xl font-bold mb-2">Pricing at a Glance</h2>
             <p className="text-sm text-gray-400 mb-6">Pricing as of March 2026.</p>
             <div className="overflow-x-auto rounded-2xl border border-gray-800">
@@ -269,7 +269,7 @@ export default function DeckbaseVsRemNote() {
             </p>
           </section>
 
-          <section>
+          <section id="deep-dive">
             <h2 className="text-2xl md:text-3xl font-bold mb-8">Deep Dive: Focus vs Flexibility</h2>
             <div className="space-y-10">
               <div>
@@ -322,7 +322,7 @@ export default function DeckbaseVsRemNote() {
             </div>
           </section>
 
-          <section>
+          <section id="faq">
             <h2 className="text-2xl md:text-3xl font-bold mb-8">Frequently Asked Questions</h2>
             <div className="space-y-6">
               {[
@@ -355,7 +355,7 @@ export default function DeckbaseVsRemNote() {
             </div>
           </section>
 
-          <section>
+          <section id="related">
             <h2 className="text-xl font-bold mb-4 text-gray-200">Related Comparisons</h2>
             <div className="flex flex-wrap gap-3">
               <Link

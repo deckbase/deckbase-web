@@ -17,6 +17,50 @@ const guides = [
     internal: true,
   },
   {
+    href: "/resources/fsrs-guide",
+    title: "What is FSRS? Practical guide",
+    description:
+      "Plain-English FSRS explainer: how modern spaced repetition improves retention and daily workload.",
+    icon: FileText,
+    tag: "Guide",
+    readTime: "6 min read",
+    featured: true,
+    internal: true,
+  },
+  {
+    href: "/resources/ocr-study-workflows",
+    title: "OCR study workflows",
+    description:
+      "Operational OCR pipeline for turning books and PDFs into clean, high-retention flashcards.",
+    icon: FileText,
+    tag: "Guide",
+    readTime: "6 min read",
+    featured: true,
+    internal: true,
+  },
+  {
+    href: "/resources/mcp-study-automation-examples",
+    title: "MCP study automation examples",
+    description:
+      "Production-safe MCP patterns for listing decks, mapping templates, and creating cards in batches.",
+    icon: Cpu,
+    tag: "Guide",
+    readTime: "6 min read",
+    featured: true,
+    internal: true,
+  },
+  {
+    href: "/resources/anki-import-export",
+    title: "Anki import/export migration guide",
+    description:
+      "How to migrate between Anki and Deckbase with .apkg import while keeping your study momentum.",
+    icon: Layers,
+    tag: "Guide",
+    readTime: "5 min read",
+    featured: true,
+    internal: true,
+  },
+  {
     href: "/anki-alternatives",
     title: "Best Anki alternatives",
     description: "Roundup of apps like Anki — AI-generated cards, FSRS algorithm, and mobile-first study.",
@@ -32,6 +76,46 @@ const guides = [
     icon: Sparkles,
     tag: "Article",
     readTime: "4 min read",
+    internal: true,
+  },
+  {
+    href: "/quizlet-alternatives",
+    title: "Best Quizlet alternatives",
+    description:
+      "Roundup of Quizlet alternatives focused on long-term retention, FSRS, and AI card workflows.",
+    icon: Layers,
+    tag: "Article",
+    readTime: "6 min read",
+    internal: true,
+  },
+  {
+    href: "/deckbase-vs-anki",
+    title: "Deckbase vs Anki",
+    description:
+      "Direct comparison of AI card creation, FSRS scheduling, pricing, and learning curve.",
+    icon: BookOpen,
+    tag: "Comparison",
+    readTime: "8 min read",
+    internal: true,
+  },
+  {
+    href: "/deckbase-vs-quizlet",
+    title: "Deckbase vs Quizlet",
+    description:
+      "Head-to-head comparison of retention quality, study modes, pricing, and ideal use cases.",
+    icon: BookOpen,
+    tag: "Comparison",
+    readTime: "8 min read",
+    internal: true,
+  },
+  {
+    href: "/deckbase-vs-remnote",
+    title: "Deckbase vs RemNote",
+    description:
+      "Compare focused flashcard workflows versus all-in-one note systems for serious study.",
+    icon: BookOpen,
+    tag: "Comparison",
+    readTime: "7 min read",
     internal: true,
   },
 ];

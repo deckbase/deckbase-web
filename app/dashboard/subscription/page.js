@@ -85,6 +85,105 @@ function inferPackageCadence(identifier = "") {
   return "other";
 }
 
+function getPriceData(product) {
+  const priceObj = product?.price || product?.currentPrice || null;
+  if (!priceObj) return null;
+
+  const parseFormattedPriceNumber = (formatted) => {
+    if (!formatted) return null;
+    const raw = String(formatted).replace(/\s/g, "").replace(/[^\d.,-]/g, "");
+    if (!raw) return null;
+
+    const hasComma = raw.includes(",");
+    const hasDot = raw.includes(".");
+    let normalized = raw;
+
+    if (hasComma && hasDot) {
+      const lastComma = raw.lastIndexOf(",");
+      const lastDot = raw.lastIndexOf(".");
+      const decimalSep = lastComma > lastDot ? "," : ".";
+      const groupingSep = decimalSep === "," ? "." : ",";
+      normalized = raw.replace(new RegExp(`\\${groupingSep}`, "g"), "");
+      if (decimalSep === ",") normalized = normalized.replace(",", ".");
+    } else if (hasComma || hasDot) {
+      const sep = hasComma ? "," : ".";
+      const idx = raw.lastIndexOf(sep);
+      const decimals = raw.length - idx - 1;
+      if (decimals === 0 || decimals === 3) {
+        normalized = raw.replace(new RegExp(`\\${sep}`, "g"), "");
+      } else if (sep === ",") {
+        normalized = raw.replace(",", ".");
+      }
+    }
+
+    const n = Number.parseFloat(normalized);
+    return Number.isFinite(n) ? n : null;
+  };
+
+  const formattedPrice = priceObj.formattedPrice || null;
+  const formattedAmount = parseFormattedPriceNumber(formattedPrice);
+
+  const rawCandidates = [priceObj.amount, priceObj.value, priceObj.amountMicros]
+    .filter((v) => Number.isFinite(v))
+    .flatMap((v) => [v, v / 100, v / 1_000, v / 1_000_000])
+    .filter((v) => Number.isFinite(v) && v > 0);
+
+  let amount = null;
+  if (Number.isFinite(formattedAmount)) {
+    amount = rawCandidates.length
+      ? rawCandidates.reduce((best, candidate) => {
+          const bestDelta = Math.abs(best - formattedAmount);
+          const candidateDelta = Math.abs(candidate - formattedAmount);
+          return candidateDelta < bestDelta ? candidate : best;
+        }, rawCandidates[0])
+      : formattedAmount;
+  } else if (rawCandidates.length) {
+    amount = rawCandidates.find((v) => v < 100_000) ?? rawCandidates[0];
+  }
+
+  return {
+    amount,
+    currencyCode: priceObj.currencyCode || priceObj.currency || null,
+    formattedPrice,
+  };
+}
+
+function formatMonthlyEquivalent(product) {
+  const priceData = getPriceData(product);
+  if (!priceData || !Number.isFinite(priceData.amount) || priceData.amount <= 0) return null;
+
+  const monthly = priceData.amount / 12;
+  const roundedUpMonthly = Math.ceil(monthly);
+
+  if (priceData.currencyCode) {
+    try {
+      return new Intl.NumberFormat(undefined, {
+        style: "currency",
+        currency: priceData.currencyCode,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(roundedUpMonthly);
+    } catch {
+      // fall through to symbol-based formatting
+    }
+  }
+
+  const fallbackNumber = roundedUpMonthly.toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
+
+  if (!priceData.formattedPrice) return fallbackNumber;
+
+  const tokens = String(priceData.formattedPrice).match(/^(\D*)[\d.,\s]+(\D*)$/);
+  const prefix = tokens?.[1]?.trim() || "";
+  const suffix = tokens?.[2]?.trim() || "";
+  if (prefix && suffix) return `${prefix}${fallbackNumber} ${suffix}`;
+  if (prefix) return `${prefix}${fallbackNumber}`;
+  if (suffix) return `${fallbackNumber} ${suffix}`;
+  return fallbackNumber;
+}
+
 const BENEFITS_BY_TIER = {
   basic: [
     { label: "250 AI generations / month", included: true },
@@ -416,6 +515,10 @@ export default function SubscriptionPage() {
                   pkg.identifier.toLowerCase().includes("annual") ||
                   pkg.identifier.toLowerCase().includes("yearly") ||
                   pkg.identifier === "$rc_annual";
+                const monthlyEquivalent = isAnnual ? formatMonthlyEquivalent(product) : null;
+                const displayPrice = isAnnual && monthlyEquivalent ? monthlyEquivalent : priceStr;
+                const displayPriceSuffix =
+                  billingPeriod === MONTHLY || (isAnnual && monthlyEquivalent) ? "/mo" : null;
                 const isFeatured = isAnnual && tierTag === "pro";
                 const benefits = BENEFITS_BY_TIER[tierTag] || BENEFITS_BY_TIER.pro;
 
@@ -434,9 +537,15 @@ export default function SubscriptionPage() {
                       loading={isPurchasing}
                       title={title}
                       description={product?.description}
-                      price={priceStr}
-                      priceSuffix={billingPeriod === MONTHLY ? "/mo" : null}
-                      billingText={isAnnual ? "Billed yearly" : "per month"}
+                      price={displayPrice}
+                      priceSuffix={displayPriceSuffix}
+                      billingText={
+                        isAnnual
+                          ? monthlyEquivalent
+                            ? `Billed annually at ${priceStr}`
+                            : "Billed yearly"
+                          : "per month"
+                      }
                       badge={isFeatured ? "Most popular" : null}
                       tone={isFeatured ? "featured" : "default"}
                       liftFeatured={false}

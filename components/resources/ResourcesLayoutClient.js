@@ -10,7 +10,11 @@ const resourceNav = [
   { href: "/resources", label: "Overview" },
   { href: "/resources/mcp", label: "MCP for flashcards" },
   { href: "/anki-alternatives", label: "Anki alternatives" },
+  { href: "/quizlet-alternatives", label: "Quizlet alternatives" },
   { href: "/best-flashcard-apps", label: "Best flashcard apps" },
+  { href: "/deckbase-vs-anki", label: "Deckbase vs Anki" },
+  { href: "/deckbase-vs-quizlet", label: "Deckbase vs Quizlet" },
+  { href: "/deckbase-vs-remnote", label: "Deckbase vs RemNote" },
 ];
 
 const pageAnchors = {
@@ -35,6 +39,38 @@ const pageAnchors = {
   "/best-flashcard-apps": [
     { id: "how-to-choose", label: "How to choose" },
     { id: "shortlist", label: "Shortlist" },
+    { id: "try-deckbase", label: "Try Deckbase" },
+    { id: "faq", label: "FAQ" },
+    { id: "related", label: "Related" },
+  ],
+  "/deckbase-vs-anki": [
+    { id: "summary", label: "Quick Summary" },
+    { id: "feature-comparison", label: "Feature Comparison" },
+    { id: "pricing", label: "Pricing" },
+    { id: "deep-dive", label: "Deep Dive" },
+    { id: "faq", label: "FAQ" },
+    { id: "related", label: "Related" },
+  ],
+  "/deckbase-vs-quizlet": [
+    { id: "summary", label: "Quick Summary" },
+    { id: "feature-comparison", label: "Feature Comparison" },
+    { id: "pricing", label: "Pricing" },
+    { id: "deep-dive", label: "Deep Dive" },
+    { id: "faq", label: "FAQ" },
+    { id: "related", label: "Related" },
+  ],
+  "/deckbase-vs-remnote": [
+    { id: "summary", label: "Quick Summary" },
+    { id: "feature-comparison", label: "Feature Comparison" },
+    { id: "pricing", label: "Pricing" },
+    { id: "deep-dive", label: "Deep Dive" },
+    { id: "faq", label: "FAQ" },
+    { id: "related", label: "Related" },
+  ],
+  "/quizlet-alternatives": [
+    { id: "who-looks", label: "Who looks for alternatives" },
+    { id: "apps-at-a-glance", label: "Apps at a glance" },
+    { id: "why-deckbase", label: "Why Deckbase" },
     { id: "try-deckbase", label: "Try Deckbase" },
     { id: "faq", label: "FAQ" },
     { id: "related", label: "Related" },

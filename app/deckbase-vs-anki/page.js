@@ -193,7 +193,7 @@ export default function DeckbaseVsAnki() {
 
         <main className="max-w-4xl mx-auto px-4 pb-24 space-y-20">
           {/* Summary */}
-          <section>
+          <section id="summary">
             <h2 className="text-2xl md:text-3xl font-bold mb-6">Quick Summary</h2>
             <div className="grid md:grid-cols-2 gap-6">
               <div className="rounded-2xl bg-gray-900 border border-gray-800 p-6">
@@ -220,7 +220,7 @@ export default function DeckbaseVsAnki() {
           </section>
 
           {/* Feature comparison table */}
-          <section>
+          <section id="feature-comparison">
             <h2 className="text-2xl md:text-3xl font-bold mb-2">
               Feature Comparison Table
             </h2>
@@ -266,7 +266,7 @@ export default function DeckbaseVsAnki() {
           </section>
 
           {/* Pricing comparison table */}
-          <section>
+          <section id="pricing">
             <h2 className="text-2xl md:text-3xl font-bold mb-2">Pricing at a Glance</h2>
             <p className="text-sm text-gray-400 mb-6">
               Pricing as of March 2026. Check{" "}
@@ -318,7 +318,7 @@ export default function DeckbaseVsAnki() {
           </section>
 
           {/* Deep dive sections */}
-          <section>
+          <section id="deep-dive">
             <h2 className="text-2xl md:text-3xl font-bold mb-8">
               Deep Dive: What Actually Matters
             </h2>
@@ -429,7 +429,7 @@ export default function DeckbaseVsAnki() {
           </section>
 
           {/* FAQ */}
-          <section>
+          <section id="faq">
             <h2 className="text-2xl md:text-3xl font-bold mb-8">
               Frequently Asked Questions
             </h2>
@@ -465,7 +465,7 @@ export default function DeckbaseVsAnki() {
           </section>
 
           {/* Related comparisons */}
-          <section>
+          <section id="related">
             <h2 className="text-xl font-bold mb-4 text-gray-200">Related Comparisons</h2>
             <div className="flex flex-wrap gap-3">
               <Link
@@ -497,6 +497,18 @@ export default function DeckbaseVsAnki() {
                 className="px-4 py-2 rounded-lg bg-gray-900 border border-gray-800 text-gray-300 text-sm hover:border-gray-600 transition-colors"
               >
                 Best flashcard apps →
+              </Link>
+              <Link
+                href="/resources/anki-import-export"
+                className="px-4 py-2 rounded-lg bg-gray-900 border border-gray-800 text-gray-300 text-sm hover:border-gray-600 transition-colors"
+              >
+                Anki import/export guide →
+              </Link>
+              <Link
+                href="/resources/fsrs-guide"
+                className="px-4 py-2 rounded-lg bg-gray-900 border border-gray-800 text-gray-300 text-sm hover:border-gray-600 transition-colors"
+              >
+                FSRS practical guide →
               </Link>
             </div>
           </section>
