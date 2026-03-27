@@ -148,7 +148,7 @@ export default function FsrsGuidePage() {
         <ArticleSection id="definition">
           <ArticleH2>What FSRS means in practice</ArticleH2>
           <ArticleBody>
-            FSRS is not just "review later." It continuously estimates memory strength from your
+            FSRS is not just &quot;review later.&quot; It continuously estimates memory strength from your
             review history and picks a next interval that balances retention and workload. In
             practical terms, that means fewer unnecessary reviews and fewer surprise lapses.
           </ArticleBody>
@@ -186,7 +186,7 @@ export default function FsrsGuidePage() {
             ]}
           />
           <ArticleBody>
-            In Deckbase, this is usually "capture source → generate cards → edit → review." If you
+            In Deckbase, this is usually &quot;capture source → generate cards → edit → review.&quot; If you
             create cards through MCP, follow your template schema with <Code>get_template_schema</Code>{" "}
             before bulk writes.
           </ArticleBody>

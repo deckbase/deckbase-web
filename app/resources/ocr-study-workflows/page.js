@@ -155,7 +155,7 @@ export default function OcrStudyWorkflowsPage() {
             asks two questions at once, split it.
           </ArticleBody>
           <ArticleBody>
-            For technical subjects, add one short context line (for example, "cardiac physiology")
+            For technical subjects, add one short context line (for example, &quot;cardiac physiology&quot;)
             so similar terms do not collide during reviews.
           </ArticleBody>
         </ArticleSection>
