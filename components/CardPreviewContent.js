@@ -17,7 +17,13 @@ const QUIZ_BLOCK_TYPES = new Set(["quizSingleSelect", "quizMultiSelect", "quizTe
 const isQuizBlock = (block) => block && QUIZ_BLOCK_TYPES.has(resolveBlockType(block.type));
 const effectivePreviewSide = (block) => block?.side === "back" ? "back" : "front";
 
-export default function CardPreviewContent({ blocks = [], getValue, mediaCache = {}, className = "" }) {
+export default function CardPreviewContent({
+  blocks = [],
+  getValue,
+  mediaCache = {},
+  className = "",
+  forceImageAspectRatio = null,
+}) {
   const [revealedBlocks, setRevealedBlocks] = useState({});
   const [quizState, setQuizState] = useState({});
   const [showAnswer, setShowAnswer] = useState(false);
@@ -64,7 +70,18 @@ export default function CardPreviewContent({ blocks = [], getValue, mediaCache =
     setQuizRevealError("");
   };
 
-  const sharedListProps = { getValue, mediaCache, revealedBlocks, onToggleReveal: toggleReveal, quizState, onQuizChange, showAnswer };
+  const sharedListProps = {
+    getValue,
+    mediaCache,
+    revealedBlocks,
+    onToggleReveal: toggleReveal,
+    quizState,
+    onQuizChange,
+    showAnswer,
+    forceImageAspectRatio,
+    /** Preview: quiz “Reveal answer” must not auto-open hiddenText — use Tap to reveal only */
+    openHiddenTextWithQuizReveal: false,
+  };
 
   const flipCard = hasFlipBack ? (
     <div className="relative mx-auto w-full" style={{ perspective: "1200px" }}>
@@ -84,28 +101,38 @@ export default function CardPreviewContent({ blocks = [], getValue, mediaCache =
     </div>
   ) : null;
 
-  const revealSection = hasQuiz && !showAnswer ? (
+  const revealSection = hasQuiz ? (
     <div className="pt-4 mt-1 border-t border-white/[0.07] space-y-2">
-      <AnimatePresence>
-        {quizRevealError && (
-          <motion.p
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="text-[12px] text-red-400 text-center"
-          >
-            {quizRevealError}
-          </motion.p>
-        )}
-      </AnimatePresence>
-      <button
-        type="button"
-        onClick={handleRevealAnswer}
-        className="flex items-center justify-center gap-2 w-full py-2.5 text-[13px] font-semibold rounded-xl bg-accent hover:bg-accent/90 text-white transition-colors shadow-[0_0_20px_rgba(35,131,226,0.2)]"
-      >
-        <Eye className="w-4 h-4" />
-        Reveal answer
-      </button>
+      <div className="h-4 flex items-center justify-center">
+        <AnimatePresence>
+          {quizRevealError && !showAnswer && (
+            <motion.p
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="text-[12px] text-red-400 text-center"
+            >
+              {quizRevealError}
+            </motion.p>
+          )}
+        </AnimatePresence>
+      </div>
+      <div className="h-[42px]">
+        <button
+          type="button"
+          onClick={handleRevealAnswer}
+          disabled={showAnswer}
+          className={`flex items-center justify-center gap-2 w-full py-2.5 text-[13px] font-semibold rounded-xl bg-accent text-white transition-colors shadow-[0_0_20px_rgba(35,131,226,0.2)] ${
+            showAnswer
+              ? "opacity-0 pointer-events-none"
+              : "hover:bg-accent/90"
+          }`}
+          aria-hidden={showAnswer}
+        >
+          <Eye className="w-4 h-4" />
+          Reveal answer
+        </button>
+      </div>
     </div>
   ) : null;
 

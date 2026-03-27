@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import Image from "next/image";
+import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { BlockTypeNames } from "@/utils/firestore";
 import { getCropAspectFromConfig } from "@/lib/image-block-config";
@@ -111,6 +112,9 @@ export default function BlockDisplay({
   mediaCache = {},
   revealedBlocks = {},
   onToggleReveal,
+  forceImageAspectRatio = null,
+  /** When true, hidden-text reveal toggle is disabled (e.g. quiz global reveal in study). */
+  revealToggleDisabled = false,
 }) {
   const [imageIndex, setImageIndex] = useState(0);
   const swipeStartRef = useRef(null);
@@ -167,32 +171,108 @@ export default function BlockDisplay({
       case "hiddenText": {
         const isRevealed = revealedBlocks[block.blockId];
         return (
-          <div className="space-y-2">
-            {onToggleReveal && (
-              <button
-                type="button"
-                onClick={() => onToggleReveal(block.blockId)}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-[12px] font-medium transition-all ${
-                  isRevealed
-                    ? "border-white/[0.08] bg-white/[0.03] text-white/40 hover:text-white/60"
-                    : "border-accent/30 bg-accent/[0.06] text-accent hover:bg-accent/[0.10]"
-                }`}
-              >
-                {isRevealed ? (
-                  <><EyeOff className="w-3.5 h-3.5" /><span>Hide</span></>
-                ) : (
-                  <><Eye className="w-3.5 h-3.5" /><span>Reveal</span></>
-                )}
-              </button>
-            )}
+          <div className="relative">
+            {/* Top hairline — subtle “vault” frame */}
             <div
-              className={`transition-all duration-300 overflow-hidden ${
-                isRevealed ? "opacity-100 max-h-[500px]" : "opacity-0 max-h-0"
-              }`}
+              className="pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-accent/40 to-transparent"
+              aria-hidden
+            />
+            <div
+              role="region"
+              aria-label="Hidden answer"
+              className={[
+                "relative overflow-hidden rounded-2xl border border-white/[0.09]",
+                "bg-gradient-to-br from-white/[0.07] via-white/[0.02] to-black/50",
+                "shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_12px_40px_rgba(0,0,0,0.45)]",
+              ].join(" ")}
             >
-              <p className="text-[14px] text-white/75 bg-white/[0.03] border border-white/[0.07] px-4 py-3 rounded-xl whitespace-pre-wrap leading-relaxed">
-                {value?.text}
-              </p>
+              <div
+                className="pointer-events-none absolute inset-0 rounded-2xl opacity-[0.14] mix-blend-overlay"
+                style={{
+                  backgroundImage:
+                    "radial-gradient(rgba(255,255,255,0.14) 1px, transparent 1px)",
+                  backgroundSize: "5px 5px",
+                }}
+                aria-hidden
+              />
+
+              {onToggleReveal && (
+                <button
+                  type="button"
+                  onClick={() => onToggleReveal(block.blockId)}
+                  disabled={revealToggleDisabled}
+                  className={[
+                    "relative z-[1] w-full text-left px-4 py-3.5 flex items-center gap-3 transition-colors",
+                    isRevealed
+                      ? "border-b border-white/[0.07] hover:bg-white/[0.04]"
+                      : "hover:bg-white/[0.05] active:bg-white/[0.07]",
+                    revealToggleDisabled ? "cursor-not-allowed opacity-70" : "",
+                  ].join(" ")}
+                  aria-expanded={isRevealed}
+                  aria-controls={`hidden-text-${block.blockId}`}
+                >
+                  <span
+                    className={[
+                      "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+                      isRevealed
+                        ? "bg-white/[0.06] ring-1 ring-white/10 text-white/45"
+                        : "bg-accent/12 ring-1 ring-accent/35 text-accent",
+                    ].join(" ")}
+                  >
+                    {isRevealed ? (
+                      <EyeOff className="h-4 w-4" strokeWidth={2.2} />
+                    ) : (
+                      <Eye className="h-4 w-4" strokeWidth={2.2} />
+                    )}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-white/35">
+                      Hidden answer
+                    </span>
+                    <span className="mt-0.5 block text-[13px] font-medium text-white/80">
+                      {isRevealed ? "Visible — tap to hide" : "Tap to reveal"}
+                    </span>
+                    {revealToggleDisabled && (
+                      <span className="mt-1 block text-[11px] text-white/30">
+                        Shown with quiz reveal
+                      </span>
+                    )}
+                  </span>
+                  <span
+                    className={[
+                      "shrink-0 rounded-lg px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide",
+                      isRevealed ? "bg-white/[0.06] text-white/45" : "bg-accent/15 text-accent/90",
+                    ].join(" ")}
+                  >
+                    {isRevealed ? "Hide" : "Reveal"}
+                  </span>
+                </button>
+              )}
+
+              <AnimatePresence initial={false}>
+                {isRevealed && (
+                  <motion.div
+                    id={`hidden-text-${block.blockId}`}
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
+                    className="relative z-[1] overflow-hidden"
+                  >
+                    <div className="px-4 pb-4 pt-1">
+                      <div className="relative rounded-xl border border-white/[0.06] bg-black/35 pl-4 pr-3 py-3.5 backdrop-blur-[2px]">
+                        <div
+                          className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full bg-gradient-to-b from-accent via-accent/75 to-accent/35"
+                          aria-hidden
+                        />
+                        <p className="pl-2 text-[14px] leading-relaxed tracking-[0.01em] text-white/[0.88] whitespace-pre-wrap">
+                          {value?.text || "No answer provided."}
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
         );
@@ -210,7 +290,10 @@ export default function BlockDisplay({
             config = null;
           }
         }
-        const cropAspect = getCropAspectFromConfig(config);
+        const cropAspect =
+          typeof forceImageAspectRatio === "number" && forceImageAspectRatio > 0
+            ? forceImageAspectRatio
+            : getCropAspectFromConfig(config);
         const mediaIds = value.mediaIds.filter((id) => mediaCache[id]?.downloadUrl);
         if (!mediaIds.length) return null;
         const total = mediaIds.length;

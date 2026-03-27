@@ -16,7 +16,7 @@ const features = [
     icon: <Sparkles className="w-6 h-6" />,
     title: "AI-Powered Generation",
     description:
-      "Our AI analyzes your content, extracts key concepts, and creates well-structured flashcards automatically—no manual work needed.",
+      "Generate AI flashcards in bulk from notes, PDFs, and articles, then refine them in a beautiful, flexible, customizable flashcard UI.",
     iconBg: "bg-accent/15",
     iconColor: "text-accent",
     borderHover: "hover:border-accent/30",
@@ -41,9 +41,9 @@ const features = [
   },
   {
     icon: <Brain className="w-6 h-6" />,
-    title: "Smart Formatting",
+    title: "Image + Audio Support",
     description:
-      "AI generates examples, context, and explanations—creating cards optimized for how your brain actually learns.",
+      "Build richer cards with image and audio support so each review is more visual, contextual, and easier to remember.",
     iconBg: "bg-notion-purple/10",
     iconColor: "text-notion-purple",
     borderHover: "hover:border-notion-purple/30",
@@ -105,7 +105,8 @@ const AppFeatures = () => {
             className="text-lg text-white/40 max-w-2xl mx-auto"
           >
             Discover how Deckbase transforms passive reading into active
-            learning with AI-powered flashcards and scientifically proven study methods.
+            learning with AI-powered flashcards, a beautiful flexible card UI,
+            and image/audio-ready study flows.
           </motion.p>
         </div>
 
@@ -141,11 +142,11 @@ const AppFeatures = () => {
         >
           <div className="bg-gradient-to-br from-accent/10 to-purple-600/10 border border-white/10 p-10 rounded-2xl">
             <h3 className="text-2xl font-bold mb-3 text-white">
-              Ready to Remember Everything You Read?
+              Ready to build cards your way?
             </h3>
             <p className="text-white/40 mb-8 max-w-xl mx-auto text-sm leading-relaxed">
-              Join thousands who are using Deckbase to turn their reading into
-              lasting knowledge with AI-powered flashcards and spaced repetition.
+              Use a beautiful flexible card UI with image/audio support, then
+              scale your workflow with MCP and Anki APKG import/export.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <AppStoreDownloadButton />

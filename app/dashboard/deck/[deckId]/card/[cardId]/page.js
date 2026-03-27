@@ -36,6 +36,7 @@ import {
   getCard,
   createCard,
   updateCard,
+  deleteCard,
   uploadImage,
   uploadAudio,
   getMedia,
@@ -55,7 +56,6 @@ import {
   CROP_ASPECT_OPTIONS,
   DEFAULT_CROP_ASPECT,
 } from "@/lib/image-block-config";
-import CardPreviewContent from "@/components/CardPreviewContent";
 import ImageCropModal from "@/components/ImageCropModal";
 
 const safeJsonParse = (value) => {
@@ -185,8 +185,8 @@ function CardEditorPageInner() {
   const [mainBlockId, setMainBlockId] = useState(null);
   const [subBlockId, setSubBlockId] = useState(null);
   const [generatingAudioBlockId, setGeneratingAudioBlockId] = useState(null);
-  const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [saveSnackbarOpen, setSaveSnackbarOpen] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [imageCropPending, setImageCropPending] = useState(null);
   const [imageUploadProgress, setImageUploadProgress] = useState(null);
   const [imageEditLoading, setImageEditLoading] = useState(null);
@@ -198,6 +198,49 @@ function CardEditorPageInner() {
     valuesRef.current = values;
     blocksRef.current = blocks;
   }, [values, blocks]);
+
+  const openFullPagePreview = useCallback(() => {
+    if (!blocks.length) return;
+    try {
+      sessionStorage.setItem(
+        `card-preview-draft-${deckId}`,
+        JSON.stringify({
+          targetCardId: isNewCard ? "new" : cardId,
+          blocks,
+          values,
+          entry: "editor",
+        }),
+      );
+    } catch (e) {
+      console.error(e);
+    }
+    router.push(
+      `/dashboard/deck/${deckId}/card/${isNewCard ? "new" : cardId}/preview?from=editor`,
+    );
+  }, [blocks, cardId, deckId, isNewCard, router, values]);
+
+  const handleDeleteCard = useCallback(async () => {
+    if (!user || isNewCard || !cardId) return;
+    setShowDeleteModal(false);
+    try {
+      await deleteCard(user.uid, cardId, deckId);
+      router.push(`/dashboard/deck/${deckId}`);
+    } catch (error) {
+      console.error("Error deleting card:", error);
+    }
+  }, [user, isNewCard, cardId, deckId, router]);
+
+  useEffect(() => {
+    if (!showDeleteModal) return;
+    const prevBody = document.body.style.overflow;
+    const prevHtml = document.documentElement.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevBody;
+      document.documentElement.style.overflow = prevHtml;
+    };
+  }, [showDeleteModal]);
 
   const DEBOUNCE_MS = 800;
   const scheduleTextAutoSave = useCallback(() => {
@@ -1405,7 +1448,7 @@ function CardEditorPageInner() {
         <div className="flex items-center gap-3">
           <Link
             href={`/dashboard/deck/${deckId}`}
-            className="p-2 rounded-xl border border-white/[0.07] bg-white/[0.03] hover:bg-white/[0.07] text-white/50 hover:text-white/90 transition-all"
+            className="p-2 rounded-xl border border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.09] hover:border-white/[0.14] text-white/55 hover:text-white/90 transition-all"
           >
             <ArrowLeft className="w-4 h-4" />
           </Link>
@@ -1413,20 +1456,33 @@ function CardEditorPageInner() {
             <h1 className="text-[16px] font-semibold text-white tracking-tight">
               {isNewCard ? "New Card" : "Edit Card"}
             </h1>
-            <p className="text-[12px] text-white/30 mt-0.5">{deck?.title}</p>
+            <p className="text-[12px] text-white/35 mt-0.5">{deck?.title}</p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => setShowPreviewModal(true)}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-white/[0.08] bg-white/[0.03] text-[13px] text-white/60 hover:text-white/90 hover:bg-white/[0.07] transition-all"
+            onClick={openFullPagePreview}
+            disabled={blocks.length === 0}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-white/[0.08] bg-white/[0.03] text-[13px] text-white/60 hover:text-white/90 hover:bg-white/[0.07] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             title="Preview card"
           >
             <Eye className="w-4 h-4" />
             <span className="hidden sm:inline">Preview</span>
           </button>
+          {!isNewCard && (
+            <button
+              type="button"
+              onClick={() => setShowDeleteModal(true)}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-red-500/35 bg-red-500/[0.09] text-[13px] font-medium text-red-200/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-all hover:bg-red-500/[0.16] hover:border-red-400/50 hover:text-red-100 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#080808]"
+              title="Delete card"
+              aria-label="Delete card"
+            >
+              <Trash2 className="w-4 h-4 shrink-0 text-red-300" strokeWidth={2.25} />
+              <span className="hidden sm:inline">Delete</span>
+            </button>
+          )}
           <button
             onClick={handleSave}
             disabled={saving}
@@ -1476,18 +1532,22 @@ function CardEditorPageInner() {
             <button
               type="button"
               onClick={() => setBlockPickerSide("front")}
-              className="px-4 py-2 rounded-xl bg-accent/[0.12] border border-accent/20 text-accent hover:bg-accent/[0.2] text-[13px] font-medium transition-colors"
+              className="px-4 py-2.5 rounded-xl bg-accent/[0.12] border border-accent/25 text-accent hover:bg-accent/[0.2] hover:border-accent/40 text-[13px] font-medium transition-all flex items-center gap-2"
             >
+              <Plus className="w-3.5 h-3.5" />
               Add block
             </button>
           </div>
         ) : (
           <>
-            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] overflow-hidden">
-              <div className="px-4 py-2.5 border-b border-white/[0.06] bg-white/[0.03] flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-accent/50" />
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-white/40">
+            <div className="rounded-2xl border border-white/[0.09] bg-white/[0.02] overflow-hidden">
+              <div className="px-4 py-3 border-b border-white/[0.07] bg-white/[0.04] flex items-center gap-3">
+                <span className="w-2 h-2 rounded-full bg-accent shadow-[0_0_8px_rgba(35,131,226,0.6)]" />
+                <span className="text-[12px] font-semibold uppercase tracking-widest text-white/60">
                   Front
+                </span>
+                <span className="text-[11px] text-white/25 font-medium tabular-nums">
+                  {frontBlocks.length} {frontBlocks.length === 1 ? "block" : "blocks"}
                 </span>
               </div>
               <div className="p-4 space-y-3">
@@ -1495,7 +1555,7 @@ function CardEditorPageInner() {
                 <button
                   type="button"
                   onClick={() => setBlockPickerSide("front")}
-                  className="w-full py-2.5 border border-dashed border-white/[0.12] hover:border-accent/35 rounded-xl text-[13px] text-white/35 hover:text-accent transition-colors flex items-center justify-center gap-2"
+                  className="w-full py-2.5 border border-dashed border-white/[0.17] hover:border-accent/45 hover:bg-accent/[0.04] rounded-xl text-[13px] text-white/40 hover:text-accent/90 transition-all flex items-center justify-center gap-2"
                 >
                   <Plus className="w-4 h-4" />
                   Add block
@@ -1507,23 +1567,27 @@ function CardEditorPageInner() {
               <button
                 type="button"
                 onClick={addBackOfCard}
-                className="w-full py-3 rounded-2xl border border-dashed border-white/[0.10] hover:border-white/[0.20] text-[13px] text-white/30 hover:text-white/60 transition-colors"
+                className="w-full py-3.5 rounded-2xl border border-dashed border-white/[0.14] hover:border-white/[0.28] hover:bg-white/[0.02] text-[13px] text-white/35 hover:text-white/70 transition-all flex items-center justify-center gap-2"
               >
-                + Add back of card
+                <Plus className="w-4 h-4" />
+                Add back of card
               </button>
             ) : (
-              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] overflow-hidden">
-                <div className="px-4 py-2.5 border-b border-white/[0.06] bg-white/[0.03] flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-white/25" />
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-white/40">
+              <div className="rounded-2xl border border-white/[0.09] bg-white/[0.02] overflow-hidden">
+                <div className="px-4 py-3 border-b border-white/[0.07] bg-white/[0.04] flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="w-2 h-2 rounded-full bg-white/40" />
+                    <span className="text-[12px] font-semibold uppercase tracking-widest text-white/60">
                       Back
+                    </span>
+                    <span className="text-[11px] text-white/25 font-medium tabular-nums">
+                      {backBlocks.length} {backBlocks.length === 1 ? "block" : "blocks"}
                     </span>
                   </div>
                   <button
                     type="button"
                     onClick={removeBackSection}
-                    className="text-[11px] text-red-400/50 hover:text-red-400 transition-colors"
+                    className="text-[11px] text-red-400/50 hover:text-red-400 hover:bg-red-500/[0.08] px-2 py-1 rounded-lg transition-all"
                   >
                     Remove back
                   </button>
@@ -1533,7 +1597,7 @@ function CardEditorPageInner() {
                   <button
                     type="button"
                     onClick={() => setBlockPickerSide("back")}
-                    className="w-full py-2.5 border border-dashed border-white/[0.12] hover:border-accent/35 rounded-xl text-[13px] text-white/35 hover:text-accent transition-colors flex items-center justify-center gap-2"
+                    className="w-full py-2.5 border border-dashed border-white/[0.17] hover:border-accent/45 hover:bg-accent/[0.04] rounded-xl text-[13px] text-white/40 hover:text-accent/90 transition-all flex items-center justify-center gap-2"
                   >
                     <Plus className="w-4 h-4" />
                     Add block
@@ -1557,11 +1621,20 @@ function CardEditorPageInner() {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.15 }}
-              className="absolute bottom-full left-0 right-0 mb-2 bg-[#111111] border border-white/[0.09] rounded-2xl shadow-2xl p-4 z-20"
+              className="absolute bottom-full left-0 right-0 mb-2 bg-[#0f0f0f] border border-white/[0.10] rounded-2xl shadow-[0_-8px_40px_rgba(0,0,0,0.7),0_4px_20px_rgba(0,0,0,0.4)] p-4 z-20"
             >
-              <p className="text-[11px] text-white/30 mb-3 uppercase tracking-wider font-medium">
-                Adding to <span className="text-white/60">{blockPickerSide === "back" ? "Back" : "Front"}</span>
-              </p>
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-[11px] text-white/40 uppercase tracking-wider font-semibold">
+                  Add block to <span className="text-white/65">{blockPickerSide === "back" ? "Back" : "Front"}</span>
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setBlockPickerSide(null)}
+                  className="p-1 rounded-lg text-white/30 hover:text-white/65 hover:bg-white/[0.07] transition-all"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {Object.entries(BLOCK_TYPES).map(([type, config]) => {
                   const Icon = config.icon;
@@ -1570,10 +1643,12 @@ function CardEditorPageInner() {
                       key={type}
                       type="button"
                       onClick={() => addBlock(type, blockPickerSide)}
-                      className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-white/[0.07] border border-transparent hover:border-white/[0.07] transition-all"
+                      className="flex flex-col items-center gap-2.5 p-3.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.06] hover:border-accent/25 transition-all group/picker"
                     >
-                      <Icon className="w-4 h-4 text-accent/80" />
-                      <span className="text-[11px] text-white/50 hover:text-white/80">
+                      <div className="w-7 h-7 rounded-lg bg-white/[0.06] group-hover/picker:bg-accent/[0.14] flex items-center justify-center transition-colors">
+                        <Icon className="w-3.5 h-3.5 text-white/50 group-hover/picker:text-accent transition-colors" />
+                      </div>
+                      <span className="text-[11px] text-white/45 group-hover/picker:text-white/80 transition-colors">
                         {config.label}
                       </span>
                     </button>
@@ -1598,41 +1673,6 @@ function CardEditorPageInner() {
         />
       )}
 
-      {/* Preview modal */}
-      {showPreviewModal && (
-        <div
-          className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4"
-          onClick={() => setShowPreviewModal(false)}
-        >
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ type: "spring", bounce: 0.15, duration: 0.35 }}
-            className="bg-[#0e0e0e] border border-white/[0.08] rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] overflow-hidden flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.07]">
-              <h2 className="text-[13px] font-semibold text-white/80">Preview</h2>
-              <button
-                type="button"
-                onClick={() => setShowPreviewModal(false)}
-                className="p-1.5 rounded-lg hover:bg-white/[0.07] text-white/30 hover:text-white/70 transition-all"
-                aria-label="Close preview"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="overflow-y-auto flex-1 overflow-x-hidden p-5">
-              <CardPreviewContent
-                blocks={blocks}
-                getValue={(blockId) => values[blockId]}
-                mediaCache={mediaCache}
-              />
-            </div>
-          </motion.div>
-        </div>
-      )}
-
       <AnimatePresence>
         {saveSnackbarOpen && (
           <motion.div
@@ -1642,10 +1682,72 @@ function CardEditorPageInner() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 8 }}
             transition={{ duration: 0.2 }}
-            className="fixed bottom-6 left-1/2 z-[100] flex -translate-x-1/2 items-center gap-2 rounded-xl border border-white/[0.09] bg-[#141414] px-4 py-3 text-[13px] text-white shadow-xl shadow-black/60"
+            className="fixed bottom-6 left-1/2 z-[100] flex -translate-x-1/2 items-center gap-2.5 rounded-xl border border-white/[0.10] bg-[#141414] px-4 py-3 text-[13px] text-white shadow-2xl shadow-black/70 backdrop-blur-sm"
           >
             <Check className="h-4 w-4 shrink-0 text-emerald-400" strokeWidth={2.5} />
             Card saved
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showDeleteModal && (
+          <motion.div
+            key="card-delete-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[300] flex items-end justify-center bg-black/80 p-4 backdrop-blur-md sm:items-center"
+            role="presentation"
+            onClick={() => setShowDeleteModal(false)}
+          >
+            <motion.div
+              key="card-delete-dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="card-delete-title"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 12 }}
+              transition={{ type: "spring", bounce: 0.15, duration: 0.4 }}
+              className="w-full max-w-md overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0e0e0e] shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b border-white/[0.06] px-5 pb-4 pt-5">
+                <h2 id="card-delete-title" className="text-[15px] font-semibold text-white">
+                  Delete card?
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteModal(false)}
+                  className="p-1.5 rounded-lg text-white/30 hover:text-white/70 hover:bg-white/[0.06] transition-all"
+                  aria-label="Close"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="px-5 py-5 flex flex-col gap-5">
+                <p className="text-[13px] text-white/45 leading-relaxed">
+                  This card will be permanently deleted and cannot be recovered.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteModal(false)}
+                    className="flex-1 px-4 py-2.5 bg-white/[0.04] hover:bg-white/[0.08] text-white/60 hover:text-white text-[13px] font-medium rounded-xl border border-white/[0.07] transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeleteCard}
+                    className="flex-1 px-4 py-2.5 bg-red-500/90 hover:bg-red-500 text-white text-[13px] font-semibold rounded-xl transition-colors"
+                  >
+                    Delete card
+                  </button>
+                </div>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -1828,10 +1930,10 @@ function BlockEditor({
 
       case "hiddenText":
         return (
-          <div className="rounded-lg bg-white/[0.03] border border-dashed border-white/[0.10] px-3 py-2.5">
+          <div className="rounded-lg bg-white/[0.04] border border-dashed border-white/[0.14] px-3 py-2.5">
             <div className="flex items-center gap-1.5 mb-2">
-              <EyeOff className="w-3 h-3 text-white/25" />
-              <span className="text-[10px] text-white/25 uppercase tracking-wider">Hidden until revealed</span>
+              <EyeOff className="w-3 h-3 text-white/35" />
+              <span className="text-[10px] text-white/35 uppercase tracking-wider font-medium">Hidden until revealed</span>
             </div>
             <textarea
               value={value?.text || ""}
@@ -1865,7 +1967,7 @@ function BlockEditor({
           <div className="space-y-3">
             {/* Display aspect pills */}
             <div>
-              <span className="text-[11px] text-white/30 block mb-2 uppercase tracking-wider">Display aspect</span>
+              <span className="text-[11px] text-white/40 block mb-2 uppercase tracking-wider font-medium">Display aspect</span>
               <div className="flex flex-wrap gap-1.5">
                 {CROP_ASPECT_OPTIONS.map((opt) => (
                   <button
@@ -1993,7 +2095,7 @@ function BlockEditor({
               </div>
             ) : onGenerateAudio ? (
               <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-3.5 space-y-3">
-                <span className="text-[11px] text-white/40 font-semibold uppercase tracking-wider flex items-center gap-1.5">
+                <span className="text-[11px] text-white/50 font-semibold uppercase tracking-wider flex items-center gap-1.5">
                   <Sparkles className="w-3 h-3 text-amber-400" />
                   Generate with AI
                 </span>
@@ -2097,10 +2199,10 @@ function BlockEditor({
               value={qConfig.question || ""}
               onChange={(e) => onConfigChange({ ...qConfig, question: e.target.value })}
               placeholder="Question…"
-              className="w-full bg-transparent text-[14px] text-white placeholder-white/20 focus:outline-none border-b border-white/[0.10] pb-2 focus:border-white/25 transition-colors"
+              className="w-full bg-transparent text-[14px] text-white placeholder-white/25 focus:outline-none border-b border-white/[0.12] pb-2 focus:border-white/30 transition-colors"
             />
             <div className="space-y-1.5">
-              <span className="text-[11px] text-white/30 uppercase tracking-wider block">Options — tap circle to mark correct</span>
+              <span className="text-[11px] text-white/40 uppercase tracking-wider block font-medium">Options — tap circle to mark correct</span>
               {options.map((option, i) => {
                 const isCorrect = correct.includes(option) && option;
                 return (
@@ -2159,10 +2261,10 @@ function BlockEditor({
               value={qConfig.question || ""}
               onChange={(e) => onConfigChange({ ...qConfig, question: e.target.value })}
               placeholder="Question…"
-              className="w-full bg-transparent text-[14px] text-white placeholder-white/20 focus:outline-none border-b border-white/[0.10] pb-2 focus:border-white/25 transition-colors"
+              className="w-full bg-transparent text-[14px] text-white placeholder-white/25 focus:outline-none border-b border-white/[0.12] pb-2 focus:border-white/30 transition-colors"
             />
             <div className="space-y-1.5">
-              <span className="text-[11px] text-white/30 uppercase tracking-wider block">Options — check to mark correct</span>
+              <span className="text-[11px] text-white/40 uppercase tracking-wider block font-medium">Options — check to mark correct</span>
               {options.map((option, i) => {
                 const isCorrect = correct.has(option) && option;
                 return (
@@ -2227,7 +2329,7 @@ function BlockEditor({
               value={qConfig.question || ""}
               onChange={(e) => onConfigChange({ ...qConfig, question: e.target.value })}
               placeholder="Question…"
-              className="w-full bg-transparent text-[14px] text-white placeholder-white/20 focus:outline-none border-b border-white/[0.10] pb-2 focus:border-white/25 transition-colors"
+              className="w-full bg-transparent text-[14px] text-white placeholder-white/25 focus:outline-none border-b border-white/[0.12] pb-2 focus:border-white/30 transition-colors"
             />
             <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04]">
               <Check className="w-3.5 h-3.5 text-emerald-400/60 flex-shrink-0" />
@@ -2278,14 +2380,14 @@ function BlockEditor({
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white/[0.025] border border-white/[0.07] hover:border-white/[0.11] rounded-xl p-4 group transition-colors"
+      className="bg-white/[0.04] border border-white/[0.09] hover:border-white/[0.16] hover:bg-white/[0.055] focus-within:border-white/[0.18] focus-within:bg-white/[0.05] rounded-xl p-4 group transition-all duration-150"
     >
       <div className="flex items-start gap-3">
         {/* Drag Handle & Icon */}
         <div className="flex items-center gap-1.5 pt-0.5 flex-shrink-0">
-          <GripVertical className="w-4 h-4 text-white/15 cursor-grab active:cursor-grabbing" />
-          <div className="w-6 h-6 rounded-lg bg-white/[0.05] flex items-center justify-center">
-            <Icon className="w-3.5 h-3.5 text-white/35" />
+          <GripVertical className="w-4 h-4 text-white/20 group-hover:text-white/50 cursor-grab active:cursor-grabbing transition-colors" />
+          <div className="w-6 h-6 rounded-lg bg-white/[0.08] flex items-center justify-center">
+            <Icon className="w-3.5 h-3.5 text-white/55" />
           </div>
         </div>
 
@@ -2293,7 +2395,7 @@ function BlockEditor({
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-2.5">
             <div className="flex items-center gap-2">
-              <span className="text-[11px] font-medium text-white/35 uppercase tracking-wider">
+              <span className="text-[11px] font-semibold text-white/50 uppercase tracking-wider">
                 {block.label}
                 {block.required && <span className="text-accent/70 ml-0.5">*</span>}
               </span>
@@ -2311,9 +2413,9 @@ function BlockEditor({
             {!block.required && (
               <button
                 onClick={onRemove}
-                className="p-1.5 opacity-0 group-hover:opacity-100 hover:bg-red-500/[0.08] rounded-lg transition-all"
+                className="p-1.5 opacity-0 group-hover:opacity-100 hover:bg-red-500/[0.12] hover:border hover:border-red-500/20 rounded-lg transition-all"
               >
-                <Trash2 className="w-3.5 h-3.5 text-red-400/60 hover:text-red-400" />
+                <Trash2 className="w-3.5 h-3.5 text-red-400/70 hover:text-red-400" />
               </button>
             )}
           </div>

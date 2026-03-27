@@ -62,7 +62,6 @@ import {
 import { exportApkgToBlob } from "@/utils/apkgExport";
 import { deckTitleToExportFilenameBase } from "@/utils/exportFilename";
 import { parseAudioBlockConfig } from "@/lib/audio-block-config";
-import CardPreviewContent from "@/components/CardPreviewContent";
 import ExcelJS from "exceljs";
 
 // Import steps matching mobile
@@ -182,7 +181,6 @@ export default function DeckDetailPage() {
   const [fileToAIPreviewLoading, setFileToAIPreviewLoading] = useState(false);
   const [fileToAIPreviewPromptOpen, setFileToAIPreviewPromptOpen] = useState(false);
   const [fileToAIPreviewUrl, setFileToAIPreviewUrl] = useState(null); // object URL for image preview
-  const [fileToAIPreviewCardIndex, setFileToAIPreviewCardIndex] = useState(null); // index of card to show in preview modal
   const [fileToAIReferenceCardIds, setFileToAIReferenceCardIds] = useState(new Set());
   const fileToAIFileInputRef = useRef(null);
   const fileToAIPreviewPromptBlockRef = useRef(null);
@@ -2311,7 +2309,6 @@ export default function DeckDetailPage() {
     setFileToAISuccessResult(null);
     setFileToAIDevPromptOpen(true);
     setFileToAIPreviewPrompt(null);
-    setFileToAIPreviewCardIndex(null);
     setFileToAIReferenceCardIds(new Set());
     if (fileToAIFileInputRef.current) fileToAIFileInputRef.current.value = "";
   };
@@ -3412,7 +3409,14 @@ export default function DeckDetailPage() {
                       Edit
                     </Link>
                     <Link
-                      href={`/dashboard/deck/${deckId}/card/${card.cardId}/preview`}
+                      href={`/dashboard/deck/${deckId}/card/${card.cardId}/preview?from=deck`}
+                      onClick={() => {
+                        try {
+                          sessionStorage.removeItem(`card-preview-draft-${deckId}`);
+                        } catch {
+                          /* ignore */
+                        }
+                      }}
                       className="flex items-center gap-2 px-3.5 py-2.5 text-[13px] text-white/60 hover:text-white/90 hover:bg-white/[0.06] transition-colors"
                     >
                       <Eye className="w-3.5 h-3.5" />
@@ -4144,7 +4148,28 @@ export default function DeckDetailPage() {
                             type="button"
                             onClick={(e) => {
                               e.preventDefault();
-                              setFileToAIPreviewCardIndex(i);
+                              const gen = addWithAIGeneratedCards[i];
+                              if (!gen?.blocksSnapshot?.length) return;
+                              const valuesObj = {};
+                              for (const v of gen.values || []) {
+                                if (v?.blockId) valuesObj[v.blockId] = v;
+                              }
+                              try {
+                                sessionStorage.setItem(
+                                  `card-preview-draft-${deckId}`,
+                                  JSON.stringify({
+                                    targetCardId: "new",
+                                    blocks: gen.blocksSnapshot,
+                                    values: valuesObj,
+                                    entry: "fileToAi",
+                                  }),
+                                );
+                              } catch (err) {
+                                console.error(err);
+                              }
+                              router.push(
+                                `/dashboard/deck/${deckId}/card/new/preview?from=fileToAi`,
+                              );
                             }}
                             className="shrink-0 px-2 py-1 text-xs text-white/70 hover:text-amber-400 hover:bg-white/5 rounded flex items-center gap-1"
                             title="Preview card"
@@ -4654,41 +4679,6 @@ export default function DeckDetailPage() {
                   </div>
                 </>
               )}
-            </div>
-          </Modal>
-        )}
-      </AnimatePresence>
-
-      {/* Card preview modal (Generate from doc/img — generated card preview) */}
-      <AnimatePresence>
-        {fileToAIPreviewCardIndex != null && addWithAIGeneratedCards[fileToAIPreviewCardIndex] && (
-          <Modal onClose={() => setFileToAIPreviewCardIndex(null)}>
-            <div className="flex flex-col max-h-[85vh] min-h-0">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                  <Eye className="w-5 h-5 text-amber-400" />
-                  Card preview
-                </h2>
-                <button
-                  type="button"
-                  onClick={() => setFileToAIPreviewCardIndex(null)}
-                  className="p-1 hover:bg-white/10 rounded transition-colors"
-                >
-                  <X className="w-5 h-5 text-white/50" />
-                </button>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-white/[0.04] p-5 overflow-y-auto flex-1 min-h-0">
-                <CardPreviewContent
-                  blocks={addWithAIGeneratedCards[fileToAIPreviewCardIndex].blocksSnapshot || []}
-                  getValue={(blockId) => {
-                    const card = addWithAIGeneratedCards[fileToAIPreviewCardIndex];
-                    const v = (card.values || []).find((val) => val.blockId === blockId);
-                    return v ?? { blockId, text: "" };
-                  }}
-                  mediaCache={{}}
-                  className="text-white"
-                />
-              </div>
             </div>
           </Modal>
         )}
@@ -5555,6 +5545,17 @@ export default function DeckDetailPage() {
 // Modal Component
 function Modal({ children, onClose, wide = false, large = false }) {
   const sizeClass = large ? "w-full max-w-4xl max-h-[90vh] flex flex-col" : wide ? "w-full max-w-2xl" : "w-full max-w-md";
+  useEffect(() => {
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevBodyOverflow;
+      document.documentElement.style.overflow = prevHtmlOverflow;
+    };
+  }, []);
+
   return (
     <motion.div
       initial={{ opacity: 0 }}

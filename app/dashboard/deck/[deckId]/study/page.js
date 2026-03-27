@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, BookOpen, CheckCircle2, RefreshCcw } from "lucide-react";
+import { ArrowLeft, BookOpen, CheckCircle2, Eye, RefreshCcw } from "lucide-react";
 import CardBlockList from "@/components/CardBlockList";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -341,18 +341,6 @@ export default function StudySessionPage() {
     [backBlocks],
   );
 
-  /** Front quiz blocks only — hiddenText uses tap-to-reveal, not rating. */
-  const frontNeedsQuizRatingReveal = useMemo(() => {
-    return frontBlocks.some((b) => {
-      const t = resolveBlockType(b.type);
-      return (
-        t === "quizMultiSelect" ||
-        t === "quizSingleSelect" ||
-        t === "quizTextAnswer"
-      );
-    });
-  }, [frontBlocks]);
-
   /** Flat / legacy cards: any quiz or hiddenText on the snapshot (no separate back face). */
   const hasLegacyFlatRevealable = useMemo(() => {
     return Boolean(
@@ -360,13 +348,34 @@ export default function StudySessionPage() {
     );
   }, [currentCard]);
 
+  /** Blocks on the face currently shown (front vs back when card has two faces). */
+  const visibleFaceBlocks = useMemo(() => {
+    if (!currentCard?.blocksSnapshot?.length) return [];
+    if (hasFlipBack) {
+      return flipRevealed ? backBlocks : frontBlocks;
+    }
+    return currentCard.blocksSnapshot;
+  }, [currentCard, hasFlipBack, flipRevealed, backBlocks, frontBlocks]);
+
+  /** Quiz on the visible face — use Reveal answer before SRS ratings. */
+  const hasQuizOnVisibleFace = useMemo(() => {
+    return visibleFaceBlocks.some((b) => {
+      const t = resolveBlockType(b.type);
+      return (
+        t === "quizMultiSelect" ||
+        t === "quizSingleSelect" ||
+        t === "quizTextAnswer"
+      );
+    });
+  }, [visibleFaceBlocks]);
+
   const ratingHint = useMemo(() => {
     if (!currentCard) return "";
+    if (hasQuizOnVisibleFace && !showAnswer) {
+      return "Reveal answer below, then rate your recall.";
+    }
     if (hasFlipBack) {
       if (!flipRevealed) {
-        if (frontNeedsQuizRatingReveal && !showAnswer) {
-          return "Tap a rating to reveal the answer.";
-        }
         return "Tap a rating to show the back.";
       }
       if (hasRevealableOnBack && !showAnswer) {
@@ -382,10 +391,10 @@ export default function StudySessionPage() {
     currentCard,
     hasFlipBack,
     flipRevealed,
-    frontNeedsQuizRatingReveal,
     hasRevealableOnBack,
     showAnswer,
     hasLegacyFlatRevealable,
+    hasQuizOnVisibleFace,
   ]);
 
   const ratingPreviews = useMemo(() => {
@@ -460,6 +469,21 @@ export default function StudySessionPage() {
     setTimeout(() => setIsRevealing(false), 800);
   }, [showAnswer, isRevealing]);
 
+  const handleStudyRevealAnswer = useCallback(() => {
+    const multiBlocks = visibleFaceBlocks.filter(
+      (b) => resolveBlockType(b.type) === "quizMultiSelect",
+    );
+    for (const block of multiBlocks) {
+      const selected = quizState[block.blockId];
+      if (!Array.isArray(selected) || selected.length === 0) {
+        setError("Please select at least one option.");
+        return;
+      }
+    }
+    setError("");
+    triggerReveal();
+  }, [visibleFaceBlocks, quizState, triggerReveal]);
+
   useEffect(() => {
     setFlipRevealed(false);
   }, [currentCard?.cardId]);
@@ -483,6 +507,7 @@ export default function StudySessionPage() {
 
   const handleRate = async (rating) => {
     if (!currentCard || !user || sessionComplete || isSaving) return;
+    if (hasQuizOnVisibleFace && !showAnswer) return;
     // Direct rating mode: one tap rates and advances.
     setError("");
 
@@ -822,6 +847,20 @@ export default function StudySessionPage() {
                 />
               )}
             </div>
+
+            {hasQuizOnVisibleFace && !showAnswer && (
+              <div className="flex-shrink-0 px-4 pb-3 pt-2 border-t border-white/[0.07]">
+                <button
+                  type="button"
+                  onClick={handleStudyRevealAnswer}
+                  disabled={isRevealing}
+                  className="flex items-center justify-center gap-2 w-full py-2.5 text-[13px] font-semibold rounded-xl bg-accent hover:bg-accent/90 text-white transition-colors shadow-[0_0_20px_rgba(35,131,226,0.2)] disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Eye className="w-4 h-4" />
+                  Reveal answer
+                </button>
+              </div>
+            )}
           </motion.div>
           </div>
           <div className="hidden md:flex w-24 ml-0 flex-col justify-center gap-2 flex-shrink-0">
@@ -830,9 +869,11 @@ export default function StudySessionPage() {
               <button
                 key={rating.value}
                 onClick={() => handleRate(rating.value)}
-                disabled={isSaving || isRevealing}
+                disabled={isSaving || isRevealing || (hasQuizOnVisibleFace && !showAnswer)}
                 className={`flex flex-col items-center gap-0.5 px-2 py-2.5 rounded-xl border transition-all ${rating.bg} ${rating.border} ${rating.hover} ${
-                  isSaving || isRevealing ? "opacity-50 cursor-not-allowed" : "cursor-pointer active:scale-95"
+                  isSaving || isRevealing || (hasQuizOnVisibleFace && !showAnswer)
+                    ? "opacity-50 cursor-not-allowed"
+                    : "cursor-pointer active:scale-95"
                 }`}
               >
                 <span className="text-lg leading-none">{rating.emoji}</span>
@@ -850,9 +891,9 @@ export default function StudySessionPage() {
                 <button
                   key={rating.value}
                   onClick={() => handleRate(rating.value)}
-                  disabled={isSaving || isRevealing}
+                  disabled={isSaving || isRevealing || (hasQuizOnVisibleFace && !showAnswer)}
                   className={`flex flex-col items-center gap-0.5 px-2 py-2.5 rounded-xl border transition-all ${rating.bg} ${rating.border} ${rating.hover} ${
-                    isSaving || isRevealing ? "opacity-50 cursor-not-allowed" : "cursor-pointer active:scale-95"
+                    isSaving || isRevealing || (hasQuizOnVisibleFace && !showAnswer) ? "opacity-50 cursor-not-allowed" : "cursor-pointer active:scale-95"
                   }`}
                 >
                   <span className="text-xl leading-none">{rating.emoji}</span>

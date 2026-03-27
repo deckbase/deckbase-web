@@ -75,8 +75,10 @@ export default function Home() {
                 transition={{ delay: 0.7, duration: 0.8 }}
                 className="text-lg text-white/60 leading-relaxed mb-10 max-w-2xl"
               >
-                Turn notes, PDFs, and articles into flashcards in seconds, then
-                automate deck and card workflows with MCP and Anki-friendly import/export.
+                Create AI flashcards in bulk from notes, PDFs, and articles,
+                then customize them in a beautiful, flexible interface with
+                image and audio support. Automate your workflow with MCP and
+                sync with Anki using APKG import/export.
               </motion.p>
 
               {/* Download buttons */}
@@ -127,7 +129,7 @@ export default function Home() {
               </div>
               <div>
                 <h3 className="font-semibold text-white text-sm mb-1">AI-Powered Generation</h3>
-                <p className="text-white/40 text-xs leading-relaxed">Extracts key ideas and formats cards for long-term memory retention.</p>
+                <p className="text-white/40 text-xs leading-relaxed">Turn source material into bulk AI flashcards in seconds with cleaner first drafts.</p>
               </div>
             </div>
             <div className="flex items-start gap-4 p-5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/[0.08] hover:border-notion-yellow/30 transition-all duration-300 group">
@@ -144,8 +146,8 @@ export default function Home() {
                 <Zap className="w-5 h-5 text-notion-purple" />
               </div>
               <div>
-                <h3 className="font-semibold text-white text-sm mb-1">Anki + MCP Ready</h3>
-                <p className="text-white/40 text-xs leading-relaxed">Automate with AI-powered MCP and import/export with Anki-friendly workflows.</p>
+                <h3 className="font-semibold text-white text-sm mb-1">Beautiful Flexible Card UI</h3>
+                <p className="text-white/40 text-xs leading-relaxed">Study in a clean, customizable interface with support for text, image, and audio-rich cards.</p>
               </div>
             </div>
           </motion.div>
@@ -181,10 +183,10 @@ export default function Home() {
             transition={{ duration: 0.8 }}
             className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight"
           >
-            <span className="text-white">Read once,</span>
+            <span className="text-white">Study with structure,</span>
             <br />
             <span className="bg-gradient-to-r from-accent to-purple-500 bg-clip-text text-transparent">
-              remember forever.
+              automate with MCP.
             </span>
           </motion.h2>
 
@@ -195,7 +197,7 @@ export default function Home() {
             transition={{ delay: 0.2, duration: 0.8 }}
             className="text-lg text-white/40 leading-relaxed mb-16 max-w-2xl mx-auto"
           >
-            Most of what we read is forgotten within days. Deckbase changes that by turning passive reading into active learning. Instead of manually creating flashcards, our AI does the heavy lifting.
+            Deckbase combines AI card generation, template-based editing, MCP automation, and Anki APKG import/export so your study workflow stays fast, flexible, and consistent.
           </motion.p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-left">
@@ -207,9 +209,9 @@ export default function Home() {
               className="p-8 rounded-2xl bg-white/[0.03] border border-white/10"
             >
               <div className="text-xs uppercase tracking-widest text-white/25 mb-3 font-medium">Before</div>
-              <h3 className="text-xl font-semibold mb-3 text-white/60">Passive Reading</h3>
+              <h3 className="text-xl font-semibold mb-3 text-white/60">Fragmented Study Workflow</h3>
               <p className="text-white/35 leading-relaxed text-sm">
-                You read articles, books, and PDFs but forget most of the content within a week. Information is consumed but never retained.
+                Your notes, files, and flashcards live in separate tools, so creating and organizing cards takes extra time and breaks focus.
               </p>
             </motion.div>
             <motion.div
@@ -220,9 +222,9 @@ export default function Home() {
               className="p-8 rounded-2xl bg-gradient-to-br from-accent/10 to-purple-600/10 border border-accent/20"
             >
               <div className="text-xs uppercase tracking-widest text-accent/70 mb-3 font-medium">After</div>
-              <h3 className="text-xl font-semibold mb-3 text-white">Active Learning</h3>
+              <h3 className="text-xl font-semibold mb-3 text-white">Connected Learning Workflow</h3>
               <p className="text-white/60 leading-relaxed text-sm">
-                Deckbase captures key ideas, generates smart flashcards, and uses spaced repetition to ensure you actually remember what you learn.
+                Deckbase unifies AI generation, template-based editing, MCP automation, and Anki APKG import/export in one streamlined study flow.
               </p>
             </motion.div>
           </div>

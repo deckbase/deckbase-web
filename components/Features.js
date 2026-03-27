@@ -1,6 +1,6 @@
 "use client";
 import { motion } from "framer-motion";
-import { Sparkles, Brain, Layers, LayoutGrid, BarChart3, Workflow } from "lucide-react";
+import { Sparkles, Brain, Layers, LayoutGrid, ImageIcon, Workflow } from "lucide-react";
 
 const features = [
   {
@@ -57,15 +57,15 @@ const features = [
   },
   {
     id: "05",
-    icon: BarChart3,
-    title: "Cross-Device Learning Workflow",
+    icon: ImageIcon,
+    title: "Beautiful Flexible Card UI",
     gradient: "from-rose-500/20 to-pink-500/10",
     iconColor: "text-rose-400",
     iconBg: "bg-rose-500/10 border-rose-500/20",
     desc: [
-      "Create and manage decks/cards on web, then continue review on mobile.",
-      "Changes sync through your account so edits stay consistent across devices.",
-      "Move faster from capture to review without duplicating work.",
+      "Study in a clean, modern interface designed for focused review sessions.",
+      "Use text, image, and audio-ready blocks in the same card experience.",
+      "Customize card structure with templates while keeping layouts consistent.",
     ],
   },
   {
@@ -117,16 +117,17 @@ const Feature = () => {
           </span>
 
           <h1 className="text-h2 lg:text-h3 font-bold tracking-tight leading-tight max-w-[720px]">
-            The best flashcard app for{" "}
+            Your New Learning System for{" "}
             <span className="bg-gradient-to-r from-accent via-blue-400 to-violet-400 bg-clip-text text-transparent">
-              spaced repetition
+              the AI era
             </span>
           </h1>
 
           <p className="mt-5 text-white/50 text-base md:text-lg max-w-[540px] leading-relaxed">
             Deckbase helps you go from source material to review-ready cards:
-            generate with AI, organize with templates, sync across devices, and
-            retain knowledge with an adaptive spaced repetition workflow.
+            generate with AI, design with flexible templates, support image/audio
+            content, automate with MCP, and move smoothly with Anki APKG
+            import/export.
           </p>
         </motion.div>
 

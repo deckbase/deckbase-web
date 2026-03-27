@@ -1,9 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff, Check, X } from "lucide-react";
+import { BlockTypeNames } from "@/utils/firestore";
 import BlockDisplay from "@/components/blocks/BlockDisplay";
+
+/** Align with BlockDisplay blockType — supports numeric Firestore types. */
+const blockTypeName = (block) => {
+  const t = block?.type;
+  if (t == null) return t;
+  if (typeof t === "number" && BlockTypeNames[t] != null) return BlockTypeNames[t];
+  if (typeof t === "string" && /^\d+$/.test(t)) {
+    const name = BlockTypeNames[Number(t)];
+    return name != null ? name : t;
+  }
+  return t;
+};
 
 const safeJsonParse = (value) => {
   if (!value || typeof value !== "string") return null;
@@ -87,7 +100,9 @@ function HintSection({ hint }) {
  *   onToggleReveal — (blockId: string) => void
  *   quizState     — { [blockId]: string | string[] }
  *   onQuizChange  — (blockId: string, value: string | string[]) => void
- *   showAnswer    — boolean — whether answers are revealed
+ *   showAnswer    — boolean — whether quiz answers are revealed (options, text quiz feedback)
+ *   openHiddenTextWithQuizReveal — when true (study), tapping global reveal also shows hiddenText;
+ *     when false (preview), hiddenText uses only revealedBlocks / per-block tap — separate from quiz reveal
  */
 export default function CardBlockList({
   blocks = [],
@@ -98,7 +113,24 @@ export default function CardBlockList({
   quizState = {},
   onQuizChange,
   showAnswer = false,
+  forceImageAspectRatio = null,
+  openHiddenTextWithQuizReveal = true,
 }) {
+  const effectiveRevealedBlocks = useMemo(() => {
+    const next = { ...revealedBlocks };
+    if (openHiddenTextWithQuizReveal && showAnswer) {
+      for (const b of blocks) {
+        if (blockTypeName(b) === "hiddenText" && b.blockId) {
+          next[b.blockId] = true;
+        }
+      }
+    }
+    return next;
+  }, [revealedBlocks, openHiddenTextWithQuizReveal, showAnswer, blocks]);
+
+  const hiddenRevealToggleDisabled =
+    openHiddenTextWithQuizReveal && showAnswer;
+
   if (!blocks.length) {
     return <p className="text-[13px] text-white/40">This card has no content.</p>;
   }
@@ -115,34 +147,6 @@ export default function CardBlockList({
         const hasBlockConfig = block.configJson != null || block.config_json != null;
         const hasValueConfig = value?.configJson != null;
         if (!value && !isStructural && !hasBlockConfig && !hasValueConfig) return null;
-
-        // ── hiddenText (interactive reveal) ──────────────────────────────
-        if (type === "hiddenText") {
-          const isRevealed = showAnswer || revealedBlocks[block.blockId];
-          return (
-            <div key={blockKey} className="space-y-2">
-              {onToggleReveal && (
-                <button
-                  type="button"
-                  onClick={() => onToggleReveal(block.blockId)}
-                  disabled={showAnswer}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-[12px] font-medium transition-all disabled:cursor-default ${
-                    isRevealed
-                      ? "border-white/[0.08] bg-white/[0.03] text-white/40"
-                      : "border-accent/30 bg-accent/[0.06] text-accent hover:bg-accent/[0.10]"
-                  }`}
-                >
-                  {isRevealed ? <><EyeOff className="w-3.5 h-3.5" /><span>Hide</span></> : <><Eye className="w-3.5 h-3.5" /><span>Tap to reveal</span></>}
-                </button>
-              )}
-              {isRevealed && (
-                <p className="text-[14px] text-white/75 bg-white/[0.03] border border-white/[0.07] px-4 py-3 rounded-xl whitespace-pre-wrap leading-relaxed">
-                  {value?.text || "No answer provided."}
-                </p>
-              )}
-            </div>
-          );
-        }
 
         // ── quizSingleSelect ─────────────────────────────────────────────
         if (type === "quizSingleSelect") {
@@ -265,28 +269,32 @@ export default function CardBlockList({
                     : "border-white/[0.08] bg-white/[0.03] focus:border-accent/50 focus:bg-white/[0.05]"
                 }`}
               />
-              <AnimatePresence>
-                {showAnswer && correctAnswer && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-[13px] ${
-                      isCorrect
-                        ? "bg-emerald-500/[0.08] border border-emerald-500/20 text-emerald-300"
-                        : "bg-red-500/[0.07] border border-red-500/20 text-red-300"
-                    }`}
-                  >
-                    {isCorrect
-                      ? <Check className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={2.5} />
-                      : <X className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={2.5} />}
-                    <span>
+              {/* Fixed-height slot: feedback only mounts after reveal; without reserving space the card grows and padding/scroll jumps */}
+              <div className="min-h-[52px]">
+                <AnimatePresence mode="popLayout">
+                  {showAnswer && correctAnswer && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-[13px] ${
+                        isCorrect
+                          ? "bg-emerald-500/[0.08] border border-emerald-500/20 text-emerald-300"
+                          : "bg-red-500/[0.07] border border-red-500/20 text-red-300"
+                      }`}
+                    >
                       {isCorrect
-                        ? "Correct!"
-                        : <><span className="text-white/40">Correct: </span><span className="text-white/80 font-medium">{correctAnswer}</span></>}
-                    </span>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                        ? <Check className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={2.5} />
+                        : <X className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={2.5} />}
+                      <span>
+                        {isCorrect
+                          ? "Correct!"
+                          : <><span className="text-white/40">Correct: </span><span className="text-white/80 font-medium">{correctAnswer}</span></>}
+                      </span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
               <HintSection hint={quiz.hint} />
             </div>
           );
@@ -299,8 +307,10 @@ export default function CardBlockList({
               block={block}
               value={value}
               mediaCache={mediaCache}
-              revealedBlocks={revealedBlocks}
+              revealedBlocks={effectiveRevealedBlocks}
               onToggleReveal={onToggleReveal}
+              forceImageAspectRatio={forceImageAspectRatio}
+              revealToggleDisabled={hiddenRevealToggleDisabled}
             />
           </div>
         );

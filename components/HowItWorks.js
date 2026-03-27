@@ -24,7 +24,7 @@ const steps = [
     number: "04",
     title: "Review and Add to Deck",
     description:
-      "Preview generated cards, edit anything you want, then add selected cards to your deck with full control.",
+      "Preview and edit cards in a flexible interface, including text, image, and audio-ready content, then add selected cards to your deck.",
   },
   {
     number: "05",
