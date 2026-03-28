@@ -1,7 +1,10 @@
 import "./globals.css";
 import { Inter } from "next/font/google";
+import { GoogleAnalytics } from "@next/third-parties/google";
 import LayoutClient from "@/components/LayoutClient";
 import { SITE_URL, absoluteUrl } from "@/lib/site-url";
+
+const gaMeasurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim();
 
 const inter = Inter({
   subsets: ["latin"],
@@ -188,6 +191,7 @@ export default function RootLayout({ children }) {
           <link rel="preconnect" href={firebaseAuthOrigin} crossOrigin="anonymous" />
         ) : null}
         <link rel="dns-prefetch" href="https://connect.facebook.net" />
+        <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -198,6 +202,9 @@ export default function RootLayout({ children }) {
         suppressHydrationWarning
       >
         <LayoutClient>{children}</LayoutClient>
+        {gaMeasurementId ? (
+          <GoogleAnalytics gaId={gaMeasurementId} />
+        ) : null}
       </body>
     </html>
   );
