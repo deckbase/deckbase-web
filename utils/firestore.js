@@ -31,7 +31,8 @@ import {
   getTemplateIdMap,
   libraryBlocksToInitialSeedBlocks,
 } from "@/lib/default-template-library";
-const toMs = (v) => (v && typeof v.toMillis === "function" ? v.toMillis() : v ?? Date.now());
+const toMs = (v) =>
+  v && typeof v.toMillis === "function" ? v.toMillis() : (v ?? Date.now());
 
 /** Trim; empty string → null. Matches mobile / Firestore contract for `icon_emoji`. */
 export function normalizeDeckIconEmoji(raw) {
@@ -43,10 +44,8 @@ export function normalizeDeckIconEmoji(raw) {
 // ============== FIRESTORE PATH HELPERS ==============
 // Decks, cards, templates live under users/{userId}/decks|cards|templates (flashcards collection abolished)
 
-const getDecksCollection = (uid) =>
-  collection(db, "users", uid, "decks");
-const getCardsCollection = (uid) =>
-  collection(db, "users", uid, "cards");
+const getDecksCollection = (uid) => collection(db, "users", uid, "decks");
+const getCardsCollection = (uid) => collection(db, "users", uid, "cards");
 const getTemplatesCollection = (uid) =>
   collection(db, "users", uid, "templates");
 const getMediaCollection = (uid) => collection(db, "users", uid, "media");
@@ -95,7 +94,7 @@ async function resolveDownloadUrlByMediaId(uid, mediaId) {
     const mediaRootRef = ref(storage, `users/${uid}/media`);
     const listResult = await listAll(mediaRootRef);
     const matched = listResult.items.find((itemRef) =>
-      itemRef.fullPath.startsWith(`users/${uid}/media/${mediaId}.`)
+      itemRef.fullPath.startsWith(`users/${uid}/media/${mediaId}.`),
     );
     if (matched?.fullPath) {
       attemptedPaths.push(matched.fullPath);
@@ -131,7 +130,8 @@ export const updateUserProfile = async (uid, updates) => {
   if (!uid || !db) return;
   const ref = getUserDocRef(uid);
   const payload = {};
-  if (updates.displayName !== undefined) payload.displayName = updates.displayName;
+  if (updates.displayName !== undefined)
+    payload.displayName = updates.displayName;
   if (updates.profileUrl !== undefined) payload.profileUrl = updates.profileUrl;
   if (Object.keys(payload).length === 0) return;
   await updateDoc(ref, payload);
@@ -234,10 +234,7 @@ export const deleteDeck = async (uid, deckId) => {
   await updateDeck(uid, deckId, { isDeleted: true });
 
   const now = Timestamp.now();
-  const cardsQ = query(
-    getCardsCollection(uid),
-    where("deck_id", "==", deckId),
-  );
+  const cardsQ = query(getCardsCollection(uid), where("deck_id", "==", deckId));
   const snapshot = await getDocs(cardsQ);
   const refsToSoftDelete = [];
   snapshot.docs.forEach((d) => {
@@ -246,7 +243,11 @@ export const deleteDeck = async (uid, deckId) => {
     refsToSoftDelete.push(d.ref);
   });
 
-  for (let i = 0; i < refsToSoftDelete.length; i += FIRESTORE_BATCH_MAX_WRITES) {
+  for (
+    let i = 0;
+    i < refsToSoftDelete.length;
+    i += FIRESTORE_BATCH_MAX_WRITES
+  ) {
     const batch = writeBatch(db);
     const chunk = refsToSoftDelete.slice(i, i + FIRESTORE_BATCH_MAX_WRITES);
     chunk.forEach((ref) => {
@@ -280,9 +281,14 @@ export const createCard = async (
 
   const blocksSnapshotData = blocksSnapshot.map(transformBlockToFirestore);
   const valuesData = values.map(transformValueToFirestore);
-  const quizBlocksWritten = blocksSnapshotData.filter((b) => isQuizBlockType(b.type));
+  const quizBlocksWritten = blocksSnapshotData.filter((b) =>
+    isQuizBlockType(b.type),
+  );
   if (quizBlocksWritten.length > 0) {
-    console.log("[createCard] WRITE quiz blocks count", quizBlocksWritten.length);
+    console.log(
+      "[createCard] WRITE quiz blocks count",
+      quizBlocksWritten.length,
+    );
     quizBlocksWritten.forEach((b, idx) => {
       console.log("[createCard] WRITE quiz block", idx, {
         block_id: b.block_id,
@@ -297,7 +303,16 @@ export const createCard = async (
     });
   }
   const blocksSnapshotJsonStr = JSON.stringify(blocksSnapshotData);
-  console.log("[createCard] WRITE cardId", cardId, "blocks_snapshot length", blocksSnapshotData.length, "blocks_snapshot_json length", blocksSnapshotJsonStr.length, "json preview", blocksSnapshotJsonStr.slice(0, 400));
+  console.log(
+    "[createCard] WRITE cardId",
+    cardId,
+    "blocks_snapshot length",
+    blocksSnapshotData.length,
+    "blocks_snapshot_json length",
+    blocksSnapshotJsonStr.length,
+    "json preview",
+    blocksSnapshotJsonStr.slice(0, 400),
+  );
   const card = {
     card_id: cardId,
     deck_id: deckId,
@@ -392,13 +407,37 @@ export const getCard = async (uid, cardId) => {
   const cardSnap = await getDoc(cardRef);
   if (cardSnap.exists()) {
     const raw = cardSnap.data();
-    console.log("[getCard] READ cardId", cardId, "has blocks_snapshot_json?", !!raw.blocks_snapshot_json, "blocks_snapshot length", Array.isArray(raw.blocks_snapshot) ? raw.blocks_snapshot.length : 0);
+    console.log(
+      "[getCard] READ cardId",
+      cardId,
+      "has blocks_snapshot_json?",
+      !!raw.blocks_snapshot_json,
+      "blocks_snapshot length",
+      Array.isArray(raw.blocks_snapshot) ? raw.blocks_snapshot.length : 0,
+    );
     const transformed = transformCardFromFirestore(raw);
-    const quizBlocks = (transformed.blocksSnapshot || []).filter((b) => isQuizBlockType(b.type));
+    const quizBlocks = (transformed.blocksSnapshot || []).filter((b) =>
+      isQuizBlockType(b.type),
+    );
     if (quizBlocks.length > 0) {
-      console.log("[getCard] READ transformed quiz blocks", quizBlocks.length, quizBlocks.map((b) => ({ blockId: b.blockId, type: b.type, hasConfigJson: !!b.configJson, configKeys: b.configJson ? Object.keys(b.configJson) : [], question: b.configJson?.question })));
+      console.log(
+        "[getCard] READ transformed quiz blocks",
+        quizBlocks.length,
+        quizBlocks.map((b) => ({
+          blockId: b.blockId,
+          type: b.type,
+          hasConfigJson: !!b.configJson,
+          configKeys: b.configJson ? Object.keys(b.configJson) : [],
+          question: b.configJson?.question,
+        })),
+      );
     } else {
-      console.log("[getCard] READ no quiz blocks in transformed. blocksSnapshot length", transformed.blocksSnapshot?.length, "block types", (transformed.blocksSnapshot || []).map((b) => b.type));
+      console.log(
+        "[getCard] READ no quiz blocks in transformed. blocksSnapshot length",
+        transformed.blocksSnapshot?.length,
+        "block types",
+        (transformed.blocksSnapshot || []).map((b) => b.type),
+      );
     }
     return transformed;
   }
@@ -426,9 +465,17 @@ export const updateCard = async (
   }
   if (blocksSnapshot?.length > 0) {
     const blocksSnapshotData = blocksSnapshot.map(transformBlockToFirestore);
-    const imageBlocksWritten = blocksSnapshotData.filter((b) => b.type === "image" || b.type === 6);
+    const imageBlocksWritten = blocksSnapshotData.filter(
+      (b) => b.type === "image" || b.type === 6,
+    );
     if (imageBlocksWritten.length) {
-      console.log("[RATIO] updateCard writing to CARD doc", { cardId, imageBlocks: imageBlocksWritten.map((b) => ({ block_id: b.block_id, config_json: b.config_json })) });
+      console.log("[RATIO] updateCard writing to CARD doc", {
+        cardId,
+        imageBlocks: imageBlocksWritten.map((b) => ({
+          block_id: b.block_id,
+          config_json: b.config_json,
+        })),
+      });
     }
     updateData.blocks_snapshot = blocksSnapshotData;
     updateData.blocks_snapshot_json = JSON.stringify(blocksSnapshotData);
@@ -484,7 +531,8 @@ function removeUndefined(obj) {
   if (obj === null || typeof obj !== "object") return obj;
   // Preserve Firestore Timestamp (and similar) so they are stored as timestamp type, not map
   if (obj != null && typeof obj.toMillis === "function") return obj;
-  if (Array.isArray(obj)) return obj.map(removeUndefined).filter((v) => v !== undefined);
+  if (Array.isArray(obj))
+    return obj.map(removeUndefined).filter((v) => v !== undefined);
   const out = {};
   for (const [k, v] of Object.entries(obj)) {
     const cleaned = removeUndefined(v);
@@ -622,7 +670,8 @@ export const uploadImage = async (uid, file, options = {}) => {
   const { onProgress } = options;
   const mediaId = uuidv4();
   const name = file.name || "image.png";
-  const extension = (typeof name === "string" && name.split(".").pop()) || "png";
+  const extension =
+    (typeof name === "string" && name.split(".").pop()) || "png";
   const storagePath = `users/${uid}/media/${mediaId}.${extension}`;
   const storageRef = ref(storage, storagePath);
 
@@ -632,13 +681,16 @@ export const uploadImage = async (uid, file, options = {}) => {
       task.on(
         "state_changed",
         (snapshot) => {
-          const percent = snapshot.totalBytes > 0
-            ? Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100)
-            : 0;
+          const percent =
+            snapshot.totalBytes > 0
+              ? Math.round(
+                  (snapshot.bytesTransferred / snapshot.totalBytes) * 100,
+                )
+              : 0;
           onProgress(Math.min(100, percent));
         },
         reject,
-        resolve
+        resolve,
       );
     });
   } else {
@@ -674,7 +726,7 @@ export const uploadAudio = async (uid, file) => {
   } catch (e) {
     console.error("uploadAudio: Storage upload failed", e);
     throw new Error(
-      `Storage upload failed (path: ${storagePath}). Deploy storage rules and ensure you're signed in. ${e?.message || e}`
+      `Storage upload failed (path: ${storagePath}). Deploy storage rules and ensure you're signed in. ${e?.message || e}`,
     );
   }
 
@@ -704,7 +756,7 @@ export const uploadAudio = async (uid, file) => {
   } catch (e) {
     console.error("uploadAudio: Firestore setDoc failed", e);
     throw new Error(
-      `Firestore media doc failed (users/${uid}/media). Deploy firestore rules. ${e?.message || e}`
+      `Firestore media doc failed (users/${uid}/media). Deploy firestore rules. ${e?.message || e}`,
     );
   }
   return transformMediaFromFirestore(media);
@@ -786,12 +838,15 @@ export const getMedia = async (uid, mediaId) => {
   // No Firestore media doc — still try Storage (mobile may upload bytes without writing metadata).
   const storageOnly = await resolveDownloadUrlByMediaId(uid, mediaId);
   if (storageOnly.downloadUrl) {
-    console.info("[media.resolve] no Firestore media doc; resolved URL from Storage only", {
-      uid,
-      mediaId,
-      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || null,
-      resolvedStoragePath: storageOnly.resolvedStoragePath,
-    });
+    console.info(
+      "[media.resolve] no Firestore media doc; resolved URL from Storage only",
+      {
+        uid,
+        mediaId,
+        projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || null,
+        resolvedStoragePath: storageOnly.resolvedStoragePath,
+      },
+    );
     return {
       mediaId,
       storagePath: storageOnly.resolvedStoragePath,
@@ -806,12 +861,15 @@ export const getMedia = async (uid, mediaId) => {
     };
   }
 
-  console.warn("[media.resolve] no Firestore media doc and Storage path lookup failed", {
-    uid,
-    mediaId,
-    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || null,
-    attemptedPaths: storageOnly.attemptedPaths,
-  });
+  console.warn(
+    "[media.resolve] no Firestore media doc and Storage path lookup failed",
+    {
+      uid,
+      mediaId,
+      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || null,
+      attemptedPaths: storageOnly.attemptedPaths,
+    },
+  );
   return null;
 };
 
@@ -898,8 +956,7 @@ const transformDeckFromFirestore = (data) => {
     data.created_at?.toMillis?.() || data.created_at || Date.now();
   const updatedAt =
     data.updated_at?.toMillis?.() || data.updated_at || Date.now();
-  const deletedAt =
-    data.deleted_at?.toMillis?.() || data.deleted_at || null;
+  const deletedAt = data.deleted_at?.toMillis?.() || data.deleted_at || null;
 
   const rawIcon = data.icon_emoji ?? data.iconEmoji;
   const iconEmoji = normalizeDeckIconEmoji(rawIcon);
@@ -942,35 +999,60 @@ function parseCardContentFromJson(data) {
   let blocksSnapshot;
   let values;
   const usedJson = !!data.blocks_snapshot_json;
-  const rawArrayLength = Array.isArray(data.blocks_snapshot) ? data.blocks_snapshot.length : 0;
-  console.log("[parseCardContentFromJson] READ using blocks_snapshot_json?", usedJson, "raw blocks_snapshot length", rawArrayLength, "json length", typeof data.blocks_snapshot_json === "string" ? data.blocks_snapshot_json.length : 0);
+  const rawArrayLength = Array.isArray(data.blocks_snapshot)
+    ? data.blocks_snapshot.length
+    : 0;
+  console.log(
+    "[parseCardContentFromJson] READ using blocks_snapshot_json?",
+    usedJson,
+    "raw blocks_snapshot length",
+    rawArrayLength,
+    "json length",
+    typeof data.blocks_snapshot_json === "string"
+      ? data.blocks_snapshot_json.length
+      : 0,
+  );
   if (data.blocks_snapshot_json) {
     try {
       const parsed = JSON.parse(data.blocks_snapshot_json);
       const arr = parsed || [];
-      console.log("[parseCardContentFromJson] READ parsed array length", arr.length, "first 200 chars", JSON.stringify(arr).slice(0, 200));
+      console.log(
+        "[parseCardContentFromJson] READ parsed array length",
+        arr.length,
+        "first 200 chars",
+        JSON.stringify(arr).slice(0, 200),
+      );
       blocksSnapshot = arr
-        .map((b) =>
-          transformBlockFromFirestore(normalizeBlockForTransform(b)),
-        )
+        .map((b) => transformBlockFromFirestore(normalizeBlockForTransform(b)))
         .map((b) => ({ ...b, side: b.side ?? "front" }));
-      const quizRead = (blocksSnapshot || []).filter((b) => isQuizBlockType(b.type));
+      const quizRead = (blocksSnapshot || []).filter((b) =>
+        isQuizBlockType(b.type),
+      );
       if (quizRead.length > 0) {
-        console.log("[parseCardContentFromJson] READ after transform quiz blocks", quizRead.length, quizRead.map((b) => ({ blockId: b.blockId, type: b.type, hasConfigJson: !!b.configJson, configKeys: b.configJson ? Object.keys(b.configJson) : [], question: b.configJson?.question?.slice?.(0, 30) })));
+        console.log(
+          "[parseCardContentFromJson] READ after transform quiz blocks",
+          quizRead.length,
+          quizRead.map((b) => ({
+            blockId: b.blockId,
+            type: b.type,
+            hasConfigJson: !!b.configJson,
+            configKeys: b.configJson ? Object.keys(b.configJson) : [],
+            question: b.configJson?.question?.slice?.(0, 30),
+          })),
+        );
       }
     } catch (e) {
-      console.warn("[parseCardContentFromJson] READ JSON parse failed", e.message);
+      console.warn(
+        "[parseCardContentFromJson] READ JSON parse failed",
+        e.message,
+      );
       blocksSnapshot = (data.blocks_snapshot || [])
-        .map((b) =>
-          transformBlockFromFirestore(normalizeBlockForTransform(b)),
-        )
+        .map((b) => transformBlockFromFirestore(normalizeBlockForTransform(b)))
         .map((b) => ({ ...b, side: b.side ?? "front" }));
     }
   } else {
     blocksSnapshot = (data.blocks_snapshot || [])
-      .map((b) =>
-        transformBlockFromFirestore(normalizeBlockForTransform(b)),
-      )
+      .map((b) => transformBlockFromFirestore(normalizeBlockForTransform(b)))
       .map((b) => ({ ...b, side: b.side ?? "front" }));
   }
   if (data.values_json) {
@@ -997,8 +1079,7 @@ const transformCardFromFirestore = (data) => {
     data.created_at?.toMillis?.() || data.created_at || Date.now();
   const updatedAt =
     data.updated_at?.toMillis?.() || data.updated_at || Date.now();
-  const deletedAt =
-    data.deleted_at?.toMillis?.() || data.deleted_at || null;
+  const deletedAt = data.deleted_at?.toMillis?.() || data.deleted_at || null;
 
   const { blocksSnapshot, values } = parseCardContentFromJson(data);
 
@@ -1060,22 +1141,52 @@ const transformBlockFromFirestore = (data) => {
       }
     }
   } else if (isQuizBlockType(data.type)) {
-    console.log("[transformBlockFromFirestore] READ quiz block", data.block_id, "config_json type", typeof configJson, "config_json null?", configJson == null, "preview", typeof configJson === "string" ? configJson.slice(0, 80) : configJson ? JSON.stringify(configJson).slice(0, 80) : "(none)");
+    console.log(
+      "[transformBlockFromFirestore] READ quiz block",
+      data.block_id,
+      "config_json type",
+      typeof configJson,
+      "config_json null?",
+      configJson == null,
+      "preview",
+      typeof configJson === "string"
+        ? configJson.slice(0, 80)
+        : configJson
+          ? JSON.stringify(configJson).slice(0, 80)
+          : "(none)",
+    );
     // Quiz blocks: normalize config to object so web and mobile sync consistently
     if (configJson != null && typeof configJson === "string") {
       try {
         configJson = JSON.parse(configJson);
       } catch (e) {
-        console.warn("[transformBlockFromFirestore] READ quiz JSON parse failed", data.block_id, e.message);
+        console.warn(
+          "[transformBlockFromFirestore] READ quiz JSON parse failed",
+          data.block_id,
+          e.message,
+        );
         configJson = {};
       }
     }
     if (configJson != null && typeof configJson !== "object") configJson = {};
     // Ensure quiz config has at least a question so UI never shows "undefined"
-    if (configJson && (configJson.question == null || configJson.question === "")) {
-      configJson = { ...configJson, question: configJson.question ?? "Question" };
+    if (
+      configJson &&
+      (configJson.question == null || configJson.question === "")
+    ) {
+      configJson = {
+        ...configJson,
+        question: configJson.question ?? "Question",
+      };
     }
-    console.log("[transformBlockFromFirestore] READ quiz block out", data.block_id, "configJson keys", configJson ? Object.keys(configJson) : [], "question", configJson?.question?.slice?.(0, 30));
+    console.log(
+      "[transformBlockFromFirestore] READ quiz block out",
+      data.block_id,
+      "configJson keys",
+      configJson ? Object.keys(configJson) : [],
+      "question",
+      configJson?.question?.slice?.(0, 30),
+    );
   }
   return {
     blockId: data.block_id,
@@ -1098,9 +1209,10 @@ const transformBlockToFirestore = (block) => {
   if (isImage) {
     if (block.configJson !== undefined && block.configJson !== null) {
       try {
-        result.config_json = typeof block.configJson === "string"
-          ? JSON.parse(block.configJson)
-          : block.configJson;
+        result.config_json =
+          typeof block.configJson === "string"
+            ? JSON.parse(block.configJson)
+            : block.configJson;
         if (!result.config_json || typeof result.config_json !== "object")
           result.config_json = DEFAULT_IMAGE_CONFIG;
       } catch {
@@ -1113,17 +1225,35 @@ const transformBlockToFirestore = (block) => {
     let config = block.configJson;
     // Quiz blocks: always store as object so web and mobile sync consistently
     if (isQuizBlockType(block.type)) {
-      console.log("[transformBlockToFirestore] WRITE quiz block", block.blockId, "input configJson type", typeof config, "length", typeof config === "string" ? config.length : "(object)");
+      console.log(
+        "[transformBlockToFirestore] WRITE quiz block",
+        block.blockId,
+        "input configJson type",
+        typeof config,
+        "length",
+        typeof config === "string" ? config.length : "(object)",
+      );
       if (typeof config === "string") {
         try {
           config = JSON.parse(config);
         } catch (e) {
-          console.warn("[transformBlockToFirestore] WRITE quiz JSON parse failed", block.blockId, e.message);
+          console.warn(
+            "[transformBlockToFirestore] WRITE quiz JSON parse failed",
+            block.blockId,
+            e.message,
+          );
           config = {};
         }
       }
       if (config == null || typeof config !== "object") config = {};
-      console.log("[transformBlockToFirestore] WRITE quiz block out", block.blockId, "config_json keys", Object.keys(config || {}), "question", config?.question?.slice?.(0, 30));
+      console.log(
+        "[transformBlockToFirestore] WRITE quiz block out",
+        block.blockId,
+        "config_json keys",
+        Object.keys(config || {}),
+        "question",
+        config?.question?.slice?.(0, 30),
+      );
     }
     result.config_json = config;
   }
@@ -1149,7 +1279,8 @@ const transformValueToFirestore = (value) => {
   if (value.text !== undefined) result.text = value.text;
   if (value.items !== undefined) result.items = value.items;
   if (value.mediaIds !== undefined) result.media_ids = value.mediaIds;
-  if (value.originalMediaIds !== undefined) result.original_media_ids = value.originalMediaIds;
+  if (value.originalMediaIds !== undefined)
+    result.original_media_ids = value.originalMediaIds;
   if (value.correctAnswers !== undefined)
     result.correct_answers = value.correctAnswers;
   return result;
@@ -1189,12 +1320,11 @@ const transformTemplateFromFirestore = (data) => {
     data.created_at?.toMillis?.() || data.created_at || Date.now();
   const updatedAt =
     data.updated_at?.toMillis?.() || data.updated_at || Date.now();
-  const deletedAt =
-    data.deleted_at?.toMillis?.() || data.deleted_at || null;
+  const deletedAt = data.deleted_at?.toMillis?.() || data.deleted_at || null;
   // Normalize blocks (mobile may store blocks as JSON string with camelCase)
   const rawBlocks = ensureArray(data.blocks);
   const blocks = rawBlocks.map((b) =>
-    transformBlockFromFirestore(normalizeBlockForTransform(b))
+    transformBlockFromFirestore(normalizeBlockForTransform(b)),
   );
   return {
     templateId: data.template_id ?? data.templateId,
@@ -1216,8 +1346,7 @@ const transformMediaFromFirestore = (data) => {
     data.created_at?.toMillis?.() || data.created_at || Date.now();
   const updatedAt =
     data.updated_at?.toMillis?.() || data.updated_at || Date.now();
-  const deletedAt =
-    data.deleted_at?.toMillis?.() || data.deleted_at || null;
+  const deletedAt = data.deleted_at?.toMillis?.() || data.deleted_at || null;
 
   return {
     mediaId: data.media_id,
