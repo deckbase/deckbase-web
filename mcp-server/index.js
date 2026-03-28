@@ -127,7 +127,7 @@ async function handleToolsList() {
       {
         name: "get_template_schema",
         description:
-          "After picking a template: exact blockIds, configJson, valuesExample, create_card hints. Requires hosted MCP. Args: templateId or deckId (default template).",
+          "Template layout: blockIds, side front|back, configJson, create_card hints. Back content → create_card block_text with those blockIds. Hosted MCP. Args: templateId or deckId.",
         inputSchema: {
           type: "object",
           properties: {
@@ -174,14 +174,14 @@ async function handleToolsList() {
       {
         name: "create_card",
         description:
-          "Create a card from a template. Omit templateId to use the deck default. When generate_audio is true and the template has audio: pass voice_id OR audio_language + audio_gender (ask the user first). Optional generate_audio (default true). Requires hosted MCP with API key.",
+          "Create a card from a template. front = main block only; block_text = all blockIds including side back (see get_template_schema). Audio: voice_id or audio_language+audio_gender. Hosted MCP.",
         inputSchema: {
           type: "object",
           properties: {
             deckId: { type: "string" },
             templateId: { type: "string" },
-            front: { type: "string" },
-            block_text: { type: "object" },
+            front: { type: "string", description: "Main block text only" },
+            block_text: { type: "object", description: "blockId→text, including back-face blocks" },
             generate_audio: { type: "boolean" },
             voice_id: { type: "string" },
             audio_language: { type: "string" },
@@ -193,7 +193,7 @@ async function handleToolsList() {
       {
         name: "update_card",
         description:
-          "Update card values and/or blocks_snapshot, or merge front/block_text. Requires hosted MCP with API key.",
+          "Update card values/blocks_snapshot or merge front/block_text (block_text includes back blocks). Hosted MCP.",
         inputSchema: {
           type: "object",
           properties: {
@@ -210,7 +210,7 @@ async function handleToolsList() {
       {
         name: "create_cards",
         description:
-          "Bulk create cards (same deck + template). Optional top-level voice_id, audio_language, audio_gender, generate_audio; per-card overrides. Max 50 per request. Requires hosted MCP with API key.",
+          "Bulk create cards; per-card front + block_text (back blocks same as create_card). Voice defaults + per-card overrides. Max 50. Hosted MCP.",
         inputSchema: {
           type: "object",
           properties: {

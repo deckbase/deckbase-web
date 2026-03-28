@@ -226,7 +226,9 @@ export default function McpServerDocPage() {
           <tr className="hover:bg-white/[0.02] transition-colors">
             <ToolName>create_card</ToolName>
             <Td>
-              New card from a template. Returns <C>cardId</C>, <C>templateId</C>, <C>usedDeckDefault</C>.
+              New card from a template. Returns <C>cardId</C>, <C>templateId</C>, <C>usedDeckDefault</C>.{" "}
+              <C>front</C> fills the main block; <C>block_text</C> keys include back-face blocks (<C>side</C> from{" "}
+              <C>get_template_schema</C>).
             </Td>
             <Td>
               <C>deckId</C> required. Optional <C>templateId</C>, <C>front</C>, <C>block_text</C>,{" "}
@@ -339,7 +341,7 @@ export default function McpServerDocPage() {
             <>Call <strong className="text-white/80 font-mono text-[13px]">list_templates</strong>. If empty, use <strong className="text-white/80 font-mono text-[13px]">list_template_block_types</strong> and <strong className="text-white/80 font-mono text-[13px]">create_template</strong> first.</>,
             <>Call <strong className="text-white/80 font-mono text-[13px]">get_template_schema</strong> with the chosen <C>templateId</C> to learn exact <C>blockId</C> keys and <C>side</C> values.</>,
             <>Call <strong className="text-white/80 font-mono text-[13px]">create_deck</strong> with a <C>title</C>, optional <C>description</C>, and <C>icon_emoji</C> when the agent should pick a matching icon for the topic.</>,
-            <>Call <strong className="text-white/80 font-mono text-[13px]">create_card</strong> with <C>deckId</C> and optionally <C>templateId</C>, <C>front</C>, or <C>block_text</C>.</>,
+            <>Call <strong className="text-white/80 font-mono text-[13px]">create_card</strong> with <C>deckId</C> and optionally <C>templateId</C>, <C>front</C> (main block), and <C>block_text</C> for other blocks including the back.</>,
           ].map((step, i) => (
             <li key={i} className="flex items-start gap-3">
               <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold text-accent border border-accent/25 bg-accent/[0.07] mt-0.5">
