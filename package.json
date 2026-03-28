@@ -15,7 +15,8 @@
     "purge:soft-deleted": "node scripts/purge-soft-deleted-data.js",
     "backfill:deleted-at": "node scripts/backfill-deleted-at.js",
     "optimize:logo": "node scripts/optimize-app-logo.mjs",
-    "optimize:mock-images": "node scripts/optimize-mock-images.mjs"
+    "optimize:mock-images": "node scripts/optimize-mock-images.mjs",
+    "generate:preview-audio": "node scripts/generate-preview-sample-audio.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",

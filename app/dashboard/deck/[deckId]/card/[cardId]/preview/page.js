@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft, Edit2 } from "lucide-react";
@@ -8,6 +8,8 @@ import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { getDeck, getCard, getMedia } from "@/utils/firestore";
 import CardPreviewContent from "@/components/CardPreviewContent";
+import { CARD_PREVIEW_PHONE_STYLE } from "@/lib/phone-preview-frame";
+import { usePhonePreviewLayoutDebug } from "@/lib/phone-preview-layout-debug";
 import PreviewModePill from "@/components/PreviewModePill";
 
 const ENTRY_VALUES = new Set(["editor", "deck", "fileToAi"]);
@@ -32,6 +34,23 @@ function CardPreviewPageInner() {
   const [loading, setLoading] = useState(true);
   const [mediaCache, setMediaCache] = useState({});
   const [entrySource, setEntrySource] = useState("deck");
+
+  const phoneShellRef = useRef(null);
+  const phoneBodyRef = useRef(null);
+  const phoneScrollRef = useRef(null);
+  const phoneInnerRef = useRef(null);
+  const phonePreviewContentRef = useRef(null);
+  usePhonePreviewLayoutDebug(
+    "deck-card-preview",
+    {
+      phoneRef: phoneShellRef,
+      bodyRef: phoneBodyRef,
+      scrollRef: phoneScrollRef,
+      innerRef: phoneInnerRef,
+      contentRef: phonePreviewContentRef,
+    },
+    !loading,
+  );
 
   useEffect(() => {
     if (!user || !deckId || !cardId) return;
@@ -140,14 +159,10 @@ function CardPreviewPageInner() {
 
   if (loading) {
     return (
-      <div className="flex h-[calc(100dvh-3.5rem)] min-h-0 items-start justify-center px-3 pt-2">
+      <div className="flex h-[calc(100dvh-3.5rem)] min-h-0 items-center justify-center px-3 pt-2">
         <div
-          className="rounded-2xl border border-white/[0.07] bg-white/[0.02] overflow-hidden flex flex-col animate-pulse"
-          style={{
-            aspectRatio: "9 / 16",
-            width: "min(96vw, calc((100dvh - 5.5rem) * 9 / 16))",
-            maxWidth: "32rem",
-          }}
+          className="max-h-full rounded-2xl border border-white/[0.07] bg-white/[0.02] overflow-hidden flex flex-col animate-pulse"
+          style={CARD_PREVIEW_PHONE_STYLE}
         >
           <div className="flex-shrink-0 flex items-center gap-2 px-3 py-2.5 border-b border-white/[0.06]">
             <div className="w-7 h-7 rounded-lg bg-white/[0.05]" />
@@ -166,17 +181,14 @@ function CardPreviewPageInner() {
 
   return (
     <div className="flex h-[calc(100dvh-3.5rem)] min-h-0 flex-col overflow-hidden px-3 pt-2 pb-[max(env(safe-area-inset-bottom),0.5rem)]">
-      <div className="flex flex-1 min-h-0 items-start justify-center">
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-1">
         <motion.div
+          ref={phoneShellRef}
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          style={{
-            aspectRatio: "9 / 16",
-            width: "min(96vw, calc((100dvh - 5.5rem) * 9 / 16))",
-            maxWidth: "32rem",
-          }}
-          className="rounded-2xl border border-white/[0.08] bg-white/[0.025] overflow-hidden shadow-xl shadow-black/20 flex flex-col max-h-full"
+          style={CARD_PREVIEW_PHONE_STYLE}
+          className="flex min-h-0 max-h-full shrink-0 flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.025] shadow-xl shadow-black/20"
         >
           <div className="flex-shrink-0 flex items-center gap-1.5 sm:gap-2 px-3 py-2.5 border-b border-white/[0.06]">
             <Link
@@ -208,13 +220,24 @@ function CardPreviewPageInner() {
             )}
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto p-4 [scrollbar-gutter:stable]">
-            <CardPreviewContent
-              blocks={card?.blocksSnapshot}
-              getValue={getValue}
-              mediaCache={mediaCache}
-              forceImageAspectRatio={9 / 16}
-            />
+          <div ref={phoneBodyRef} className="flex min-h-0 flex-1 flex-col overflow-hidden p-4">
+            <div
+              ref={phoneScrollRef}
+              className="mx-auto grid min-h-0 w-full min-w-0 flex-1 grid-rows-[minmax(0,1fr)] overflow-x-hidden overflow-y-auto overscroll-y-contain"
+            >
+              <div
+                ref={phoneInnerRef}
+                className="flex min-h-0 min-w-0 flex-col self-stretch justify-self-stretch"
+              >
+                <CardPreviewContent
+                  contentRef={phonePreviewContentRef}
+                  blocks={card?.blocksSnapshot}
+                  getValue={getValue}
+                  mediaCache={mediaCache}
+                  forceImageAspectRatio={9 / 16}
+                />
+              </div>
+            </div>
           </div>
 
           {cardId !== "new" && (card?.createdAt != null || card?.updatedAt != null) && (

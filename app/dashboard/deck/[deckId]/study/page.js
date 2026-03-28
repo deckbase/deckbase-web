@@ -798,68 +798,70 @@ export default function StudySessionPage() {
               <SrsInfoBar card={currentCard} />
             </div>
 
-            {/* ── Scrollable content ── */}
-            <div className="flex-1 overflow-y-auto p-4 pt-3">
-              {hasFlipBack ? (
-                <div className="relative w-full" style={{ perspective: "1200px" }}>
-                  <motion.div
-                    className="relative w-full"
-                    style={{ transformStyle: "preserve-3d" }}
-                    animate={{ rotateY: flipRevealed ? 180 : 0 }}
-                    transition={{ duration: 0.55, ease: [0.4, 0, 0.2, 1] }}
-                  >
-                    <div
-                      className="w-full"
-                      style={{
-                        backfaceVisibility: "hidden",
-                        WebkitBackfaceVisibility: "hidden",
-                        transform: "rotateY(0deg) translateZ(1px)",
-                      }}
+            {/* ── Scrollable content (short cards vertically centered in frame) ── */}
+            <div className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain p-4 pt-3">
+              <div className="flex w-full min-w-0 flex-1 flex-col justify-center text-center">
+                {hasFlipBack ? (
+                  <div className="relative w-full min-w-0" style={{ perspective: "1200px" }}>
+                    <motion.div
+                      className="relative w-full min-w-0"
+                      style={{ transformStyle: "preserve-3d" }}
+                      animate={{ rotateY: flipRevealed ? 180 : 0 }}
+                      transition={{ duration: 0.55, ease: [0.4, 0, 0.2, 1] }}
                     >
-                      <CardBlockList
-                        blocks={frontBlocks}
-                        getValue={(blockId) => currentCard?.values?.find((v) => v.blockId === blockId)}
-                        showAnswer={showAnswer}
-                        revealedBlocks={revealedBlocks}
-                        onToggleReveal={handleToggleReveal}
-                        mediaCache={mediaCache}
-                        quizState={quizState}
-                        onQuizChange={handleQuizChange}
-                      />
-                    </div>
-                    <div
-                      className="absolute top-0 left-0 w-full min-h-full"
-                      style={{
-                        backfaceVisibility: "hidden",
-                        WebkitBackfaceVisibility: "hidden",
-                        transform: "rotateY(180deg) translateZ(1px)",
-                      }}
-                    >
-                      <CardBlockList
-                        blocks={backBlocks}
-                        getValue={(blockId) => currentCard?.values?.find((v) => v.blockId === blockId)}
-                        showAnswer={showAnswer}
-                        revealedBlocks={revealedBlocks}
-                        onToggleReveal={handleToggleReveal}
-                        mediaCache={mediaCache}
-                        quizState={quizState}
-                        onQuizChange={handleQuizChange}
-                      />
-                    </div>
-                  </motion.div>
-                </div>
-              ) : (
-                <CardBlockList
-                  blocks={currentCard?.blocksSnapshot ?? []}
-                  getValue={(blockId) => currentCard?.values?.find((v) => v.blockId === blockId)}
-                  showAnswer={showAnswer}
-                  revealedBlocks={revealedBlocks}
-                  onToggleReveal={handleToggleReveal}
-                  mediaCache={mediaCache}
-                  quizState={quizState}
-                  onQuizChange={handleQuizChange}
-                />
-              )}
+                      <div
+                        className="w-full min-w-0 text-center"
+                        style={{
+                          backfaceVisibility: "hidden",
+                          WebkitBackfaceVisibility: "hidden",
+                          transform: "rotateY(0deg) translateZ(1px)",
+                        }}
+                      >
+                        <CardBlockList
+                          blocks={frontBlocks}
+                          getValue={(blockId) => currentCard?.values?.find((v) => v.blockId === blockId)}
+                          showAnswer={showAnswer}
+                          revealedBlocks={revealedBlocks}
+                          onToggleReveal={handleToggleReveal}
+                          mediaCache={mediaCache}
+                          quizState={quizState}
+                          onQuizChange={handleQuizChange}
+                        />
+                      </div>
+                      <div
+                        className="absolute top-0 left-0 w-full min-h-full min-w-0 text-center"
+                        style={{
+                          backfaceVisibility: "hidden",
+                          WebkitBackfaceVisibility: "hidden",
+                          transform: "rotateY(180deg) translateZ(1px)",
+                        }}
+                      >
+                        <CardBlockList
+                          blocks={backBlocks}
+                          getValue={(blockId) => currentCard?.values?.find((v) => v.blockId === blockId)}
+                          showAnswer={showAnswer}
+                          revealedBlocks={revealedBlocks}
+                          onToggleReveal={handleToggleReveal}
+                          mediaCache={mediaCache}
+                          quizState={quizState}
+                          onQuizChange={handleQuizChange}
+                        />
+                      </div>
+                    </motion.div>
+                  </div>
+                ) : (
+                  <CardBlockList
+                    blocks={currentCard?.blocksSnapshot ?? []}
+                    getValue={(blockId) => currentCard?.values?.find((v) => v.blockId === blockId)}
+                    showAnswer={showAnswer}
+                    revealedBlocks={revealedBlocks}
+                    onToggleReveal={handleToggleReveal}
+                    mediaCache={mediaCache}
+                    quizState={quizState}
+                    onQuizChange={handleQuizChange}
+                  />
+                )}
+              </div>
             </div>
 
             {hasQuizOnVisibleFace && !showAnswer && (

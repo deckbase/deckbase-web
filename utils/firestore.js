@@ -26,6 +26,11 @@ import {
 } from "firebase/storage";
 import { db, storage } from "@/utils/firebase";
 import { v4 as uuidv4 } from "uuid";
+import {
+  getLibraryTemplateById,
+  getTemplateIdMap,
+  libraryBlocksToInitialSeedBlocks,
+} from "@/lib/default-template-library";
 const toMs = (v) => (v && typeof v.toMillis === "function" ? v.toMillis() : v ?? Date.now());
 
 /** Trim; empty string → null. Matches mobile / Firestore contract for `icon_emoji`. */
@@ -488,6 +493,10 @@ function removeUndefined(obj) {
   return out;
 }
 
+/**
+ * @param {object} [options]
+ * @param {string} [options.templateId] — Optional fixed id (e.g. default vocabulary seeds aligned with `data/default_template_library.json`).
+ */
 export const createTemplate = async (
   uid,
   name,
@@ -495,8 +504,12 @@ export const createTemplate = async (
   blocks = [],
   mainBlockId = null,
   subBlockId = null,
+  options = {},
 ) => {
-  const templateId = uuidv4();
+  const templateId =
+    options?.templateId && String(options.templateId).trim()
+      ? String(options.templateId).trim()
+      : uuidv4();
   const now = Timestamp.now();
   const blocksNormalized = normalizeTemplateBlocksForWrite(blocks);
 
@@ -860,6 +873,23 @@ export const BlockType = {
 
 export const BlockTypeNames = Object.keys(BlockType);
 
+/**
+ * Single source of truth: map numeric / numeric-string block types to camelCase names
+ * (header1, quote, quizSingleSelect, …). Unknown strings pass through.
+ * Matches read-path behavior for BlockDisplay / CardBlockList / mobile.
+ */
+export function normalizeBlockTypeName(type) {
+  if (type == null) return type;
+  if (typeof type === "number" && BlockTypeNames[type] != null) {
+    return BlockTypeNames[type];
+  }
+  if (typeof type === "string" && /^\d+$/.test(type)) {
+    const n = Number(type);
+    return BlockTypeNames[n] != null ? BlockTypeNames[n] : type;
+  }
+  return type;
+}
+
 // ============== TRANSFORM HELPERS ==============
 // Convert between Firestore (snake_case) and JS (camelCase)
 
@@ -1206,138 +1236,42 @@ const transformMediaFromFirestore = (data) => {
 // ============== DEFAULT TEMPLATES ==============
 
 export const createDefaultTemplates = async (uid) => {
-  // Check if user already has templates
   const existingTemplates = await getTemplates(uid);
   if (existingTemplates.length > 0) {
     return existingTemplates;
   }
 
-  // Create English Vocabulary template (matches mobile)
-  const wordBlockId = uuidv4();
-  const pronunciationBlockId = uuidv4();
-  const partOfSpeechBlockId = uuidv4();
-  const definitionBlockId = uuidv4();
-  const exampleBlockId = uuidv4();
-  const synonymsBlockId = uuidv4();
+  const map = getTemplateIdMap();
+  const enId = map.lang_en;
+  const jaId = map.lang_ja;
+  const enT = getLibraryTemplateById(enId);
+  const jaT = getLibraryTemplateById(jaId);
+
+  if (!enT || !jaId || !enId || !jaT) {
+    console.error(
+      "createDefaultTemplates: catalog or templateIdMap missing lang_en / lang_ja",
+    );
+    return [];
+  }
 
   const englishTemplate = await createTemplate(
     uid,
-    "English Vocabulary",
-    "Learn English words with definition, pronunciation, and examples",
-    [
-      {
-        blockId: wordBlockId,
-        type: BlockType.header1,
-        label: "Word",
-        required: true,
-        side: "front",
-        configJson: JSON.stringify({ maxLength: 80 }),
-      },
-      {
-        blockId: pronunciationBlockId,
-        type: BlockType.header3,
-        label: "Pronunciation",
-        required: false,
-        side: "front",
-        configJson: JSON.stringify({ maxLength: 120 }),
-      },
-      {
-        blockId: partOfSpeechBlockId,
-        type: BlockType.header2,
-        label: "Part of Speech",
-        required: false,
-        side: "back",
-        configJson: JSON.stringify({ maxLength: 100 }),
-      },
-      {
-        blockId: definitionBlockId,
-        type: BlockType.text,
-        label: "Definition",
-        required: true,
-        side: "back",
-        configJson: JSON.stringify({ multiline: true, appendMode: "newline" }),
-      },
-      {
-        blockId: exampleBlockId,
-        type: BlockType.quote,
-        label: "Example Sentence",
-        required: false,
-        side: "back",
-        configJson: JSON.stringify({ multiline: true }),
-      },
-      {
-        blockId: synonymsBlockId,
-        type: BlockType.hiddenText,
-        label: "Synonyms",
-        required: false,
-        side: "back",
-        configJson: JSON.stringify({ multiline: true }),
-      },
-    ],
+    enT.name,
+    enT.description || "",
+    libraryBlocksToInitialSeedBlocks(enT.blocks),
+    null,
+    null,
+    { templateId: enId },
   );
-
-  // Create Japanese Vocabulary template (matches mobile)
-  const kanjiBlockId = uuidv4();
-  const hiraganaBlockId = uuidv4();
-  const romajiBlockId = uuidv4();
-  const meaningBlockId = uuidv4();
-  const jpExampleBlockId = uuidv4();
-  const notesBlockId = uuidv4();
 
   const japaneseTemplate = await createTemplate(
     uid,
-    "Japanese Vocabulary",
-    "Learn Japanese words with kanji, reading, and meaning",
-    [
-      {
-        blockId: kanjiBlockId,
-        type: BlockType.header1,
-        label: "Kanji / Word",
-        required: true,
-        side: "front",
-        configJson: JSON.stringify({ maxLength: 80 }),
-      },
-      {
-        blockId: hiraganaBlockId,
-        type: BlockType.header2,
-        label: "Hiragana / Reading",
-        required: false,
-        side: "front",
-        configJson: JSON.stringify({ maxLength: 100 }),
-      },
-      {
-        blockId: romajiBlockId,
-        type: BlockType.header3,
-        label: "Romaji",
-        required: false,
-        side: "back",
-        configJson: JSON.stringify({ maxLength: 120 }),
-      },
-      {
-        blockId: meaningBlockId,
-        type: BlockType.text,
-        label: "Meaning",
-        required: true,
-        side: "back",
-        configJson: JSON.stringify({ multiline: true, appendMode: "newline" }),
-      },
-      {
-        blockId: jpExampleBlockId,
-        type: BlockType.quote,
-        label: "Example Sentence",
-        required: false,
-        side: "back",
-        configJson: JSON.stringify({ multiline: true }),
-      },
-      {
-        blockId: notesBlockId,
-        type: BlockType.hiddenText,
-        label: "Notes",
-        required: false,
-        side: "back",
-        configJson: JSON.stringify({ multiline: true }),
-      },
-    ],
+    jaT.name,
+    jaT.description || "",
+    libraryBlocksToInitialSeedBlocks(jaT.blocks),
+    null,
+    null,
+    { templateId: jaId },
   );
 
   return [englishTemplate, japaneseTemplate];

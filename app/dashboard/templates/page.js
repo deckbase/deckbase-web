@@ -11,6 +11,7 @@ import {
   Copy,
   X,
   ArrowLeft,
+  Library,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
@@ -31,7 +32,10 @@ export default function TemplatesPage() {
   const [duplicating, setDuplicating] = useState(false);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
     const unsubscribe = subscribeToTemplates(user.uid, (fetchedTemplates) => {
       setTemplates(fetchedTemplates);
@@ -95,55 +99,82 @@ export default function TemplatesPage() {
           <div>
             <h1 className="text-3xl font-bold text-white mb-2">Card Templates</h1>
             <p className="text-white/60">
-              {templates.length} {templates.length === 1 ? "template" : "templates"}
+              {!loading
+                ? `${templates.length} saved in your account`
+                : "Loading your templates…"}
             </p>
           </div>
         </div>
-        <Link
-          href="/dashboard/templates/new"
-          className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent/90 text-white rounded-lg transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          <span className="hidden sm:inline">New Template</span>
-        </Link>
-      </div>
-
-      {/* Loading State */}
-      {loading && (
-        <div className="flex items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-accent"></div>
-        </div>
-      )}
-
-      {/* Empty State */}
-      {!loading && templates.length === 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col items-center justify-center py-20 text-center"
-        >
-          <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mb-6">
-            <LayoutTemplate className="w-10 h-10 text-white/30" />
-          </div>
-          <h2 className="text-xl font-semibold text-white mb-2">
-            No templates yet
-          </h2>
-          <p className="text-white/60 mb-6 max-w-md">
-            Create custom flashcard templates with different block types like
-            headers, text, images, and quizzes.
-          </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href="/dashboard/templates/library"
+            className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-lg transition-colors"
+          >
+            <Library className="w-5 h-5 text-white/80" />
+            <span className="hidden sm:inline">Template library</span>
+            <span className="sm:hidden">Library</span>
+          </Link>
           <Link
             href="/dashboard/templates/new"
-            className="flex items-center gap-2 px-6 py-3 bg-accent hover:bg-accent/90 text-white rounded-lg transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent/90 text-white rounded-lg transition-colors"
           >
             <Plus className="w-5 h-5" />
-            Create Your First Template
+            <span className="hidden sm:inline">New Template</span>
           </Link>
-        </motion.div>
-      )}
+        </div>
+      </div>
 
-      {/* Template Grid */}
-      {!loading && templates.length > 0 && (
+      <section>
+        <h2 className="text-xl font-semibold text-white mb-6">My templates</h2>
+
+        {loading && (
+          <div className="flex items-center justify-center py-16">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-accent" />
+          </div>
+        )}
+
+        {!loading && templates.length === 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col items-center justify-center py-16 text-center rounded-2xl border border-dashed border-white/10 bg-white/[0.02]"
+          >
+            <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
+              <LayoutTemplate className="w-8 h-8 text-white/30" />
+            </div>
+            <h3 className="text-lg font-semibold text-white mb-2">
+              No saved templates yet
+            </h3>
+            <p className="text-white/50 mb-6 max-w-md text-sm">
+              Create a custom template or save a copy from the{" "}
+              <Link
+                href="/dashboard/templates/library"
+                className="text-accent hover:underline"
+              >
+                template library
+              </Link>
+              .
+            </p>
+            <div className="flex flex-wrap gap-3 justify-center">
+              <Link
+                href="/dashboard/templates/library"
+                className="flex items-center gap-2 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-lg transition-colors"
+              >
+                <Library className="w-5 h-5" />
+                Browse template library
+              </Link>
+              <Link
+                href="/dashboard/templates/new"
+                className="flex items-center gap-2 px-6 py-3 bg-accent hover:bg-accent/90 text-white rounded-lg transition-colors"
+              >
+                <Plus className="w-5 h-5" />
+                New template
+              </Link>
+            </div>
+          </motion.div>
+        )}
+
+        {!loading && templates.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           <AnimatePresence>
             {templates.map((template, index) => (
@@ -246,7 +277,8 @@ export default function TemplatesPage() {
             ))}
           </AnimatePresence>
         </div>
-      )}
+        )}
+      </section>
 
       {/* Delete Confirmation Modal */}
       <AnimatePresence>

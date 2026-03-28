@@ -4,20 +4,8 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff, ChevronLeft, ChevronRight, Check } from "lucide-react";
-import { BlockTypeNames } from "@/utils/firestore";
+import { normalizeBlockTypeName } from "@/utils/firestore";
 import { getCropAspectFromConfig } from "@/lib/image-block-config";
-
-// Normalize block type (Firestore/templates may use numeric or string "7" etc.)
-const blockType = (block) => {
-  const t = block?.type;
-  if (t == null) return t;
-  if (typeof t === "number" && BlockTypeNames[t] != null) return BlockTypeNames[t];
-  if (typeof t === "string" && /^\d+$/.test(t)) {
-    const name = BlockTypeNames[Number(t)];
-    return name != null ? name : t;
-  }
-  return t;
-};
 
 function BlockDisplayAudio({ value, mediaCache }) {
   const [audioSrcByMediaId, setAudioSrcByMediaId] = useState({});
@@ -38,6 +26,17 @@ function BlockDisplayAudio({ value, mediaCache }) {
       for (const mediaId of mediaIds) {
         const media = mediaCache[mediaId];
         if (!media?.downloadUrl || cancelled) continue;
+        const rawUrl = media.downloadUrl;
+        const url = typeof rawUrl === "string" ? rawUrl.trim() : "";
+        /** Firebase Storage URLs need server proxy (CORS); same-origin, data:, and other HTTPS can play directly. */
+        const needsProxy =
+          url.includes("firebasestorage.googleapis.com") ||
+          url.includes("storage.googleapis.com") ||
+          url.includes("storage.cloud.google.com");
+        if (!needsProxy && url && (url.startsWith("/") || url.startsWith("data:") || /^https?:\/\//i.test(url))) {
+          setAudioSrcByMediaId((prev) => ({ ...prev, [mediaId]: url }));
+          continue;
+        }
         setLoadingMediaIds((prev) => new Set(prev).add(mediaId));
         try {
           const res = await fetch("/api/proxy-media", {
@@ -77,21 +76,21 @@ function BlockDisplayAudio({ value, mediaCache }) {
   ]);
 
   return (
-    <div className="space-y-2">
+    <div className="flex w-full flex-col items-center space-y-2">
       {value.mediaIds.map((mediaId) => {
         const media = mediaCache[mediaId];
         if (!media?.downloadUrl) return null;
         const src = audioSrcByMediaId[mediaId];
         const isLoading = loadingMediaIds.has(mediaId);
         return (
-          <div key={mediaId} className="flex items-center gap-2">
+          <div key={mediaId} className="flex items-center justify-center gap-2 w-full max-w-full">
             {isLoading && (
               <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-accent rounded-full animate-spin flex-shrink-0" aria-hidden />
             )}
             <audio
               src={src ?? undefined}
               controls
-              className="flex-1 min-w-0 h-8"
+              className="flex-1 min-w-0 h-8 max-w-md mx-auto"
               style={{ colorScheme: "dark" }}
             />
           </div>
@@ -132,49 +131,49 @@ export default function BlockDisplay({
     else if (deltaX < -threshold && currentIndex > 0) setIndex((i) => Math.max(0, i - 1));
   }, []);
 
-  const type = blockType(block);
+  const type = normalizeBlockTypeName(block?.type);
   if (!value && type !== "divider" && type !== "space") return null;
 
   const content = (() => {
     switch (type) {
       case "header1":
         return (
-          <h1 className="text-[22px] font-bold text-white leading-tight tracking-tight">
+          <h1 className="text-center text-[22px] font-bold text-white leading-tight tracking-tight">
             {value?.text}
           </h1>
         );
       case "header2":
         return (
-          <h2 className="text-[18px] font-semibold text-white leading-snug">
+          <h2 className="text-center text-[18px] font-semibold text-white leading-snug">
             {value?.text}
           </h2>
         );
       case "header3":
         return (
-          <h3 className="text-[15px] font-semibold text-white/85 leading-snug">
+          <h3 className="text-center text-[15px] font-semibold text-white/85 leading-snug">
             {value?.text}
           </h3>
         );
       case "text":
         return (
-          <p className="text-[14px] text-white/70 whitespace-pre-wrap leading-relaxed">
+          <p className="text-center text-[14px] text-white/70 whitespace-pre-wrap leading-relaxed">
             {value?.text}
           </p>
         );
+      case "quote":
       case "example":
         return (
-          <div className="flex gap-3 px-4 py-3 rounded-xl border border-white/[0.07] bg-white/[0.02]">
-            <div className="w-0.5 rounded-full bg-accent/40 flex-shrink-0 self-stretch" />
+          <div className="px-4 py-3 rounded-xl border border-white/[0.07] bg-white/[0.02] text-center">
             <p className="text-[14px] text-white/60 italic leading-relaxed">{value?.text}</p>
           </div>
         );
       case "hiddenText": {
         const isRevealed = revealedBlocks[block.blockId];
         return (
-          <div className="relative">
+          <div className="relative w-full text-center">
             {/* Top hairline — subtle “vault” frame */}
             <div
-              className="pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-accent/40 to-transparent"
+              className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/40 to-transparent"
               aria-hidden
             />
             <div
@@ -202,7 +201,7 @@ export default function BlockDisplay({
                   onClick={() => onToggleReveal(block.blockId)}
                   disabled={revealToggleDisabled}
                   className={[
-                    "relative z-[1] w-full text-left px-4 py-3.5 flex items-center gap-3 transition-colors",
+                    "relative z-[1] w-full text-center px-4 py-3.5 flex flex-col items-center gap-2 transition-colors",
                     isRevealed
                       ? "border-b border-white/[0.07] hover:bg-white/[0.04]"
                       : "hover:bg-white/[0.05] active:bg-white/[0.07]",
@@ -225,7 +224,7 @@ export default function BlockDisplay({
                       <Eye className="h-4 w-4" strokeWidth={2.2} />
                     )}
                   </span>
-                  <span className="min-w-0 flex-1">
+                  <span className="min-w-0 w-full">
                     <span className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-white/35">
                       Hidden answer
                     </span>
@@ -260,12 +259,8 @@ export default function BlockDisplay({
                     className="relative z-[1] overflow-hidden"
                   >
                     <div className="px-4 pb-4 pt-1">
-                      <div className="relative rounded-xl border border-white/[0.06] bg-black/35 pl-4 pr-3 py-3.5 backdrop-blur-[2px]">
-                        <div
-                          className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full bg-gradient-to-b from-accent via-accent/75 to-accent/35"
-                          aria-hidden
-                        />
-                        <p className="pl-2 text-[14px] leading-relaxed tracking-[0.01em] text-white/[0.88] whitespace-pre-wrap">
+                      <div className="relative rounded-xl border border-white/[0.06] bg-black/35 px-3 py-3.5 backdrop-blur-[2px]">
+                        <p className="text-[14px] leading-relaxed tracking-[0.01em] text-white/[0.88] whitespace-pre-wrap text-center">
                           {value?.text || "No answer provided."}
                         </p>
                       </div>
@@ -302,9 +297,9 @@ export default function BlockDisplay({
         const currentMedia = mediaCache[mediaIds[currentIndex]];
 
         return (
-          <div className="flex flex-col gap-2 w-[calc(100%+2.5rem)] max-w-none -mx-5">
+          <div className="flex w-full min-w-0 max-w-full flex-col items-center gap-2">
             <div
-              className={`relative w-full overflow-hidden rounded-xl ${showCarousel ? "touch-pan-y cursor-grab active:cursor-grabbing select-none" : ""}`}
+              className={`relative w-full max-w-full overflow-hidden rounded-xl ${showCarousel ? "touch-pan-y cursor-grab active:cursor-grabbing select-none" : ""}`}
               style={{ aspectRatio: cropAspect }}
               role="region"
               aria-label={showCarousel ? "Image carousel - swipe or use arrows to change image" : "Card image"}
@@ -336,12 +331,13 @@ export default function BlockDisplay({
               onPointerLeave={showCarousel ? () => { swipeStartRef.current = null; } : undefined}
             >
               {currentMedia?.downloadUrl && (
-                <div className="absolute inset-0 rounded-xl overflow-hidden">
+                <div className="absolute inset-0 rounded-xl overflow-hidden bg-black/35">
                   <Image
                     src={currentMedia.downloadUrl}
                     alt=""
                     fill
-                    className="object-cover rounded-xl"
+                    className="object-contain object-center rounded-xl"
+                    sizes="(max-width: 32rem) 96vw, 32rem"
                   />
                 </div>
               )}
@@ -405,7 +401,7 @@ export default function BlockDisplay({
       }
       case "divider":
         return (
-          <div className="py-1 flex items-center gap-3">
+          <div className="flex w-full items-center gap-3 py-1">
             <div className="flex-1 h-px bg-white/[0.08]" />
             <div className="w-1 h-1 rounded-full bg-white/20" />
             <div className="flex-1 h-px bg-white/[0.08]" />
@@ -426,12 +422,12 @@ export default function BlockDisplay({
           if (!question || (type !== "quizTextAnswer" && !options.length)) return null;
           const isMulti = type === "quizMultiSelect";
           return (
-            <div className="space-y-2.5">
+            <div className="space-y-2.5 text-center">
               <p className="text-[14px] font-semibold text-white leading-snug">{question}</p>
               {options.length > 0 && (
                 <div className="space-y-1.5">
                   {options.map((opt, i) => (
-                    <div key={i} className="flex items-center gap-2.5 px-3 py-2 rounded-lg border border-white/[0.07] bg-white/[0.02]">
+                    <div key={i} className="flex items-center justify-center gap-2.5 px-3 py-2 rounded-lg border border-white/[0.07] bg-white/[0.02]">
                       {isMulti ? (
                         <span className="w-3.5 h-3.5 rounded flex-shrink-0 border border-white/20 flex items-center justify-center">
                           <Check className="w-2.5 h-2.5 text-white/20" strokeWidth={3} />
@@ -452,11 +448,11 @@ export default function BlockDisplay({
       }
       default:
         return value?.text ? (
-          <p className="text-white/80">{value.text}</p>
+          <p className="text-white/80 text-center">{value.text}</p>
         ) : null;
     }
   })();
 
   if (content === null) return null;
-  return <div>{content}</div>;
+  return <div className="w-full min-w-0 text-center">{content}</div>;
 }

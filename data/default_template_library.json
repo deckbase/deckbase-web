@@ -1,0 +1,1360 @@
+{
+  "schemaVersion": 1,
+  "description": "Full portable catalog aligned with docs/features/DEFAULT_TEMPLATES_SEED.md. 17 General templates + 13 language vocabulary layouts. English (d479) and Japanese (d480) templateIds match lib/core/default_template_library_ids.dart. Block types include quiz/audio/image (see FlashcardDriftMapper). For image/audio blocks, optional configJson.previewSampleMediaKey selects bundled preview media (image_chem, audio_male, audio_female); see template_preview_asset_media.dart. Block configJson may include previewSampleText (library preview copy) and previewSampleMediaKey; stripped when duplicating to My Templates.",
+  "templateIdMap": {
+    "general_basic_qa": "f47ac10b-58cc-4372-a567-0e02b2c3d400",
+    "general_concept": "f47ac10b-58cc-4372-a567-0e02b2c3d401",
+    "general_sentence": "f47ac10b-58cc-4372-a567-0e02b2c3d402",
+    "general_problem": "f47ac10b-58cc-4372-a567-0e02b2c3d403",
+    "general_fact": "f47ac10b-58cc-4372-a567-0e02b2c3d404",
+    "general_fill": "f47ac10b-58cc-4372-a567-0e02b2c3d405",
+    "general_prompt": "f47ac10b-58cc-4372-a567-0e02b2c3d406",
+    "general_interview": "f47ac10b-58cc-4372-a567-0e02b2c3d407",
+    "general_reading": "f47ac10b-58cc-4372-a567-0e02b2c3d408",
+    "general_term_usage": "f47ac10b-58cc-4372-a567-0e02b2c3d409",
+    "general_classic_flip_qa": "f47ac10b-58cc-4372-a567-0e02b2c3d48c",
+    "general_vocab_premium": "f47ac10b-58cc-4372-a567-0e02b2c3d48d",
+    "general_active_recall": "f47ac10b-58cc-4372-a567-0e02b2c3d48e",
+    "general_mc_learning": "f47ac10b-58cc-4372-a567-0e02b2c3d48f",
+    "general_concept_learning": "f47ac10b-58cc-4372-a567-0e02b2c3d490",
+    "general_visual_learning": "f47ac10b-58cc-4372-a567-0e02b2c3d491",
+    "general_listening_practice": "f47ac10b-58cc-4372-a567-0e02b2c3d492",
+    "lang_en": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+    "lang_ja": "f47ac10b-58cc-4372-a567-0e02b2c3d480",
+    "lang_es": "f47ac10b-58cc-4372-a567-0e02b2c3d481",
+    "lang_fr": "f47ac10b-58cc-4372-a567-0e02b2c3d482",
+    "lang_de": "f47ac10b-58cc-4372-a567-0e02b2c3d483",
+    "lang_zh": "f47ac10b-58cc-4372-a567-0e02b2c3d484",
+    "lang_ko": "f47ac10b-58cc-4372-a567-0e02b2c3d485",
+    "lang_pt": "f47ac10b-58cc-4372-a567-0e02b2c3d486",
+    "lang_it": "f47ac10b-58cc-4372-a567-0e02b2c3d487",
+    "lang_ru": "f47ac10b-58cc-4372-a567-0e02b2c3d488",
+    "lang_uk": "f47ac10b-58cc-4372-a567-0e02b2c3d489",
+    "lang_ar": "f47ac10b-58cc-4372-a567-0e02b2c3d48a",
+    "lang_hi": "f47ac10b-58cc-4372-a567-0e02b2c3d48b"
+  },
+  "templates": [
+    {
+      "templateId": "f47ac10b-58cc-4372-a567-0e02b2c3d400",
+      "name": "Basic Q&A",
+      "description": "Question and answer with optional extra notes.",
+      "emoji": "💬",
+      "isReadonlySystem": true,
+      "librarySection": "general",
+      "languageKey": null,
+      "blocks": [
+        {
+          "blockId": "c0000001-0000-4000-8000-000000000001",
+          "type": "header1",
+          "label": "Question",
+          "required": true,
+          "side": "front",
+          "configJson": "{\"maxLength\":80,\"previewSampleText\":\"What is photosynthesis?\"}"
+        },
+        {
+          "blockId": "c0000001-0000-4000-8000-000000000002",
+          "type": "text",
+          "label": "Answer",
+          "required": true,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"appendMode\":\"newline\",\"previewSampleText\":\"Plants use chlorophyll to convert light, water, and CO₂ into sugars and oxygen.\"}"
+        },
+        {
+          "blockId": "c0000001-0000-4000-8000-000000000003",
+          "type": "hiddenText",
+          "label": "Extra Notes",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"Occurs mainly in chloroplasts; rate varies with light intensity and CO₂.\"}"
+        }
+      ]
+    },
+    {
+      "templateId": "f47ac10b-58cc-4372-a567-0e02b2c3d401",
+      "name": "Concept Breakdown",
+      "description": "Concept, explanation, example, and key takeaways.",
+      "emoji": "🧩",
+      "isReadonlySystem": true,
+      "librarySection": "general",
+      "languageKey": null,
+      "blocks": [
+        {
+          "blockId": "c0000002-0000-4000-8000-000000000001",
+          "type": "header1",
+          "label": "Concept",
+          "required": true,
+          "side": "front",
+          "configJson": "{\"maxLength\":80,\"previewSampleText\":\"Osmosis\"}"
+        },
+        {
+          "blockId": "c0000002-0000-4000-8000-000000000002",
+          "type": "text",
+          "label": "Explanation",
+          "required": true,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"appendMode\":\"newline\",\"previewSampleText\":\"Net movement of water across a semipermeable membrane from high to low water potential.\"}"
+        },
+        {
+          "blockId": "c0000002-0000-4000-8000-000000000003",
+          "type": "quote",
+          "label": "Example",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"\\\"Placing a raisin in water: water enters the cells and they swell.\\\"\"}"
+        },
+        {
+          "blockId": "c0000002-0000-4000-8000-000000000004",
+          "type": "hiddenText",
+          "label": "Key Takeaways",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"Passive transport · No ATP; driven by concentration gradient.\"}"
+        }
+      ]
+    },
+    {
+      "templateId": "f47ac10b-58cc-4372-a567-0e02b2c3d402",
+      "name": "Sentence Practice",
+      "description": "Sentence, translation, grammar notes, alternate phrasing.",
+      "emoji": "🗣️",
+      "isReadonlySystem": true,
+      "librarySection": "general",
+      "languageKey": null,
+      "blocks": [
+        {
+          "blockId": "c0000003-0000-4000-8000-000000000001",
+          "type": "text",
+          "label": "Sentence",
+          "required": true,
+          "side": "front",
+          "configJson": "{\"multiline\":true,\"appendMode\":\"newline\",\"previewSampleText\":\"She decided to take the train instead of driving.\"}"
+        },
+        {
+          "blockId": "c0000003-0000-4000-8000-000000000002",
+          "type": "text",
+          "label": "Translation",
+          "required": true,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"appendMode\":\"newline\",\"previewSampleText\":\"Elle a décidé de prendre le train au lieu de conduire.\"}"
+        },
+        {
+          "blockId": "c0000003-0000-4000-8000-000000000003",
+          "type": "hiddenText",
+          "label": "Grammar Notes",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"au lieu de + infinitive · agreement of past participle with feminine subject (optional in speech).\"}"
+        },
+        {
+          "blockId": "c0000003-0000-4000-8000-000000000004",
+          "type": "quote",
+          "label": "Alternate phrasing",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"\\\"She chose to take the train rather than drive.\\\"\"}"
+        }
+      ]
+    },
+    {
+      "templateId": "f47ac10b-58cc-4372-a567-0e02b2c3d403",
+      "name": "Problem Solving",
+      "description": "Problem, solution, steps or explanation.",
+      "emoji": "🔧",
+      "isReadonlySystem": true,
+      "librarySection": "general",
+      "languageKey": null,
+      "blocks": [
+        {
+          "blockId": "c0000004-0000-4000-8000-000000000001",
+          "type": "text",
+          "label": "Problem",
+          "required": true,
+          "side": "front",
+          "configJson": "{\"multiline\":true,\"appendMode\":\"newline\",\"previewSampleText\":\"The app crashes when users tap Save on slow networks.\"}"
+        },
+        {
+          "blockId": "c0000004-0000-4000-8000-000000000002",
+          "type": "text",
+          "label": "Solution",
+          "required": true,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"appendMode\":\"newline\",\"previewSampleText\":\"Add a timeout, show retry UI, and queue saves offline until sync succeeds.\"}"
+        },
+        {
+          "blockId": "c0000004-0000-4000-8000-000000000003",
+          "type": "hiddenText",
+          "label": "Steps / Explanation",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"1) Reproduce with throttled network 2) Log request timing 3) Ship fix behind flag.\"}"
+        }
+      ]
+    },
+    {
+      "templateId": "f47ac10b-58cc-4372-a567-0e02b2c3d404",
+      "name": "Fact Card",
+      "description": "Topic, key fact, context, extra details.",
+      "emoji": "🎴",
+      "isReadonlySystem": true,
+      "librarySection": "general",
+      "languageKey": null,
+      "blocks": [
+        {
+          "blockId": "c0000005-0000-4000-8000-000000000001",
+          "type": "header1",
+          "label": "Topic",
+          "required": true,
+          "side": "front",
+          "configJson": "{\"maxLength\":80,\"previewSampleText\":\"Water on Earth\"}"
+        },
+        {
+          "blockId": "c0000005-0000-4000-8000-000000000002",
+          "type": "text",
+          "label": "Key Fact",
+          "required": true,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"appendMode\":\"newline\",\"previewSampleText\":\"About 97% of Earth’s water is in oceans; under 3% is freshwater.\"}"
+        },
+        {
+          "blockId": "c0000005-0000-4000-8000-000000000003",
+          "type": "quote",
+          "label": "Context / Story",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"\\\"Most freshwater is locked in ice caps and glaciers.\\\"\"}"
+        },
+        {
+          "blockId": "c0000005-0000-4000-8000-000000000004",
+          "type": "hiddenText",
+          "label": "Extra Details",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"Useful for env science decks; numbers vary slightly by source.\"}"
+        }
+      ]
+    },
+    {
+      "templateId": "f47ac10b-58cc-4372-a567-0e02b2c3d405",
+      "name": "Fill in the Blank",
+      "description": "Cloze-style sentence, answer, explanation.",
+      "emoji": "✏️",
+      "isReadonlySystem": true,
+      "librarySection": "general",
+      "languageKey": null,
+      "blocks": [
+        {
+          "blockId": "c0000006-0000-4000-8000-000000000001",
+          "type": "text",
+          "label": "Sentence with ___",
+          "required": true,
+          "side": "front",
+          "configJson": "{\"multiline\":true,\"appendMode\":\"newline\",\"previewSampleText\":\"The mitochondrion is often called the ___ of the cell.\"}"
+        },
+        {
+          "blockId": "c0000006-0000-4000-8000-000000000002",
+          "type": "text",
+          "label": "Correct answer",
+          "required": true,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"appendMode\":\"newline\",\"previewSampleText\":\"powerhouse\"}"
+        },
+        {
+          "blockId": "c0000006-0000-4000-8000-000000000003",
+          "type": "hiddenText",
+          "label": "Explanation",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"Produces ATP via cellular respiration; has its own circular DNA.\"}"
+        }
+      ]
+    },
+    {
+      "templateId": "f47ac10b-58cc-4372-a567-0e02b2c3d406",
+      "name": "Prompt Card",
+      "description": "Speaking or recall prompt with suggested answer.",
+      "emoji": "💭",
+      "isReadonlySystem": true,
+      "librarySection": "general",
+      "languageKey": null,
+      "blocks": [
+        {
+          "blockId": "c0000007-0000-4000-8000-000000000001",
+          "type": "text",
+          "label": "Prompt / Topic",
+          "required": true,
+          "side": "front",
+          "configJson": "{\"multiline\":true,\"appendMode\":\"newline\",\"previewSampleText\":\"Explain the difference between correlation and causation in one paragraph.\"}"
+        },
+        {
+          "blockId": "c0000007-0000-4000-8000-000000000002",
+          "type": "hiddenText",
+          "label": "Suggested Answer / Notes",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"Correlation: variables move together. Causation: one variable directly produces change in another. Confounding factors can create misleading correlations.\"}"
+        }
+      ]
+    },
+    {
+      "templateId": "f47ac10b-58cc-4372-a567-0e02b2c3d407",
+      "name": "Interview Prep",
+      "description": "Interview question, ideal answer, tips.",
+      "emoji": "🎯",
+      "isReadonlySystem": true,
+      "librarySection": "general",
+      "languageKey": null,
+      "blocks": [
+        {
+          "blockId": "c0000008-0000-4000-8000-000000000001",
+          "type": "text",
+          "label": "Question",
+          "required": true,
+          "side": "front",
+          "configJson": "{\"multiline\":true,\"appendMode\":\"newline\",\"previewSampleText\":\"Tell me about a time you disagreed with a teammate. What did you do?\"}"
+        },
+        {
+          "blockId": "c0000008-0000-4000-8000-000000000002",
+          "type": "text",
+          "label": "Ideal Answer",
+          "required": true,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"appendMode\":\"newline\",\"previewSampleText\":\"Situation: tight deadline conflict. Action: listened, documented tradeoffs, proposed experiment. Result: shipped on time with shared ownership.\"}"
+        },
+        {
+          "blockId": "c0000008-0000-4000-8000-000000000003",
+          "type": "hiddenText",
+          "label": "Tips / Variations",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"Use STAR; quantify outcome; show empathy and follow-through.\"}"
+        }
+      ]
+    },
+    {
+      "templateId": "f47ac10b-58cc-4372-a567-0e02b2c3d408",
+      "name": "Reading Notes",
+      "description": "Idea or quote, explanation, personal notes.",
+      "emoji": "📖",
+      "isReadonlySystem": true,
+      "librarySection": "general",
+      "languageKey": null,
+      "blocks": [
+        {
+          "blockId": "c0000009-0000-4000-8000-000000000001",
+          "type": "header1",
+          "label": "Idea / Quote",
+          "required": true,
+          "side": "front",
+          "configJson": "{\"maxLength\":80,\"previewSampleText\":\"\\\"We see the world not as it is, but as we are.\\\"\"}"
+        },
+        {
+          "blockId": "c0000009-0000-4000-8000-000000000002",
+          "type": "text",
+          "label": "Explanation / Insight",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"appendMode\":\"newline\",\"previewSampleText\":\"The author argues perception is filtered through habits, biases, and prior experience—so two people rarely share the same “facts.”\"}"
+        },
+        {
+          "blockId": "c0000009-0000-4000-8000-000000000003",
+          "type": "hiddenText",
+          "label": "Personal Notes",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"Connect to your own study habits: confirmation bias when reviewing flashcards.\"}"
+        }
+      ]
+    },
+    {
+      "templateId": "f47ac10b-58cc-4372-a567-0e02b2c3d409",
+      "name": "Term + Usage",
+      "description": "Term, definition, example usage, memory notes.",
+      "emoji": "📚",
+      "isReadonlySystem": true,
+      "librarySection": "general",
+      "languageKey": null,
+      "blocks": [
+        {
+          "blockId": "c000000a-0000-4000-8000-000000000001",
+          "type": "header1",
+          "label": "Term",
+          "required": true,
+          "side": "front",
+          "configJson": "{\"maxLength\":80,\"previewSampleText\":\"serendipity\"}"
+        },
+        {
+          "blockId": "c000000a-0000-4000-8000-000000000002",
+          "type": "text",
+          "label": "Definition",
+          "required": true,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"appendMode\":\"newline\",\"previewSampleText\":\"the occurrence of pleasant or useful things by chance\"}"
+        },
+        {
+          "blockId": "c000000a-0000-4000-8000-000000000003",
+          "type": "quote",
+          "label": "Example usage",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"\\\"Finding that paper was pure serendipity—I wasn’t even searching for it.\\\"\"}"
+        },
+        {
+          "blockId": "c000000a-0000-4000-8000-000000000004",
+          "type": "hiddenText",
+          "label": "Notes / Memory aid",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"Coined by Horace Walpole (1754) from a Persian fairy tale.\"}"
+        }
+      ]
+    },
+    {
+      "templateId": "f47ac10b-58cc-4372-a567-0e02b2c3d48c",
+      "name": "Classic Q&A",
+      "description": "Question on the front; tap to reveal the answer on the back — no answer peek on the front.",
+      "emoji": "🧠",
+      "isReadonlySystem": true,
+      "librarySection": "general",
+      "languageKey": null,
+      "blocks": [
+        {
+          "blockId": "ee48c000-0000-4000-8000-000000000001",
+          "type": "header1",
+          "label": "Question",
+          "required": true,
+          "side": "front",
+          "configJson": "{\"maxLength\":120,\"previewSampleText\":\"What is the capital of Australia?\"}"
+        },
+        {
+          "blockId": "ee48c000-0000-4000-8000-000000000002",
+          "type": "hiddenText",
+          "label": "Answer",
+          "required": true,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"Canberra (not Sydney or Melbourne).\"}"
+        }
+      ]
+    },
+    {
+      "templateId": "f47ac10b-58cc-4372-a567-0e02b2c3d48d",
+      "name": "Vocabulary Premium",
+      "description": "Word and pronunciation on the front; meaning, example, and hidden notes on the back.",
+      "emoji": "🔊",
+      "isReadonlySystem": true,
+      "librarySection": "general",
+      "languageKey": null,
+      "blocks": [
+        {
+          "blockId": "ee48d000-0000-4000-8000-000000000001",
+          "type": "header1",
+          "label": "Word",
+          "required": true,
+          "side": "front",
+          "configJson": "{\"maxLength\":80,\"previewSampleText\":\"meticulous\"}"
+        },
+        {
+          "blockId": "ee48d000-0000-4000-8000-000000000002",
+          "type": "audio",
+          "label": "Pronunciation",
+          "required": false,
+          "side": "front",
+          "configJson": "{\"maxItems\":1,\"autoPlay\":false,\"previewSampleMediaKey\":\"audio_male\"}"
+        },
+        {
+          "blockId": "ee48d000-0000-4000-8000-000000000003",
+          "type": "text",
+          "label": "Meaning",
+          "required": true,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"appendMode\":\"newline\",\"previewSampleText\":\"showing great attention to detail; very careful and precise\"}"
+        },
+        {
+          "blockId": "ee48d000-0000-4000-8000-000000000004",
+          "type": "quote",
+          "label": "Example",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"\\\"She kept meticulous notes for every experiment.\\\"\"}"
+        },
+        {
+          "blockId": "ee48d000-0000-4000-8000-000000000005",
+          "type": "hiddenText",
+          "label": "Notes",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"Often positive connotation · adverb: meticulously.\"}"
+        }
+      ]
+    },
+    {
+      "templateId": "f47ac10b-58cc-4372-a567-0e02b2c3d48e",
+      "name": "Active Recall",
+      "description": "Prompt on the front; type your answer on the back, then reveal the correct answer and extra notes.",
+      "emoji": "✍️",
+      "isReadonlySystem": true,
+      "librarySection": "general",
+      "languageKey": null,
+      "blocks": [
+        {
+          "blockId": "ee48e000-0000-4000-8000-000000000001",
+          "type": "header1",
+          "label": "Question",
+          "required": true,
+          "side": "front",
+          "configJson": "{\"maxLength\":120,\"previewSampleText\":\"In one sentence, what is the function of RNA polymerase?\"}"
+        },
+        {
+          "blockId": "ee48e000-0000-4000-8000-000000000002",
+          "type": "quizTextAnswer",
+          "label": "Your answer",
+          "required": true,
+          "side": "back",
+          "configJson": "{\"question\":\"Type what you recall (one short sentence).\",\"correctAnswer\":\"It synthesizes RNA from a DNA template during transcription.\",\"caseSensitive\":false,\"isQuiz\":true}"
+        },
+        {
+          "blockId": "ee48e000-0000-4000-8000-000000000003",
+          "type": "hiddenText",
+          "label": "Reveal / notes",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"Enzyme that synthesizes RNA from a DNA template during transcription.\"}"
+        }
+      ]
+    },
+    {
+      "templateId": "f47ac10b-58cc-4372-a567-0e02b2c3d48f",
+      "name": "Multiple Choice Learning",
+      "description": "Topic or prompt on the front; multiple choice on the back with optional explanation.",
+      "emoji": "☑️",
+      "isReadonlySystem": true,
+      "librarySection": "general",
+      "languageKey": null,
+      "blocks": [
+        {
+          "blockId": "ee48f000-0000-4000-8000-000000000001",
+          "type": "header1",
+          "label": "Topic",
+          "required": true,
+          "side": "front",
+          "configJson": "{\"maxLength\":80,\"previewSampleText\":\"Spaced repetition\"}"
+        },
+        {
+          "blockId": "ee48f000-0000-4000-8000-000000000002",
+          "type": "quizSingleSelect",
+          "label": "Choose answer",
+          "required": true,
+          "side": "back",
+          "configJson": "{\"options\":[\"Long-term retention with fewer reviews\",\"Short-term cramming only\",\"Faster deck creation\"],\"correctAnswerIndex\":0,\"question\":\"What does spaced repetition optimize?\",\"isQuiz\":true}"
+        },
+        {
+          "blockId": "ee48f000-0000-4000-8000-000000000003",
+          "type": "hiddenText",
+          "label": "Explanation",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"Intervals grow when you answer correctly; they shrink after mistakes (typical SM-2 style).\"}"
+        }
+      ]
+    },
+    {
+      "templateId": "f47ac10b-58cc-4372-a567-0e02b2c3d490",
+      "name": "Concept Learning",
+      "description": "Concept on the front; explanation, divider, example, and hidden notes on the back.",
+      "emoji": "💡",
+      "isReadonlySystem": true,
+      "librarySection": "general",
+      "languageKey": null,
+      "blocks": [
+        {
+          "blockId": "ee490000-0000-4000-8000-000000000001",
+          "type": "header1",
+          "label": "Concept",
+          "required": true,
+          "side": "front",
+          "configJson": "{\"maxLength\":80,\"previewSampleText\":\"Working memory\"}"
+        },
+        {
+          "blockId": "ee490000-0000-4000-8000-000000000002",
+          "type": "text",
+          "label": "Explanation",
+          "required": true,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"appendMode\":\"newline\",\"previewSampleText\":\"Short-term system for holding and manipulating a small amount of information during reasoning.\"}"
+        },
+        {
+          "blockId": "ee490000-0000-4000-8000-000000000003",
+          "type": "divider",
+          "label": "",
+          "required": false,
+          "side": "back",
+          "configJson": null
+        },
+        {
+          "blockId": "ee490000-0000-4000-8000-000000000004",
+          "type": "quote",
+          "label": "Example",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"\\\"Trying to mental-multiply while listening to a lecture taxes working memory.\\\"\"}"
+        },
+        {
+          "blockId": "ee490000-0000-4000-8000-000000000005",
+          "type": "hiddenText",
+          "label": "Extra notes",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"Often linked to 7±2 chunks (Miller); modern models use duration limits too.\"}"
+        }
+      ]
+    },
+    {
+      "templateId": "f47ac10b-58cc-4372-a567-0e02b2c3d491",
+      "name": "Visual Learning",
+      "description": "Image on the front; title and hidden details on the back — anatomy, maps, diagrams, UI.",
+      "emoji": "🖼️",
+      "isReadonlySystem": true,
+      "librarySection": "general",
+      "languageKey": null,
+      "blocks": [
+        {
+          "blockId": "ee491000-0000-4000-8000-000000000001",
+          "type": "image",
+          "label": "Image",
+          "required": true,
+          "side": "front",
+          "configJson": "{\"imageLayout\":\"horizontal\",\"previewSampleMediaKey\":\"image_chem\"}"
+        },
+        {
+          "blockId": "ee491000-0000-4000-8000-000000000002",
+          "type": "header2",
+          "label": "Label",
+          "required": true,
+          "side": "back",
+          "configJson": "{\"maxLength\":80,\"previewSampleText\":\"Benzene ring (schematic)\"}"
+        },
+        {
+          "blockId": "ee491000-0000-4000-8000-000000000003",
+          "type": "hiddenText",
+          "label": "Details",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"Six carbon aromatic ring; delocalized π electrons (resonance). Common in organic chemistry.\"}"
+        }
+      ]
+    },
+    {
+      "templateId": "f47ac10b-58cc-4372-a567-0e02b2c3d492",
+      "name": "Listening Practice",
+      "description": "Audio on the front; type what you heard on the back, then reveal transcript or notes.",
+      "emoji": "🎧",
+      "isReadonlySystem": true,
+      "librarySection": "general",
+      "languageKey": null,
+      "blocks": [
+        {
+          "blockId": "ee492000-0000-4000-8000-000000000001",
+          "type": "audio",
+          "label": "Listen",
+          "required": true,
+          "side": "front",
+          "configJson": "{\"maxItems\":1,\"autoPlay\":false,\"previewSampleMediaKey\":\"audio_male\"}"
+        },
+        {
+          "blockId": "ee492000-0000-4000-8000-000000000002",
+          "type": "quizTextAnswer",
+          "label": "What did you hear?",
+          "required": true,
+          "side": "back",
+          "configJson": "{\"question\":\"Type what you heard (or a short summary).\",\"correctAnswer\":\"The train leaves at seven fifteen.\",\"caseSensitive\":false,\"isQuiz\":true}"
+        },
+        {
+          "blockId": "ee492000-0000-4000-8000-000000000003",
+          "type": "hiddenText",
+          "label": "Transcript / notes",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"Transcript: “The train leaves at seven fifteen.” Adjust wording if you paraphrased.\"}"
+        }
+      ]
+    },
+    {
+      "templateId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+      "name": "English Vocabulary",
+      "description": "Learn English words with definition, pronunciation, and examples.",
+      "emoji": "🇬🇧",
+      "isReadonlySystem": true,
+      "librarySection": "language",
+      "languageKey": "en",
+      "blocks": [
+        {
+          "blockId": "a0000001-0000-4000-8000-000000000001",
+          "type": "header1",
+          "label": "Word",
+          "required": true,
+          "side": "front",
+          "configJson": "{\"maxLength\":80,\"previewSampleText\":\"eloquent\"}"
+        },
+        {
+          "blockId": "a0000001-0000-4000-8000-000000000002",
+          "type": "header3",
+          "label": "Pronunciation / IPA",
+          "required": false,
+          "side": "front",
+          "configJson": "{\"maxLength\":120,\"previewSampleText\":\"/ˈel.ə.kwənt/\"}"
+        },
+        {
+          "blockId": "a0000001-0000-4000-8000-000000000003",
+          "type": "header2",
+          "label": "Part of Speech",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"maxLength\":100,\"previewSampleText\":\"adjective\"}"
+        },
+        {
+          "blockId": "a0000001-0000-4000-8000-000000000004",
+          "type": "text",
+          "label": "Definition",
+          "required": true,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"appendMode\":\"newline\",\"previewSampleText\":\"fluent and persuasive in speaking or writing\"}"
+        },
+        {
+          "blockId": "a0000001-0000-4000-8000-000000000005",
+          "type": "quote",
+          "label": "Example Sentence",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"\\\"The lawyer was especially eloquent in closing arguments.\\\"\"}"
+        },
+        {
+          "blockId": "a0000001-0000-4000-8000-000000000006",
+          "type": "hiddenText",
+          "label": "Synonyms / Notes",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"Synonyms: articulate, fluent · Latin eloqui (to speak out).\"}"
+        }
+      ]
+    },
+    {
+      "templateId": "f47ac10b-58cc-4372-a567-0e02b2c3d480",
+      "name": "Japanese Vocabulary",
+      "description": "Learn Japanese words with kanji, reading, and meaning.",
+      "emoji": "🇯🇵",
+      "isReadonlySystem": true,
+      "librarySection": "language",
+      "languageKey": "ja",
+      "blocks": [
+        {
+          "blockId": "b0000001-0000-4000-8000-000000000001",
+          "type": "header1",
+          "label": "Kanji / Word",
+          "required": true,
+          "side": "front",
+          "configJson": "{\"maxLength\":80,\"previewSampleText\":\"図書館\"}"
+        },
+        {
+          "blockId": "b0000001-0000-4000-8000-000000000002",
+          "type": "header2",
+          "label": "Hiragana / Reading",
+          "required": false,
+          "side": "front",
+          "configJson": "{\"maxLength\":100,\"previewSampleText\":\"としょかん\"}"
+        },
+        {
+          "blockId": "b0000001-0000-4000-8000-000000000003",
+          "type": "header3",
+          "label": "Romaji",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"maxLength\":120,\"previewSampleText\":\"toshokan\"}"
+        },
+        {
+          "blockId": "b0000001-0000-4000-8000-000000000004",
+          "type": "text",
+          "label": "Meaning",
+          "required": true,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"appendMode\":\"newline\",\"previewSampleText\":\"library\"}"
+        },
+        {
+          "blockId": "b0000001-0000-4000-8000-000000000005",
+          "type": "quote",
+          "label": "Example Sentence",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"\\\"図書館で勉強します。\\\"\"}"
+        },
+        {
+          "blockId": "b0000001-0000-4000-8000-000000000006",
+          "type": "hiddenText",
+          "label": "Notes / Nuance",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"Kanji 図+書+館 · で marks location of action.\"}"
+        }
+      ]
+    },
+    {
+      "templateId": "f47ac10b-58cc-4372-a567-0e02b2c3d481",
+      "name": "Spanish Vocabulary",
+      "description": "Word, gender/form, meaning, example, and usage.",
+      "emoji": "🇪🇸",
+      "isReadonlySystem": true,
+      "librarySection": "language",
+      "languageKey": "es",
+      "blocks": [
+        {
+          "blockId": "ee481000-0000-4000-8000-000000000001",
+          "type": "header1",
+          "label": "Word",
+          "required": true,
+          "side": "front",
+          "configJson": "{\"maxLength\":80,\"previewSampleText\":\"biblioteca\"}"
+        },
+        {
+          "blockId": "ee481000-0000-4000-8000-000000000002",
+          "type": "header2",
+          "label": "Gender / Form",
+          "required": false,
+          "side": "front",
+          "configJson": "{\"maxLength\":100,\"previewSampleText\":\"f. · la\"}"
+        },
+        {
+          "blockId": "ee481000-0000-4000-8000-000000000003",
+          "type": "text",
+          "label": "Meaning",
+          "required": true,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"appendMode\":\"newline\",\"previewSampleText\":\"library (building with books)\"}"
+        },
+        {
+          "blockId": "ee481000-0000-4000-8000-000000000004",
+          "type": "quote",
+          "label": "Example Sentence",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"\\\"La biblioteca cierra a las ocho.\\\"\"}"
+        },
+        {
+          "blockId": "ee481000-0000-4000-8000-000000000005",
+          "type": "hiddenText",
+          "label": "Notes / Usage",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"Plural: las bibliotecas. In Spain, biblioteca = public library; librería = bookstore.\"}"
+        }
+      ]
+    },
+    {
+      "templateId": "f47ac10b-58cc-4372-a567-0e02b2c3d482",
+      "name": "French Vocabulary",
+      "description": "Word, gender/form, meaning, example, and usage.",
+      "emoji": "🇫🇷",
+      "isReadonlySystem": true,
+      "librarySection": "language",
+      "languageKey": "fr",
+      "blocks": [
+        {
+          "blockId": "ee482000-0000-4000-8000-000000000001",
+          "type": "header1",
+          "label": "Word",
+          "required": true,
+          "side": "front",
+          "configJson": "{\"maxLength\":80,\"previewSampleText\":\"bibliothèque\"}"
+        },
+        {
+          "blockId": "ee482000-0000-4000-8000-000000000002",
+          "type": "header2",
+          "label": "Gender / Form",
+          "required": false,
+          "side": "front",
+          "configJson": "{\"maxLength\":100,\"previewSampleText\":\"f. · la\"}"
+        },
+        {
+          "blockId": "ee482000-0000-4000-8000-000000000003",
+          "type": "text",
+          "label": "Meaning",
+          "required": true,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"appendMode\":\"newline\",\"previewSampleText\":\"library\"}"
+        },
+        {
+          "blockId": "ee482000-0000-4000-8000-000000000004",
+          "type": "quote",
+          "label": "Example Sentence",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"\\\"La bibliothèque est fermée le dimanche.\\\"\"}"
+        },
+        {
+          "blockId": "ee482000-0000-4000-8000-000000000005",
+          "type": "hiddenText",
+          "label": "Notes / Usage",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"Plural: les bibliothèques · Cognate with English bibliography.\"}"
+        }
+      ]
+    },
+    {
+      "templateId": "f47ac10b-58cc-4372-a567-0e02b2c3d483",
+      "name": "German Vocabulary",
+      "description": "Word, article/gender, meaning, example, plural and notes.",
+      "emoji": "🇩🇪",
+      "isReadonlySystem": true,
+      "librarySection": "language",
+      "languageKey": "de",
+      "blocks": [
+        {
+          "blockId": "ee483000-0000-4000-8000-000000000001",
+          "type": "header1",
+          "label": "Word",
+          "required": true,
+          "side": "front",
+          "configJson": "{\"maxLength\":80,\"previewSampleText\":\"Bibliothek\"}"
+        },
+        {
+          "blockId": "ee483000-0000-4000-8000-000000000002",
+          "type": "header2",
+          "label": "Article / Gender",
+          "required": false,
+          "side": "front",
+          "configJson": "{\"maxLength\":100,\"previewSampleText\":\"f. · die\"}"
+        },
+        {
+          "blockId": "ee483000-0000-4000-8000-000000000003",
+          "type": "text",
+          "label": "Meaning",
+          "required": true,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"appendMode\":\"newline\",\"previewSampleText\":\"library\"}"
+        },
+        {
+          "blockId": "ee483000-0000-4000-8000-000000000004",
+          "type": "quote",
+          "label": "Example Sentence",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"\\\"Die Bibliothek hat am Sonntag geschlossen.\\\"\"}"
+        },
+        {
+          "blockId": "ee483000-0000-4000-8000-000000000005",
+          "type": "hiddenText",
+          "label": "Plural / Notes",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"Plural: die Bibliotheken · Compound: Bücherei is also used for public library.\"}"
+        }
+      ]
+    },
+    {
+      "templateId": "f47ac10b-58cc-4372-a567-0e02b2c3d484",
+      "name": "Chinese (Mandarin) Vocabulary",
+      "description": "Hanzi, pinyin, meaning, example, and tone hints.",
+      "emoji": "🇨🇳",
+      "isReadonlySystem": true,
+      "librarySection": "language",
+      "languageKey": "zh",
+      "blocks": [
+        {
+          "blockId": "ee484000-0000-4000-8000-000000000001",
+          "type": "header1",
+          "label": "Hanzi",
+          "required": true,
+          "side": "front",
+          "configJson": "{\"maxLength\":80,\"previewSampleText\":\"图书馆\"}"
+        },
+        {
+          "blockId": "ee484000-0000-4000-8000-000000000002",
+          "type": "header2",
+          "label": "Pinyin",
+          "required": false,
+          "side": "front",
+          "configJson": "{\"maxLength\":100,\"previewSampleText\":\"túshūguǎn\"}"
+        },
+        {
+          "blockId": "ee484000-0000-4000-8000-000000000003",
+          "type": "text",
+          "label": "Meaning",
+          "required": true,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"appendMode\":\"newline\",\"previewSampleText\":\"library\"}"
+        },
+        {
+          "blockId": "ee484000-0000-4000-8000-000000000004",
+          "type": "quote",
+          "label": "Example Sentence",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"\\\"图书馆里很安静。\\\"\"}"
+        },
+        {
+          "blockId": "ee484000-0000-4000-8000-000000000005",
+          "type": "hiddenText",
+          "label": "Notes / Tone hints",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"图 + 书 + 馆 compound · 馆 often marks a public building.\"}"
+        }
+      ]
+    },
+    {
+      "templateId": "f47ac10b-58cc-4372-a567-0e02b2c3d485",
+      "name": "Korean Vocabulary",
+      "description": "Hangul, romanization, meaning, example, and usage level notes.",
+      "emoji": "🇰🇷",
+      "isReadonlySystem": true,
+      "librarySection": "language",
+      "languageKey": "ko",
+      "blocks": [
+        {
+          "blockId": "ee485000-0000-4000-8000-000000000001",
+          "type": "header1",
+          "label": "Hangul",
+          "required": true,
+          "side": "front",
+          "configJson": "{\"maxLength\":80,\"previewSampleText\":\"도서관\"}"
+        },
+        {
+          "blockId": "ee485000-0000-4000-8000-000000000002",
+          "type": "header2",
+          "label": "Romanization",
+          "required": false,
+          "side": "front",
+          "configJson": "{\"maxLength\":100,\"previewSampleText\":\"doseogwan\"}"
+        },
+        {
+          "blockId": "ee485000-0000-4000-8000-000000000003",
+          "type": "text",
+          "label": "Meaning",
+          "required": true,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"appendMode\":\"newline\",\"previewSampleText\":\"library\"}"
+        },
+        {
+          "blockId": "ee485000-0000-4000-8000-000000000004",
+          "type": "quote",
+          "label": "Example Sentence",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"\\\"도서관에서 공부해요.\\\"\"}"
+        },
+        {
+          "blockId": "ee485000-0000-4000-8000-000000000005",
+          "type": "hiddenText",
+          "label": "Notes / Usage level",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"Sino-Korean 圖書館 · -에서 = location particle for action.\"}"
+        }
+      ]
+    },
+    {
+      "templateId": "f47ac10b-58cc-4372-a567-0e02b2c3d486",
+      "name": "Portuguese Vocabulary",
+      "description": "Word, gender/form, meaning, example, and usage.",
+      "emoji": "🇵🇹",
+      "isReadonlySystem": true,
+      "librarySection": "language",
+      "languageKey": "pt",
+      "blocks": [
+        {
+          "blockId": "ee486000-0000-4000-8000-000000000001",
+          "type": "header1",
+          "label": "Word",
+          "required": true,
+          "side": "front",
+          "configJson": "{\"maxLength\":80,\"previewSampleText\":\"biblioteca\"}"
+        },
+        {
+          "blockId": "ee486000-0000-4000-8000-000000000002",
+          "type": "header2",
+          "label": "Gender / Form",
+          "required": false,
+          "side": "front",
+          "configJson": "{\"maxLength\":100,\"previewSampleText\":\"f. · a\"}"
+        },
+        {
+          "blockId": "ee486000-0000-4000-8000-000000000003",
+          "type": "text",
+          "label": "Meaning",
+          "required": true,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"appendMode\":\"newline\",\"previewSampleText\":\"library\"}"
+        },
+        {
+          "blockId": "ee486000-0000-4000-8000-000000000004",
+          "type": "quote",
+          "label": "Example Sentence",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"\\\"A biblioteca fecha aos domingos.\\\"\"}"
+        },
+        {
+          "blockId": "ee486000-0000-4000-8000-000000000005",
+          "type": "hiddenText",
+          "label": "Notes / Usage",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"Plural: as bibliotecas · Brazilian vs European usage may vary.\"}"
+        }
+      ]
+    },
+    {
+      "templateId": "f47ac10b-58cc-4372-a567-0e02b2c3d487",
+      "name": "Italian Vocabulary",
+      "description": "Word, gender/form, meaning, example, and usage.",
+      "emoji": "🇮🇹",
+      "isReadonlySystem": true,
+      "librarySection": "language",
+      "languageKey": "it",
+      "blocks": [
+        {
+          "blockId": "ee487000-0000-4000-8000-000000000001",
+          "type": "header1",
+          "label": "Word",
+          "required": true,
+          "side": "front",
+          "configJson": "{\"maxLength\":80,\"previewSampleText\":\"biblioteca\"}"
+        },
+        {
+          "blockId": "ee487000-0000-4000-8000-000000000002",
+          "type": "header2",
+          "label": "Gender / Form",
+          "required": false,
+          "side": "front",
+          "configJson": "{\"maxLength\":100,\"previewSampleText\":\"f. · la\"}"
+        },
+        {
+          "blockId": "ee487000-0000-4000-8000-000000000003",
+          "type": "text",
+          "label": "Meaning",
+          "required": true,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"appendMode\":\"newline\",\"previewSampleText\":\"library\"}"
+        },
+        {
+          "blockId": "ee487000-0000-4000-8000-000000000004",
+          "type": "quote",
+          "label": "Example Sentence",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"\\\"La biblioteca è chiusa la domenica.\\\"\"}"
+        },
+        {
+          "blockId": "ee487000-0000-4000-8000-000000000005",
+          "type": "hiddenText",
+          "label": "Notes / Usage",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"Plural: le biblioteche · Same Latin root as Spanish biblioteca.\"}"
+        }
+      ]
+    },
+    {
+      "templateId": "f47ac10b-58cc-4372-a567-0e02b2c3d488",
+      "name": "Russian Vocabulary",
+      "description": "Cyrillic lemma, transliteration/gender, meaning, example, aspect and notes.",
+      "emoji": "🇷🇺",
+      "isReadonlySystem": true,
+      "librarySection": "language",
+      "languageKey": "ru",
+      "blocks": [
+        {
+          "blockId": "ee488000-0000-4000-8000-000000000001",
+          "type": "header1",
+          "label": "Word (Cyrillic)",
+          "required": true,
+          "side": "front",
+          "configJson": "{\"maxLength\":80,\"previewSampleText\":\"библиотека\"}"
+        },
+        {
+          "blockId": "ee488000-0000-4000-8000-000000000002",
+          "type": "header2",
+          "label": "Transliteration / Gender",
+          "required": false,
+          "side": "front",
+          "configJson": "{\"maxLength\":100,\"previewSampleText\":\"biblioteka · f. · ж.р.\"}"
+        },
+        {
+          "blockId": "ee488000-0000-4000-8000-000000000003",
+          "type": "text",
+          "label": "Meaning",
+          "required": true,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"appendMode\":\"newline\",\"previewSampleText\":\"library\"}"
+        },
+        {
+          "blockId": "ee488000-0000-4000-8000-000000000004",
+          "type": "quote",
+          "label": "Example Sentence",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"\\\"В библиотеке тихо.\\\"\"}"
+        },
+        {
+          "blockId": "ee488000-0000-4000-8000-000000000005",
+          "type": "hiddenText",
+          "label": "Aspect / Notes",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"Nominative plural: библиотеки · Diminutive: библиотечка (colloquial).\"}"
+        }
+      ]
+    },
+    {
+      "templateId": "f47ac10b-58cc-4372-a567-0e02b2c3d489",
+      "name": "Ukrainian Vocabulary",
+      "description": "Cyrillic lemma, transliteration/gender, meaning, example, aspect and notes.",
+      "emoji": "🇺🇦",
+      "isReadonlySystem": true,
+      "librarySection": "language",
+      "languageKey": "uk",
+      "blocks": [
+        {
+          "blockId": "ee489000-0000-4000-8000-000000000001",
+          "type": "header1",
+          "label": "Word (Cyrillic)",
+          "required": true,
+          "side": "front",
+          "configJson": "{\"maxLength\":80,\"previewSampleText\":\"бібліотека\"}"
+        },
+        {
+          "blockId": "ee489000-0000-4000-8000-000000000002",
+          "type": "header2",
+          "label": "Transliteration / Gender",
+          "required": false,
+          "side": "front",
+          "configJson": "{\"maxLength\":100,\"previewSampleText\":\"biblioteka · f. · ж.р.\"}"
+        },
+        {
+          "blockId": "ee489000-0000-4000-8000-000000000003",
+          "type": "text",
+          "label": "Meaning",
+          "required": true,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"appendMode\":\"newline\",\"previewSampleText\":\"library\"}"
+        },
+        {
+          "blockId": "ee489000-0000-4000-8000-000000000004",
+          "type": "quote",
+          "label": "Example Sentence",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"\\\"У бібліотеці тихо.\\\"\"}"
+        },
+        {
+          "blockId": "ee489000-0000-4000-8000-000000000005",
+          "type": "hiddenText",
+          "label": "Aspect / Notes",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"Close to Russian; stress and vowel quality differ in speech.\"}"
+        }
+      ]
+    },
+    {
+      "templateId": "f47ac10b-58cc-4372-a567-0e02b2c3d48a",
+      "name": "Arabic Vocabulary",
+      "description": "Arabic script, transliteration, meaning, example, root and notes.",
+      "emoji": "🇸🇦",
+      "isReadonlySystem": true,
+      "librarySection": "language",
+      "languageKey": "ar",
+      "blocks": [
+        {
+          "blockId": "ee48a000-0000-4000-8000-000000000001",
+          "type": "header1",
+          "label": "Arabic Word",
+          "required": true,
+          "side": "front",
+          "configJson": "{\"maxLength\":80,\"previewSampleText\":\"مكتبة\"}"
+        },
+        {
+          "blockId": "ee48a000-0000-4000-8000-000000000002",
+          "type": "header2",
+          "label": "Transliteration",
+          "required": false,
+          "side": "front",
+          "configJson": "{\"maxLength\":100,\"previewSampleText\":\"maktaba\"}"
+        },
+        {
+          "blockId": "ee48a000-0000-4000-8000-000000000003",
+          "type": "text",
+          "label": "Meaning",
+          "required": true,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"appendMode\":\"newline\",\"previewSampleText\":\"library\"}"
+        },
+        {
+          "blockId": "ee48a000-0000-4000-8000-000000000004",
+          "type": "quote",
+          "label": "Example Sentence",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"\\\"أنا أدرس في المكتبة.\\\"\"}"
+        },
+        {
+          "blockId": "ee48a000-0000-4000-8000-000000000005",
+          "type": "hiddenText",
+          "label": "Root / Notes",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"Root ك-ت-ب (write) · plural: مكتبات.\"}"
+        }
+      ]
+    },
+    {
+      "templateId": "f47ac10b-58cc-4372-a567-0e02b2c3d48b",
+      "name": "Hindi Vocabulary",
+      "description": "Devanagari, transliteration, meaning, example, gender and notes.",
+      "emoji": "🇮🇳",
+      "isReadonlySystem": true,
+      "librarySection": "language",
+      "languageKey": "hi",
+      "blocks": [
+        {
+          "blockId": "ee48b000-0000-4000-8000-000000000001",
+          "type": "header1",
+          "label": "Hindi Word (Devanagari)",
+          "required": true,
+          "side": "front",
+          "configJson": "{\"maxLength\":80,\"previewSampleText\":\"पुस्तकालय\"}"
+        },
+        {
+          "blockId": "ee48b000-0000-4000-8000-000000000002",
+          "type": "header2",
+          "label": "Transliteration",
+          "required": false,
+          "side": "front",
+          "configJson": "{\"maxLength\":100,\"previewSampleText\":\"pustakālay\"}"
+        },
+        {
+          "blockId": "ee48b000-0000-4000-8000-000000000003",
+          "type": "text",
+          "label": "Meaning",
+          "required": true,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"appendMode\":\"newline\",\"previewSampleText\":\"library\"}"
+        },
+        {
+          "blockId": "ee48b000-0000-4000-8000-000000000004",
+          "type": "quote",
+          "label": "Example Sentence",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"\\\"मैं पुस्तकालय जाता हूँ।\\\"\"}"
+        },
+        {
+          "blockId": "ee48b000-0000-4000-8000-000000000005",
+          "type": "hiddenText",
+          "label": "Gender / Notes",
+          "required": false,
+          "side": "back",
+          "configJson": "{\"multiline\":true,\"previewSampleText\":\"Masculine noun · ता हूँ pattern for habitual present (spoken male form).\"}"
+        }
+      ]
+    }
+  ]
+}

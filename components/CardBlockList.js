@@ -3,32 +3,12 @@
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff, Check, X } from "lucide-react";
-import { BlockTypeNames } from "@/utils/firestore";
+import { normalizeBlockTypeName } from "@/utils/firestore";
 import BlockDisplay from "@/components/blocks/BlockDisplay";
-
-/** Align with BlockDisplay blockType — supports numeric Firestore types. */
-const blockTypeName = (block) => {
-  const t = block?.type;
-  if (t == null) return t;
-  if (typeof t === "number" && BlockTypeNames[t] != null) return BlockTypeNames[t];
-  if (typeof t === "string" && /^\d+$/.test(t)) {
-    const name = BlockTypeNames[Number(t)];
-    return name != null ? name : t;
-  }
-  return t;
-};
 
 const safeJsonParse = (value) => {
   if (!value || typeof value !== "string") return null;
   try { return JSON.parse(value); } catch { return null; }
-};
-
-const BLOCK_TYPE_BY_NUM = { 8: "quizMultiSelect", 9: "quizSingleSelect", 10: "quizTextAnswer" };
-const resolveBlockType = (type) => {
-  if (type == null) return type;
-  if (typeof type === "number" && BLOCK_TYPE_BY_NUM[type]) return BLOCK_TYPE_BY_NUM[type];
-  if (typeof type === "string" && /^\d+$/.test(type)) return BLOCK_TYPE_BY_NUM[Number(type)] || type;
-  return type;
 };
 
 const QUIZ_TYPES = new Set(["quizSingleSelect", "quizMultiSelect", "quizTextAnswer"]);
@@ -64,11 +44,11 @@ function HintSection({ hint }) {
   const [open, setOpen] = useState(false);
   if (!hint) return null;
   return (
-    <div className="mt-2">
+    <div className="mt-2 flex flex-col items-center">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1.5 text-[12px] text-white/30 hover:text-white/60 transition-colors"
+        className="inline-flex items-center justify-center gap-1.5 text-[12px] text-white/30 hover:text-white/60 transition-colors"
       >
         {open ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
         {open ? "Hide hint" : "Show hint"}
@@ -79,7 +59,7 @@ function HintSection({ hint }) {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="text-[13px] text-white/45 mt-1.5 leading-relaxed overflow-hidden"
+            className="text-[13px] text-white/45 mt-1.5 leading-relaxed overflow-hidden max-w-full text-center"
           >
             {hint}
           </motion.p>
@@ -120,7 +100,7 @@ export default function CardBlockList({
     const next = { ...revealedBlocks };
     if (openHiddenTextWithQuizReveal && showAnswer) {
       for (const b of blocks) {
-        if (blockTypeName(b) === "hiddenText" && b.blockId) {
+        if (normalizeBlockTypeName(b.type) === "hiddenText" && b.blockId) {
           next[b.blockId] = true;
         }
       }
@@ -132,13 +112,13 @@ export default function CardBlockList({
     openHiddenTextWithQuizReveal && showAnswer;
 
   if (!blocks.length) {
-    return <p className="text-[13px] text-white/40">This card has no content.</p>;
+    return <p className="text-center text-[13px] text-white/40">This card has no content.</p>;
   }
 
   return (
-    <div className="space-y-4">
+    <div className="w-full space-y-4 text-center">
       {blocks.map((block, index) => {
-        const type = resolveBlockType(block.type);
+        const type = normalizeBlockTypeName(block.type);
         const value = getValue(block.blockId);
         const blockKey = block.blockId != null && block.blockId !== "" ? block.blockId : `block-${index}`;
 
@@ -155,8 +135,8 @@ export default function CardBlockList({
           const selected = quizState[block.blockId] || "";
           const correctSet = new Set(quiz.correctAnswers);
           return (
-            <div key={blockKey} className="space-y-3">
-              <p className="text-[15px] font-semibold text-white leading-snug">{quiz.question}</p>
+            <div key={blockKey} className="w-full space-y-3 text-center">
+              <p className="text-[15px] font-semibold text-white leading-snug text-center">{quiz.question}</p>
               <div className="space-y-2">
                 {quiz.options.map((opt, optIndex) => {
                   const isSelected = selected === opt;
@@ -168,7 +148,7 @@ export default function CardBlockList({
                       type="button"
                       onClick={() => onQuizChange(block.blockId, opt)}
                       disabled={showAnswer}
-                      className={`w-full text-left px-4 py-3 rounded-xl border text-[14px] transition-all flex items-center gap-3 disabled:cursor-default ${
+                      className={`w-full text-center px-4 py-3 rounded-xl border text-[14px] transition-all flex items-center justify-center gap-3 disabled:cursor-default ${
                         isCorrect
                           ? "border-emerald-500/40 bg-emerald-500/[0.08] text-emerald-200"
                           : isWrong
@@ -184,7 +164,7 @@ export default function CardBlockList({
                         {isCorrect && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}
                         {isWrong && <X className="w-2.5 h-2.5 text-red-300" strokeWidth={3} />}
                       </span>
-                      <span className="flex-1">{opt}</span>
+                      <span className="text-center">{opt}</span>
                     </button>
                   );
                 })}
@@ -207,8 +187,8 @@ export default function CardBlockList({
             onQuizChange(block.blockId, Array.from(next));
           };
           return (
-            <div key={blockKey} className="space-y-3">
-              <p className="text-[15px] font-semibold text-white leading-snug">{quiz.question}</p>
+            <div key={blockKey} className="w-full space-y-3 text-center">
+              <p className="text-[15px] font-semibold text-white leading-snug text-center">{quiz.question}</p>
               <div className="space-y-2">
                 {quiz.options.map((opt, optIndex) => {
                   const isSelected = selected.has(opt);
@@ -220,7 +200,7 @@ export default function CardBlockList({
                       type="button"
                       onClick={() => toggle(opt)}
                       disabled={showAnswer}
-                      className={`w-full text-left px-4 py-3 rounded-xl border text-[14px] transition-all flex items-center gap-3 disabled:cursor-default ${
+                      className={`w-full text-center px-4 py-3 rounded-xl border text-[14px] transition-all flex items-center justify-center gap-3 disabled:cursor-default ${
                         isCorrect
                           ? "border-emerald-500/40 bg-emerald-500/[0.08] text-emerald-200"
                           : isWrong
@@ -235,7 +215,7 @@ export default function CardBlockList({
                       }`}>
                         {(isSelected || isCorrect) && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}
                       </span>
-                      <span className="flex-1">{opt}</span>
+                      <span className="text-center">{opt}</span>
                     </button>
                   );
                 })}
@@ -253,15 +233,15 @@ export default function CardBlockList({
           const correctAnswer = quiz.correctAnswers[0] || "";
           const isCorrect = showAnswer && (quiz.caseSensitive ? answer === correctAnswer : answer.toLowerCase() === correctAnswer.toLowerCase());
           return (
-            <div key={blockKey} className="space-y-3">
-              <p className="text-[15px] font-semibold text-white leading-snug">{quiz.question}</p>
+            <div key={blockKey} className="w-full space-y-3 text-center">
+              <p className="text-[15px] font-semibold text-white leading-snug text-center">{quiz.question}</p>
               <input
                 type="text"
                 value={answer}
                 onChange={(e) => onQuizChange(block.blockId, e.target.value)}
                 disabled={showAnswer}
                 placeholder="Type your answer…"
-                className={`w-full px-4 py-3 rounded-xl border text-[14px] text-white placeholder-white/20 focus:outline-none transition-all ${
+                className={`w-full px-4 py-3 rounded-xl border text-[14px] text-center text-white placeholder-white/20 focus:outline-none transition-all ${
                   showAnswer
                     ? isCorrect
                       ? "border-emerald-500/40 bg-emerald-500/[0.06]"
@@ -277,7 +257,7 @@ export default function CardBlockList({
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
-                      className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-[13px] ${
+                      className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-[13px] text-center ${
                         isCorrect
                           ? "bg-emerald-500/[0.08] border border-emerald-500/20 text-emerald-300"
                           : "bg-red-500/[0.07] border border-red-500/20 text-red-300"
@@ -302,7 +282,7 @@ export default function CardBlockList({
 
         // ── all other block types → BlockDisplay ─────────────────────────
         return (
-          <div key={blockKey}>
+          <div key={blockKey} className="w-full min-w-0 text-center">
             <BlockDisplay
               block={block}
               value={value}

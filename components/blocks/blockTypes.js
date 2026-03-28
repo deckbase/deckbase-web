@@ -68,6 +68,7 @@ export const TEXT_BLOCK_TYPES = new Set([
   "header2",
   "header3",
   "text",
+  "quote",
   "example",
   "hiddenText",
 ]);
