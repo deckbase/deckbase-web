@@ -71,7 +71,7 @@ const features = [
   {
     id: "06",
     icon: Workflow,
-    title: "MCP + API For Power Users",
+    title: "⚡ MCP + API For Power Users",
     gradient: "from-sky-500/20 to-indigo-500/10",
     iconColor: "text-sky-400",
     iconBg: "bg-sky-500/10 border-sky-500/20",

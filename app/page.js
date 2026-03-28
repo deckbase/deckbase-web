@@ -4,7 +4,7 @@ import "./globals.css";
 import { useEffect } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { Sparkles, Brain, Clock, Zap } from "lucide-react";
+import { Brain, Clock, Zap } from "lucide-react";
 import AppStoreDownloadButton from "@/components/AppStoreDownloadButton";
 import GooglePlayDownloadButton from "@/components/GooglePlayDownloadButton";
 import HowItWorks from "@/components/HowItWorks";
@@ -43,7 +43,7 @@ export default function Home() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 1 }}
-        className="relative min-h-screen bg-black pt-20 overflow-hidden"
+        className="relative min-h-screen bg-black pt-[calc(5rem+env(safe-area-inset-top,0px))] pb-6 overflow-x-hidden overflow-hidden"
       >
         {/* Ambient background glows */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -52,12 +52,12 @@ export default function Home() {
           <div className="absolute bottom-1/3 left-1/2 w-64 h-64 bg-accent/10 rounded-full blur-[80px]" />
         </div>
 
-        <div className="relative z-20 max-w-6xl mx-auto px-4 py-16 lg:py-24">
+        <div className="relative z-20 max-w-6xl mx-auto px-3.5 sm:px-4 py-10 sm:py-16 lg:py-24">
           {/* 2-column layout on desktop */}
           <div className="flex flex-col lg:flex-row gap-8 lg:gap-20 items-center mb-16">
 
             {/* Left: Text content */}
-            <div>
+            <div className="flex w-full flex-col items-center text-center lg:items-start lg:text-left">
               {/* Badge */}
               <motion.div
                 initial={{ opacity: 0, scale: 0.8 }}
@@ -65,7 +65,6 @@ export default function Home() {
                 transition={{ delay: 0.3, duration: 0.8 }}
                 className="inline-flex items-center gap-2 mb-8 px-4 py-2 rounded-full bg-gradient-to-r from-accent/10 to-purple-600/10 backdrop-blur-md border border-accent/30 shadow-lg"
               >
-                <Sparkles className="w-4 h-4 text-accent" />
                 <span className="bg-gradient-to-r from-accent to-purple-600 bg-clip-text text-transparent font-medium text-sm">
                   AI-powered MCP + Anki-ready workflows
                 </span>
@@ -78,9 +77,21 @@ export default function Home() {
                 transition={{ delay: 0.5, duration: 1 }}
                 className="mb-6"
               >
-                <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-tight">
-                  <span className="block text-white">AI-powered MCP workflows,</span>
-                  <span className="bg-gradient-to-r from-accent via-blue-400 to-purple-500 bg-clip-text text-transparent">
+                <h1 className="relative text-3xl xs:text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold leading-[1.12] tracking-tight break-words text-center lg:text-left lg:pl-[0.95em]">
+                  <span
+                    className="absolute left-0 top-[0.1em] hidden text-[0.68em] leading-none lg:block"
+                    role="img"
+                    aria-label="lightning"
+                  >
+                    ⚡
+                  </span>
+                  <span className="block text-white lg:pl-0">
+                    <span className="mr-1 text-[0.68em] leading-none lg:hidden" aria-hidden>
+                      ⚡
+                    </span>
+                    AI-powered MCP workflows,
+                  </span>
+                  <span className="block bg-gradient-to-r from-cyan-300 via-accent to-purple-400 bg-clip-text text-transparent">
                     Anki-ready flashcards.
                   </span>
                 </h1>
@@ -91,7 +102,7 @@ export default function Home() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.7, duration: 0.8 }}
-                className="text-lg text-white/60 leading-relaxed mb-10 max-w-2xl"
+                className="text-base sm:text-lg text-white/60 leading-relaxed mb-8 sm:mb-10 max-w-2xl mx-auto lg:mx-0"
               >
                 Create AI flashcards in bulk from notes, PDFs, and articles,
                 then customize them in a beautiful, flexible interface with
@@ -104,7 +115,7 @@ export default function Home() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.9, duration: 0.8 }}
-                className="flex flex-col sm:flex-row gap-4 items-start"
+                className="flex flex-col sm:flex-row gap-4 items-center justify-center lg:justify-start"
               >
                 <GooglePlayDownloadButton />
                 <AppStoreDownloadButton />
@@ -141,7 +152,7 @@ export default function Home() {
             transition={{ delay: 1.1, duration: 0.8 }}
             className="grid grid-cols-1 md:grid-cols-3 gap-4"
           >
-            <div className="flex items-start gap-4 p-5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/[0.08] hover:border-accent/30 transition-all duration-300 group">
+            <div className="flex flex-col items-center text-center sm:flex-row sm:items-start sm:text-left gap-4 p-5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/[0.08] hover:border-accent/30 transition-all duration-300 group">
               <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center group-hover:bg-accent/30 transition-colors">
                 <Brain className="w-5 h-5 text-accent" />
               </div>
@@ -150,7 +161,7 @@ export default function Home() {
                 <p className="text-white/40 text-xs leading-relaxed">Turn source material into bulk AI flashcards in seconds with cleaner first drafts.</p>
               </div>
             </div>
-            <div className="flex items-start gap-4 p-5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/[0.08] hover:border-notion-yellow/30 transition-all duration-300 group">
+            <div className="flex flex-col items-center text-center sm:flex-row sm:items-start sm:text-left gap-4 p-5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/[0.08] hover:border-notion-yellow/30 transition-all duration-300 group">
               <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-notion-yellow/10 flex items-center justify-center group-hover:bg-notion-yellow/20 transition-colors">
                 <Clock className="w-5 h-5 text-notion-yellow" />
               </div>
@@ -159,7 +170,7 @@ export default function Home() {
                 <p className="text-white/40 text-xs leading-relaxed">Review at the optimal time for efficient, consistent learning.</p>
               </div>
             </div>
-            <div className="flex items-start gap-4 p-5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/[0.08] hover:border-notion-purple/30 transition-all duration-300 group">
+            <div className="flex flex-col items-center text-center sm:flex-row sm:items-start sm:text-left gap-4 p-5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/[0.08] hover:border-notion-purple/30 transition-all duration-300 group">
               <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-notion-purple/10 flex items-center justify-center group-hover:bg-notion-purple/20 transition-colors">
                 <Zap className="w-5 h-5 text-notion-purple" />
               </div>
@@ -218,7 +229,7 @@ export default function Home() {
             Deckbase combines AI card generation, template-based editing, MCP automation, and Anki APKG import/export so your study workflow stays fast, flexible, and consistent.
           </motion.p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-left">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-center md:text-left">
             <motion.div
               initial={{ opacity: 0, x: -30 }}
               whileInView={{ opacity: 1, x: 0 }}

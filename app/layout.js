@@ -17,6 +17,12 @@ const firebaseAuthOrigin = firebaseAuthRaw
     : `https://${firebaseAuthRaw}`
   : null;
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
 // ✅ Export metadata for SEO - this runs on the server
 export const metadata = {
   title: {
@@ -174,7 +180,7 @@ const jsonLd = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" className="overflow-x-hidden">
       <head>
         <link rel="preconnect" href="https://identitytoolkit.googleapis.com" />
         <link rel="preconnect" href="https://firestore.googleapis.com" />
@@ -188,7 +194,7 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body
-        className={`${inter.variable} ${inter.className} text-gray-900 min-h-screen flex flex-col bg-black`}
+        className={`${inter.variable} ${inter.className} text-gray-900 min-h-screen flex flex-col bg-black overflow-x-hidden`}
         suppressHydrationWarning
       >
         <LayoutClient>{children}</LayoutClient>

@@ -38,7 +38,7 @@ const Start = () => {
             className="text-h3 lg:text-h4 font-bold text-center md:text-left leading-tight"
           >
             <span className="bg-gradient-to-r from-accent to-purple-500 bg-clip-text text-transparent">
-              Automate with MCP and move seamlessly with Anki APKG import/export.
+              ⚡ Automate with MCP and move seamlessly with Anki APKG import/export.
             </span>
           </motion.h2>
           <motion.div
@@ -46,7 +46,7 @@ const Start = () => {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.8, delay: 0.3 }}
-            className="flex flex-col sm:flex-row gap-4"
+            className="flex w-full flex-col sm:flex-row gap-4 items-center justify-center"
           >
             <GooglePlayDownloadButton />
             <AppStoreDownloadButton />

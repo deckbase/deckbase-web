@@ -118,9 +118,9 @@ const AppFeatures = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: index * 0.08 }}
-              className={`group bg-white/[0.04] p-6 rounded-2xl border border-white/10 ${feature.borderHover} hover:bg-white/[0.07] transition-all duration-300`}
+              className={`group bg-white/[0.04] p-6 rounded-2xl border border-white/10 text-center md:text-left ${feature.borderHover} hover:bg-white/[0.07] transition-all duration-300`}
             >
-              <div className={`mb-4 w-11 h-11 rounded-xl ${feature.iconBg} flex items-center justify-center ${feature.iconColor} transition-transform group-hover:scale-110 duration-300`}>
+              <div className={`mb-4 mx-auto md:mx-0 w-11 h-11 rounded-xl ${feature.iconBg} flex items-center justify-center ${feature.iconColor} transition-transform group-hover:scale-110 duration-300`}>
                 {feature.icon}
               </div>
               <h3 className="text-base font-semibold text-white mb-2">

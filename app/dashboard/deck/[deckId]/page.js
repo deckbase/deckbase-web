@@ -50,7 +50,9 @@ import {
   uploadImage,
   getMedia,
   BlockTypeNames,
+  normalizeDeckIconEmoji,
 } from "@/utils/firestore";
+import { DeckEmojiPicker } from "@/components/DeckEmojiPicker";
 import { getBlockValidationErrors } from "@/lib/block-validators";
 import { checkStorageBeforeUpload } from "@/lib/storage-check-client";
 import { buildCardPrompt, buildImportQuizAudioPrompt } from "@/lib/card-ai-prompt";
@@ -105,6 +107,7 @@ export default function DeckDetailPage() {
   const [deckEditMode, setDeckEditMode] = useState(false);
   const [editDeckTitle, setEditDeckTitle] = useState("");
   const [editDeckDescription, setEditDeckDescription] = useState("");
+  const [editDeckIconEmoji, setEditDeckIconEmoji] = useState(null);
   const [savingDeck, setSavingDeck] = useState(false);
   /** After tapping Edit, delay swapping in "Done" so the same tap can't submit (pointer-up on new button). */
   const enterEditModeRafRef = useRef(null);
@@ -382,6 +385,7 @@ export default function DeckDetailPage() {
     if (deck && !deckEditMode) {
       setEditDeckTitle(deck.title ?? "");
       setEditDeckDescription(deck.description ?? "");
+      setEditDeckIconEmoji(deck.iconEmoji ?? null);
     }
   }, [deck, deckEditMode]);
 
@@ -478,10 +482,16 @@ export default function DeckDetailPage() {
       await updateDeck(user.uid, deckId, {
         title: editDeckTitle.trim(),
         description: editDeckDescription.trim(),
+        iconEmoji: normalizeDeckIconEmoji(editDeckIconEmoji),
       });
       setDeck((prev) =>
         prev
-          ? { ...prev, title: editDeckTitle.trim(), description: editDeckDescription.trim() }
+          ? {
+              ...prev,
+              title: editDeckTitle.trim(),
+              description: editDeckDescription.trim(),
+              iconEmoji: normalizeDeckIconEmoji(editDeckIconEmoji),
+            }
           : prev
       );
       exitDeckEditMode();
@@ -499,6 +509,7 @@ export default function DeckDetailPage() {
     }
     setEditDeckTitle(deck?.title ?? "");
     setEditDeckDescription(deck?.description ?? "");
+    setEditDeckIconEmoji(deck?.iconEmoji ?? null);
     // Defer turning on edit mode until after this pointer gesture completes; otherwise the
     // same tap can "click" the Done (submit) button that replaces Edit at the same screen position.
     enterEditModeRafRef.current = requestAnimationFrame(() => {
@@ -520,6 +531,7 @@ export default function DeckDetailPage() {
     setSelectedCardIds(new Set());
     setEditDeckTitle(deck?.title ?? "");
     setEditDeckDescription(deck?.description ?? "");
+    setEditDeckIconEmoji(deck?.iconEmoji ?? null);
   };
 
   const toggleBulkSelectCard = (cardId) => {
@@ -2950,7 +2962,13 @@ export default function DeckDetailPage() {
                     e.preventDefault();
                     void handleSaveEditDeck(e);
                   }}
+                  className="space-y-4"
                 >
+                  <DeckEmojiPicker
+                    value={editDeckIconEmoji}
+                    onChange={setEditDeckIconEmoji}
+                    disabled={savingDeck}
+                  />
                   <input
                     data-deck-title-input
                     type="text"
@@ -2969,14 +2987,26 @@ export default function DeckDetailPage() {
                   />
                 </form>
               ) : (
-                <>
-                  <h1 className="text-2xl sm:text-3xl font-semibold text-white tracking-tight">
-                    {deck.title}
-                  </h1>
-                  <p className={`mt-2 text-white/70 text-sm sm:text-base leading-relaxed ${!deck.description ? "text-white/40 italic" : ""}`}>
-                    {deck.description || "No description"}
-                  </p>
-                </>
+                <div className="flex items-start gap-3 min-w-0">
+                  <div
+                    className="flex h-12 w-12 shrink-0 items-center justify-center"
+                    aria-hidden
+                  >
+                    {deck.iconEmoji ? (
+                      <span className="text-[28px] leading-none">{deck.iconEmoji}</span>
+                    ) : (
+                      <Layers className="h-7 w-7 text-accent/80" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h1 className="text-2xl sm:text-3xl font-semibold text-white tracking-tight">
+                      {deck.title}
+                    </h1>
+                    <p className={`mt-2 text-white/70 text-sm sm:text-base leading-relaxed ${!deck.description ? "text-white/40 italic" : ""}`}>
+                      {deck.description || "No description"}
+                    </p>
+                  </div>
+                </div>
               )}
               <div className="mt-4 flex flex-wrap items-center gap-3">
                 <span className="inline-flex items-center rounded-full bg-white/[0.06] border border-white/[0.07] px-3 py-1 text-[11px] font-medium text-white/50">

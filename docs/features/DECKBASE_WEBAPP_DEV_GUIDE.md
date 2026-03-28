@@ -125,11 +125,22 @@ interface Deck {
   deck_id: string; // Unique deck identifier (UUID)
   title: string; // Deck title (required)
   description?: string; // Optional description
+  default_template_id?: string | null; // Default template for new cards (web + mobile)
+  /** Optional single emoji string for list/header avatar. Canonical field name in Firestore. */
+  icon_emoji?: string | null;
   created_at: Timestamp; // Firestore Timestamp
   updated_at: Timestamp; // Firestore Timestamp
   is_deleted: boolean; // Soft delete flag (default: false)
 }
 ```
+
+**`icon_emoji` (deck icon)**
+
+- Stored as **snake_case** `icon_emoji` in Firestore (aligned with **deckbase-mobile** SQLite `icon_emoji` and sync).
+- Value is a **trimmed Unicode string** (typically one emoji grapheme). **Omit** the field or use **null** / empty after trim → no custom icon in the UI.
+- **Read:** Prefer `icon_emoji`; some writers may use camelCase `iconEmoji` — accept both when mapping into app state.
+- **Write (web):** Client code uses `setDoc(..., { merge: true })` for deck updates. When the user **clears** the icon, the web client removes the field with `deleteField()` so it does not linger in Firestore. Partial updates that do not include `iconEmoji` in the payload must **not** unintentionally clear an existing icon (only send `iconEmoji` when the user changed it, or always send the current value if your layer always includes it).
+- Mobile may use a **full document `set()`** without merge for active decks; omitted fields are removed. Web merge + `deleteField()` for clears matches the end state.
 
 **Example:**
 
@@ -138,6 +149,8 @@ interface Deck {
   "deck_id": "d1a2b3c4-5678-90ab-cdef-1234567890ab",
   "title": "Spanish Vocabulary",
   "description": "Common Spanish words and phrases",
+  "default_template_id": null,
+  "icon_emoji": "📚",
   "created_at": { "seconds": 1705000000, "nanoseconds": 0 },
   "updated_at": { "seconds": 1705000000, "nanoseconds": 0 },
   "is_deleted": false

@@ -14,6 +14,7 @@ import {
   deleteDoc,
   writeBatch,
   Timestamp,
+  deleteField,
 } from "firebase/firestore";
 import {
   ref,
@@ -26,6 +27,13 @@ import {
 import { db, storage } from "@/utils/firebase";
 import { v4 as uuidv4 } from "uuid";
 const toMs = (v) => (v && typeof v.toMillis === "function" ? v.toMillis() : v ?? Date.now());
+
+/** Trim; empty string → null. Matches mobile / Firestore contract for `icon_emoji`. */
+export function normalizeDeckIconEmoji(raw) {
+  if (raw == null) return null;
+  const t = String(raw).trim();
+  return t === "" ? null : t;
+}
 
 // ============== FIRESTORE PATH HELPERS ==============
 // Decks, cards, templates live under users/{userId}/decks|cards|templates (flashcards collection abolished)
@@ -131,9 +139,11 @@ export const createDeck = async (
   title,
   description = "",
   defaultTemplateId = null,
+  iconEmoji = null,
 ) => {
   const deckId = uuidv4();
   const now = Timestamp.now();
+  const normalizedIcon = normalizeDeckIconEmoji(iconEmoji);
 
   const deck = {
     deck_id: deckId,
@@ -145,6 +155,7 @@ export const createDeck = async (
     ...(defaultTemplateId != null && defaultTemplateId !== ""
       ? { default_template_id: defaultTemplateId }
       : {}),
+    ...(normalizedIcon ? { icon_emoji: normalizedIcon } : {}),
   };
 
   await setDoc(doc(getDecksCollection(uid), deckId), deck);
@@ -199,6 +210,14 @@ export const updateDeck = async (uid, deckId, updates) => {
   if (updates.isDeleted !== undefined) {
     updateData.is_deleted = updates.isDeleted;
     updateData.deleted_at = updates.isDeleted ? Timestamp.now() : null;
+  }
+  if (updates.iconEmoji !== undefined) {
+    const normalized = normalizeDeckIconEmoji(updates.iconEmoji);
+    if (normalized) {
+      updateData.icon_emoji = normalized;
+    } else {
+      updateData.icon_emoji = deleteField();
+    }
   }
 
   await setDoc(deckRef, updateData, { merge: true });
@@ -852,11 +871,15 @@ const transformDeckFromFirestore = (data) => {
   const deletedAt =
     data.deleted_at?.toMillis?.() || data.deleted_at || null;
 
+  const rawIcon = data.icon_emoji ?? data.iconEmoji;
+  const iconEmoji = normalizeDeckIconEmoji(rawIcon);
+
   return {
     deckId: data.deck_id,
     title: data.title || "Untitled",
     description: data.description || "",
     defaultTemplateId: data.default_template_id || null,
+    iconEmoji,
     createdAt,
     updatedAt,
     deletedAt,

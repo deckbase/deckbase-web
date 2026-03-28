@@ -1,93 +1,79 @@
-App name: 
-Deckbase
+# Android Store Listing (Google Play) - Deckbase
 
-Short description: 
-Scan books into flashcards. Build decks. Remember more
+Last updated: 2026-03-27
+Data source: DataForSEO (live, US/en keyword sample)
 
-Full description:
-Deckbase – Scan Books into Flashcards
+## 1) Recommended Play Store metadata
 
-Deckbase is a powerful flashcard and study app that helps you turn books, notes, and printed pages into flashcard decks using OCR text recognition. Instead of passively reading and forgetting, Deckbase helps you actively capture knowledge and remember it long-term.
+App name:
+Deckbase: AI Flashcard Maker
 
-Scan book pages with your camera, select the information that matters, and instantly convert it into flashcards. Organize your decks, review efficiently, and build a personal knowledge base you can rely on.
+Short description (<=80):
+Create AI flashcards from notes and PDFs. Study with spaced repetition.
 
-Whether you’re studying for exams, learning a new subject, or organizing knowledge from books, Deckbase helps you remember more with less effort.
+## 2) Full description (Play Store)
 
-Turn Reading into Retention
+Deckbase - AI Flashcard Maker for Real Retention
 
-Reading alone isn’t enough. Most people forget what they read within days. Deckbase bridges the gap between reading and remembering by transforming text into flashcards that reinforce learning through active recall and spaced repetition.
+Stop rereading and start remembering. Deckbase helps you turn notes, PDFs, and articles into AI flashcards you can review with spaced repetition.
 
-With Deckbase, your books don’t stay on the shelf — they become study decks you can review anytime.
+If you learn from textbooks, lecture notes, or documents, Deckbase gives you a faster path from source material to long-term memory.
 
-Key Features
-📸 OCR Scanner for Books & Notes
+Why learners choose Deckbase:
 
-Use your phone camera to scan books, textbooks, printed notes, or documents. Deckbase uses accurate OCR technology to extract text so you can turn real-world content into digital flashcards.
+- AI generation from study material
+  Generate flashcards in bulk from notes, PDFs, and articles with cleaner first drafts.
 
-🃏 Flashcard Deck Builder
+- Spaced repetition for long-term recall
+  Review at the right time to reduce forgetting and build durable memory.
 
-Create flashcard decks in seconds. Turn scanned text into questions, answers, definitions, or examples. Build decks from books, notes, or study materials and customize them to fit your learning style.
+- AI flashcard creation
+  Generate cards quickly from captured text instead of typing everything manually.
 
-🧠 Spaced Repetition Learning
+- Organized deck workflow
+  Group decks by subject, exam, or project and keep your study system clean.
 
-Deckbase uses spaced repetition, a scientifically proven study method that improves long-term memory. Review flashcards at the right time to reduce forgetting and study more efficiently.
+- Flexible deck workflow
+  Create, edit, and organize cards quickly in one focused mobile study flow.
 
-✍️ Flexible Flashcard Templates
+Best for:
 
-Choose from multiple flashcard formats including vocabulary cards, Q&A, definitions, examples, and custom templates. Deckbase adapts to different subjects, from language learning to technical study.
+- Students preparing for exams
+- Medical and health learners with dense reading
+- Language learners building vocabulary
+- Professionals learning technical topics
 
-📚 Organize Your Knowledge
+How it works:
 
-Group flashcard decks by topic, subject, or project. Keep your study materials structured and easy to access. Deckbase works as your personal flashcard knowledge base.
+1. Add notes, PDFs, or articles
+2. Generate AI flashcards in bulk
+3. Edit with templates and media support
+4. Review with spaced repetition
+5. Keep learning with daily review sessions
 
-⚡ Fast & Focused Study
-
-Designed for speed and clarity. No distractions, no clutter. Quickly scan, create, and review flashcards to build a daily study habit that fits into your life.
-
-Who Is Deckbase For?
-
-Students preparing for exams
-
-Language learners building vocabulary
-
-Professionals learning new skills
-
-Readers who want to remember what they read
-
-Lifelong learners who value efficient study
-
-If you read books, take notes, or study regularly, Deckbase helps you turn information into lasting knowledge.
-
-Why Choose Deckbase?
-
-Scan books into flashcards instantly
-
-Accurate OCR for studying and learning
-
-Proven spaced repetition system
-
-Clean, focused flashcard experience
-
-Works with books, notes, and printed materials
-
-Deckbase is not just a flashcard app — it’s a smarter way to study and remember.
-
-How It Works
-
-Scan a book page or note using your camera
-
-Select important text with OCR
-
-Turn it into flashcards
-
-Review using spaced repetition
-
-Remember more over time
-
-Start Building Your Knowledge Base
-
-Stop rereading and start remembering.
-Download Deckbase and turn books into flashcards today.
-
-Privacy Policy
+Privacy Policy:
 https://www.deckbase.co/privacy-policy
+
+Terms and Conditions:
+https://www.deckbase.co/terms-and-conditions
+
+## 3) Keyword guidance (from live data)
+
+Primary demand terms to support in metadata and first paragraphs:
+
+- flashcard app (4400)
+- ai flashcard maker (4400)
+- spaced repetition app (1000)
+- quizlet alternative (2900)
+- anki alternative (140)
+- medical flashcards (260)
+
+Intent notes:
+
+- transactional/commercial: ai flashcard maker, anki alternative, medical flashcards
+- commercial: flashcard app, spaced repetition app
+- informational: quizlet alternative
+
+Practical rule:
+
+- Keep "AI flashcard maker", "flashcard app", and "spaced repetition" visible early in title/short/full description.

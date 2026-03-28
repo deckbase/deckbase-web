@@ -32,19 +32,29 @@ const Navbar = () => {
     setIsOpen(false);
   }, [pathname]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [isOpen]);
+
+  const navBarBg =
+    scrolled
+      ? "bg-black/75 backdrop-blur-2xl border-b border-white/[0.07] shadow-[0_1px_24px_rgba(0,0,0,0.5)]"
+      : "border-b border-transparent md:bg-transparent md:backdrop-blur-none max-md:bg-black/82 max-md:backdrop-blur-xl max-md:border-white/[0.06]";
+
   return (
     <>
       <motion.nav
-        className={`fixed top-0 left-0 w-full z-50 transition-all duration-500 ${
-          scrolled
-            ? "bg-black/70 backdrop-blur-2xl border-b border-white/[0.07] shadow-[0_1px_24px_rgba(0,0,0,0.5)]"
-            : "bg-transparent border-b border-transparent"
-        }`}
+        className={`fixed top-0 left-0 w-full z-[100] transition-all duration-500 pt-[env(safe-area-inset-top,0px)] ${navBarBg}`}
         initial={{ opacity: 0, y: -12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
       >
-        <div className="px-5 md:px-[5%] mx-auto max-w-[1400px] flex items-center justify-between h-[68px]">
+        <div className="px-4 sm:px-5 md:px-[5%] mx-auto max-w-[1400px] flex items-center justify-between min-h-[68px] h-[68px]">
 
           {/* Logo */}
           <Link
@@ -127,8 +137,11 @@ const Navbar = () => {
 
           {/* Mobile hamburger */}
           <button
+            type="button"
             onClick={() => setIsOpen(!isOpen)}
-            className="md:hidden flex items-center justify-center w-9 h-9 text-white/70 hover:text-white transition-colors rounded-lg hover:bg-white/[0.06]"
+            className="md:hidden flex shrink-0 items-center justify-center w-11 h-11 text-white hover:text-white transition-colors rounded-xl bg-white/[0.08] border border-white/[0.12] hover:bg-white/[0.12]"
+            aria-expanded={isOpen}
+            aria-controls="mobile-nav-menu"
             aria-label="Toggle menu"
           >
             <div className="w-5 h-[14px] flex flex-col justify-between">
@@ -156,13 +169,16 @@ const Navbar = () => {
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            className="md:hidden fixed top-[68px] left-0 right-0 z-40 bg-[#0a0a0a]/98 backdrop-blur-2xl border-b border-white/[0.06]"
+            id="mobile-nav-menu"
+            role="dialog"
+            aria-modal="true"
+            className="md:hidden fixed left-0 right-0 bottom-0 z-[95] top-[calc(68px+env(safe-area-inset-top,0px))] overflow-y-auto overscroll-contain bg-[#0a0a0a]/98 backdrop-blur-2xl border-b border-white/[0.06] pb-[env(safe-area-inset-bottom,0px)]"
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.22, ease: "easeOut" }}
           >
-            <div className="px-4 pt-3 pb-6 flex flex-col gap-0.5">
+            <div className="px-4 pt-3 pb-6 flex flex-col gap-0.5 min-h-0">
               {navLinks.map((link, i) => {
                 const active = pathname === link.href;
                 return (

@@ -1,80 +1,84 @@
-This comprehensive iOS App Store Optimization (ASO) document for Deckbase is designed to satisfy both the traditional keyword-matching algorithm and the modern AI-driven semantic ranking system of 2025–2026
-.
-1. App Store Metadata (The Indexing Layer)
-The goal of this section is to rank for relevant keywords while providing a "context window" for Apple's LLM-based algorithm
-. Do not repeat words across these three fields, as repetition wastes space and can actually lower your rank
-.
-App Name (Title): Deckbase: AI Flashcard Maker (25/30 characters)
-Strategy: The Title is the most heavily weighted ranking factor
-. Swapping "Scan" for "AI Flashcard Maker" leverages modern semantic relevance that AI-driven algorithms prioritize
-.
-Subtitle: Smart OCR & Spaced Repetition (30/30 characters)
-Strategy: This reinforces the core technical "benefits" (Spaced Repetition) and tools (OCR) without repeating words from the title
-.
-Keyword Field (100 characters): anki,fsrs,study,scanner,quiz,exam,memorize,language,vocab,college,education,learn,gpt,automatic,notes
-Strategy: Use singular words separated only by commas with no spaces
-. "GPT" and "automatic" are included to signal AI capabilities to the indexer
-.
+# iOS Store Listing (App Store) - Deckbase
 
---------------------------------------------------------------------------------
-2. Promotional Text & Description (The Conversion Layer)
-Apple’s algorithm does not index the description, but it is critical for human conversion and potentially for AI-based "context" training
-.
-Promotional Text (170 characters):
-Stop rereading and start remembering. Transform your books and notes into smart flashcards instantly with our AI OCR scanner. Master any subject with spaced repetition
-.
-Full Description: Turn Reading into Retention Reading alone isn’t enough; most people forget what they read within days
-. Deckbase bridges the gap between reading and remembering by transforming text into flashcards that reinforce learning through active recall and spaced repetition
-.
-Why Choose Deckbase?
-📸 AI OCR Scanner: Use your camera to extract text from books, textbooks, or printed notes instantly
-.
-🧠 Advanced FSRS Scheduler: Uses the same algorithm family as Anki (Spaced Repetition) to show you cards exactly when you're about to forget them
-.
-🃏 AI-Powered Card Creator: Generate high-quality cards in seconds by specifying a deck and template
-.
-📚 Knowledge Base: Group decks by topic and sync them across all your devices via the cloud
-.
-⚡ Focused Study: A clean, distraction-free interface built for deep concentration
-.
-How It Works:
-Scan a book page or note
-.
-Select important text with OCR
-.
-Generate flashcards with AI
-.
-Review using spaced repetition
-.
-Legal & Support:
+Last updated: 2026-03-27
+Data source: DataForSEO (live, US/en keyword sample)
+
+## 1) App Store metadata
+
+App Name (Title, <=30):
+Deckbase: AI Flashcard Maker
+
+Subtitle (<=30):
+OCR + Spaced Repetition Study
+
+Keyword field (<=100 chars, comma-only):
+anki,quizlet,flashcard,fsrs,spaced,ocr,study,exam,memorize,vocab,medical,notes,scanner,learn,ai
+
+Notes:
+- Keep highest-value terms in Title/Subtitle first: "AI Flashcard", "OCR", "Spaced Repetition".
+- Avoid wasting keyword field space on duplicates already strongly represented in title/subtitle.
+
+## 2) Promotional text (<=170)
+
+Turn notes, PDFs, and articles into AI flashcards in seconds. Study with spaced repetition and a clean daily review workflow.
+
+## 3) Full description (conversion-first)
+
+Deckbase helps you turn reading into retention.
+
+Generate flashcards in bulk from notes, PDFs, and articles, then review with spaced repetition so you remember what matters long-term.
+
+Why Deckbase:
+
+- Bulk AI card generation from your materials
+Turn notes, PDFs, and articles into first-draft flashcards in seconds.
+
+- AI flashcard generation
+Create cards fast from captured text instead of manual typing.
+
+- Spaced repetition workflow
+Review at the right time to reduce forgetting and improve retention.
+
+- Clean study experience
+Focused interface built for repeatable daily review.
+
+- Flexible study workflow
+Generate, edit, and review cards quickly in a focused mobile experience.
+
+- Flexible for many learners
+Useful for exam prep, medical study, language vocabulary, and professional learning.
+
+How it works:
+1. Add notes, PDFs, or articles
+2. Generate AI flashcards in bulk
+3. Edit and organize with templates
+4. Review with spaced repetition
+
+Legal:
 Privacy Policy: https://www.deckbase.co/privacy-policy
 Terms and Conditions: https://www.deckbase.co/terms-and-conditions
 
---------------------------------------------------------------------------------
-3. Visual Strategy (Screenshots)
-Apple now uses AI to read text within screenshots and interpret the imagery
-. Focus on high-contrast visuals that "sell the transformation" rather than just the feature
-.
-"Scan & Create in Seconds": Show the camera scanning a book with auto-generated card overlays. No typing needed
-.
-"Focus on What Matters": Display the clean, distraction-free "tap-to-reveal" flashcard UI
-.
-"Study Smarter with Spaced Repetition": Show the Anki-style rating buttons (Again, Hard, Good, Easy)
-.
-"Swipe. Learn. Repeat.": Emphasize gesture-based learning to make studying "addictive"
-.
-"Simple. Powerful. Effective.": Showcase clear questions and instant answers designed for real retention
-.
+## 4) 2026 screenshot text strategy
 
---------------------------------------------------------------------------------
-4. Advanced 2026 AI & Ranking Strategy
-Semantic Harmonization: Ensure your website (Deckbase.co) uses the same primary keywords as your App Store listing to build "domain authority" and create a consistent "context window" for the algorithm
-.
-Magic Moments for Reviews: Trigger a review prompt after a "positive event," such as when a user finishes their first full study session or successfully generates 10 AI cards
-. Consistent ratings are required to move from the Top 10 to Number 1
-.
-New App Suppression Gap: New apps often face visibility suppression for approximately 6 months
-. To bridge this gap, use Apple Search Ads (ASA) to target exact matches for your app title so you appear in searches even while suppressed
-.
-Performance Metrics: Keep the crash rate low and update frequently, as Apple uses stability and update frequency as ranking signals
-.
+Use short, benefit-led screenshot headlines:
+- "Turn notes and PDFs into cards"
+- "Generate AI flashcards fast"
+- "Create cards faster with AI"
+- "Review with spaced repetition"
+- "Remember more each week"
+- "Built for daily study"
+
+## 5) Live keyword priorities (US/en)
+
+Top opportunities from sampled live data:
+- flashcard app (4400, commercial)
+- ai flashcard maker (4400, transactional)
+- spaced repetition app (1000, commercial/informational)
+- quizlet alternative (2900, informational)
+- anki alternative (140, transactional/commercial)
+- medical flashcards (260, transactional)
+
+Implementation priority:
+1. Keep "AI flashcard maker" in title.
+2. Keep OCR + spaced repetition in subtitle/promotional text.
+3. Include "quizlet" and "anki" in keyword field for comparison-intent capture.

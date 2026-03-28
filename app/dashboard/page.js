@@ -11,8 +11,10 @@ import {
   deleteDeck,
   getCardCount,
   getTemplates,
+  normalizeDeckIconEmoji,
 } from "@/utils/firestore";
 import Link from "next/link";
+import { DeckEmojiPicker } from "@/components/DeckEmojiPicker";
 
 // ---------------------------------------------------------------------------
 // Input / Textarea / Select primitives
@@ -120,8 +122,14 @@ function DeckCard({ deck, cardCount, onEdit, onDelete }) {
         <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] hover:bg-white/[0.045] hover:border-white/[0.12] transition-all duration-200 p-5 h-full cursor-pointer">
           {/* Icon */}
           <div className="flex items-start justify-between mb-4">
-            <div className="w-10 h-10 rounded-xl bg-accent/[0.12] border border-accent/[0.15] flex items-center justify-center flex-shrink-0">
-              <Layers className="w-5 h-5 text-accent/80" />
+            <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
+              {deck.iconEmoji ? (
+                <span className="text-[22px] leading-none" aria-hidden>
+                  {deck.iconEmoji}
+                </span>
+              ) : (
+                <Layers className="w-5 h-5 text-accent/80" aria-hidden />
+              )}
             </div>
             {/* spacer for menu button */}
             <div className="w-7 h-7 flex-shrink-0" />
@@ -224,6 +232,7 @@ export default function DashboardPage() {
   const [newDeckTitle, setNewDeckTitle] = useState("");
   const [newDeckDescription, setNewDeckDescription] = useState("");
   const [newDeckDefaultTemplateId, setNewDeckDefaultTemplateId] = useState("");
+  const [newDeckIconEmoji, setNewDeckIconEmoji] = useState(null);
   const [createModalTemplates, setCreateModalTemplates] = useState([]);
 
   useEffect(() => {
@@ -249,10 +258,17 @@ export default function DashboardPage() {
     e.preventDefault();
     if (!newDeckTitle.trim()) return;
     try {
-      await createDeck(user.uid, newDeckTitle.trim(), newDeckDescription.trim(), newDeckDefaultTemplateId || null);
+      await createDeck(
+        user.uid,
+        newDeckTitle.trim(),
+        newDeckDescription.trim(),
+        newDeckDefaultTemplateId || null,
+        newDeckIconEmoji,
+      );
       setNewDeckTitle("");
       setNewDeckDescription("");
       setNewDeckDefaultTemplateId("");
+      setNewDeckIconEmoji(null);
       setShowCreateModal(false);
     } catch (error) {
       console.error("Error creating deck:", error);
@@ -266,11 +282,13 @@ export default function DashboardPage() {
       await updateDeck(user.uid, selectedDeck.deckId, {
         title: newDeckTitle.trim(),
         description: newDeckDescription.trim(),
+        iconEmoji: normalizeDeckIconEmoji(newDeckIconEmoji),
       });
       setShowEditModal(false);
       setSelectedDeck(null);
       setNewDeckTitle("");
       setNewDeckDescription("");
+      setNewDeckIconEmoji(null);
     } catch (error) {
       console.error("Error updating deck:", error);
     }
@@ -291,6 +309,7 @@ export default function DashboardPage() {
     setSelectedDeck(deck);
     setNewDeckTitle(deck.title);
     setNewDeckDescription(deck.description || "");
+    setNewDeckIconEmoji(deck.iconEmoji ?? null);
     setShowEditModal(true);
   };
 
@@ -397,6 +416,7 @@ export default function DashboardPage() {
               setNewDeckTitle("");
               setNewDeckDescription("");
               setNewDeckDefaultTemplateId("");
+              setNewDeckIconEmoji(null);
             }}
           >
             <form onSubmit={handleCreateDeck} className="flex flex-col gap-4">
@@ -437,6 +457,7 @@ export default function DashboardPage() {
                   ))}
                 </select>
               </Field>
+              <DeckEmojiPicker value={newDeckIconEmoji} onChange={setNewDeckIconEmoji} />
               <div className="flex gap-2 pt-1">
                 <button
                   type="button"
@@ -445,6 +466,7 @@ export default function DashboardPage() {
                     setNewDeckTitle("");
                     setNewDeckDescription("");
                     setNewDeckDefaultTemplateId("");
+                    setNewDeckIconEmoji(null);
                   }}
                   className="flex-1 px-4 py-2.5 bg-white/[0.04] hover:bg-white/[0.08] text-white/60 hover:text-white text-[13px] font-medium rounded-xl border border-white/[0.07] transition-colors"
                 >
@@ -472,6 +494,7 @@ export default function DashboardPage() {
               setShowEditModal(false);
               setNewDeckTitle("");
               setNewDeckDescription("");
+              setNewDeckIconEmoji(null);
             }}
           >
             <form onSubmit={handleEditDeck} className="flex flex-col gap-4">
@@ -495,6 +518,7 @@ export default function DashboardPage() {
                   className={`${inputCls} resize-none`}
                 />
               </Field>
+              <DeckEmojiPicker value={newDeckIconEmoji} onChange={setNewDeckIconEmoji} />
               <div className="flex gap-2 pt-1">
                 <button
                   type="button"

@@ -51,13 +51,13 @@ export default function LayoutClient({ children }) {
         </Suspense>
 
       {!hideNavFooter && (
-        <header className="w-full relative z-50">
+        <header className="w-full relative z-[100]">
           <Navbar />
         </header>
       )}
 
       <motion.main
-        className="w-full mx-auto relative z-10"
+        className="w-full mx-auto relative z-10 overflow-x-hidden"
         variants={pageVariants}
         initial="initial"
         animate="animate"

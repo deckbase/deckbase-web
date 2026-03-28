@@ -679,7 +679,14 @@ export default function StudySessionPage() {
           >
             <ArrowLeft className="w-4 h-4" />
           </Link>
-          <span className="text-[13px] text-white/35 truncate flex-1 min-w-0">{deck.title}</span>
+          <span className="text-[13px] text-white/35 truncate flex-1 min-w-0 flex items-center gap-1.5 min-w-0">
+            {deck.iconEmoji ? (
+              <span className="text-base flex-shrink-0 leading-none" aria-hidden>
+                {deck.iconEmoji}
+              </span>
+            ) : null}
+            {deck.title}
+          </span>
         </div>
       )}
 
@@ -747,7 +754,14 @@ export default function StudySessionPage() {
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
                 </Link>
-                <span className="text-[12px] text-white/35 truncate flex-1 min-w-0">{deck.title}</span>
+                <span className="text-[12px] text-white/35 truncate flex-1 min-w-0 flex items-center gap-1.5 min-w-0">
+                  {deck.iconEmoji ? (
+                    <span className="text-[15px] flex-shrink-0 leading-none" aria-hidden>
+                      {deck.iconEmoji}
+                    </span>
+                  ) : null}
+                  {deck.title}
+                </span>
                 <span className="text-[11px] text-white/30 tabular-nums flex-shrink-0">{progressText}</span>
                 <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-white/[0.05] border border-white/[0.07] text-white/40 flex-shrink-0">
                   {mode === "due" ? "Due" : "All"}
