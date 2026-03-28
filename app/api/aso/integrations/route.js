@@ -1,13 +1,16 @@
 import { NextResponse } from "next/server";
 import { fetchAppStoreListings } from "@/lib/appstore-connect-listings";
 import { fetchGooglePlayListings } from "@/lib/google-play-listings";
+import { requireAdmin } from "@/lib/require-admin-auth";
 
 /**
  * GET /api/aso/integrations
  * Returns status of ASO integrations: App Store Connect, Google Play, Perplexity, DataForSEO, Claude (Anthropic).
  * For store APIs we do a lightweight live check; for others we only check env.
  */
-export async function GET() {
+export async function GET(request) {
+  const denied = await requireAdmin(request);
+  if (denied) return denied;
   const result = {
     appStoreConnect: false,
     appStoreConnectError: null,

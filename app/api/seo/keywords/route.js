@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { fetchSearchVolume } from "@/lib/dataforseo";
 import { saveSeoSnapshot } from "@/lib/seo-firestore";
+import { requireAdmin } from "@/lib/require-admin-auth";
 
 /**
  * GET /api/seo/keywords — Check if DataForSEO credentials are set (no API call).
  */
-export async function GET() {
+export async function GET(request) {
+  const denied = await requireAdmin(request);
+  if (denied) return denied;
   const login = process.env.DATAFORSEO_LOGIN?.trim();
   const password = process.env.DATAFORSEO_PASSWORD?.trim();
   const configured = !!(login && password);
@@ -22,6 +25,8 @@ export async function GET() {
  * Credentials: DATAFORSEO_LOGIN, DATAFORSEO_PASSWORD in env.
  */
 export async function POST(request) {
+  const denied = await requireAdmin(request);
+  if (denied) return denied;
   try {
     const body = await request.json().catch(() => ({}));
     const keywords = body.keywords;

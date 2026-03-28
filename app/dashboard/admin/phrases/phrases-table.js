@@ -1,9 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useAdminFetch } from "@/hooks/useAdminFetch";
 
 export default function PhrasesTable({ phrases }) {
+  const adminFetch = useAdminFetch();
   const [query, setQuery] = useState("");
+  const [exporting, setExporting] = useState(false);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -34,12 +37,35 @@ export default function PhrasesTable({ phrases }) {
           <div className="text-xs text-white/40">
             Showing {filtered.length} of {phrases.length} phrases
           </div>
-          <a
-            href="/api/admin/phrases/export"
-            className="inline-flex items-center rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent/90 transition-colors"
+          <button
+            type="button"
+            disabled={exporting}
+            onClick={async () => {
+              setExporting(true);
+              try {
+                const res = await adminFetch("/api/admin/phrases/export");
+                if (!res.ok) {
+                  const t = await res.text();
+                  throw new Error(t || `Export failed (${res.status})`);
+                }
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "nic-english-phrases.xlsx";
+                a.click();
+                URL.revokeObjectURL(url);
+              } catch (e) {
+                console.error(e);
+                alert(e.message || "Export failed");
+              } finally {
+                setExporting(false);
+              }
+            }}
+            className="inline-flex items-center rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent/90 transition-colors disabled:opacity-50"
           >
-            Export XLSX
-          </a>
+            {exporting ? "Exporting…" : "Export XLSX"}
+          </button>
         </div>
       </div>
 

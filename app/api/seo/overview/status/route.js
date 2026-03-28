@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/require-admin-auth";
 
 /**
  * GET /api/seo/overview/status
  * Returns whether GA4 & Search Console env vars are set (no secrets, no API calls).
  * Use this to verify .env.local is loaded.
  */
-export async function GET() {
+export async function GET(request) {
+  const denied = await requireAdmin(request);
+  if (denied) return denied;
   const hasGoogleJson = !!(
     process.env.GOOGLE_SERVICE_ACCOUNT_JSON?.trim() ||
     process.env.GOOGLE_APPLICATION_CREDENTIALS

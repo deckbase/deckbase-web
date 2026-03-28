@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getLatestAsoSnapshots } from "@/lib/aso-firestore";
+import { requireAdmin } from "@/lib/require-admin-auth";
 
 /**
  * GET /api/aso/snapshots
@@ -7,6 +8,8 @@ import { getLatestAsoSnapshots } from "@/lib/aso-firestore";
  * Query: list=1 to also return past_runs (last 10 opportunity_mapping snapshots).
  */
 export async function GET(request) {
+  const denied = await requireAdmin(request);
+  if (denied) return denied;
   try {
     const { searchParams } = new URL(request.url);
     const includeList = searchParams.get("list") === "1" || searchParams.get("history") === "1";

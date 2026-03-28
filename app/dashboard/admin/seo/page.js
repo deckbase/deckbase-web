@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -16,6 +16,7 @@ import {
   Info,
   X,
 } from "lucide-react";
+import { useAdminFetch } from "@/hooks/useAdminFetch";
 
 /** Minimal markdown to HTML for the flow doc modal */
 function mdToHtml(md) {
@@ -50,6 +51,7 @@ function mdToHtml(md) {
 }
 
 export default function SEOCommandCenterPage() {
+  const adminFetch = useAdminFetch();
   const [keywordsInput, setKeywordsInput] = useState("flashcards\nAI flashcards\nspaced repetition\nflashcard app");
   const [keywordsLoading, setKeywordsLoading] = useState(false);
   const [keywordsError, setKeywordsError] = useState(null);
@@ -103,14 +105,14 @@ export default function SEOCommandCenterPage() {
   const [newMappingUrl, setNewMappingUrl] = useState("");
 
   useEffect(() => {
-    fetch("/api/seo/keywords")
+    adminFetch("/api/seo/keywords")
       .then((r) => r.json())
       .then((d) => setCredentialsOk(d.configured === true))
       .catch(() => setCredentialsOk(false));
-  }, []);
+  }, [adminFetch]);
 
   useEffect(() => {
-    fetch("/api/seo/snapshots")
+    adminFetch("/api/seo/snapshots")
       .then((r) => r.json())
       .then((d) => {
         if (d.search_volume?.result?.length) setKeywordsResult(d.search_volume);
@@ -120,12 +122,12 @@ export default function SEOCommandCenterPage() {
         }
       })
       .catch(() => {});
-  }, []);
+  }, [adminFetch]);
 
-  const fetchOverview = () => {
+  const fetchOverview = useCallback(() => {
     setOverviewError(null);
     setOverviewLoading(true);
-    fetch("/api/seo/overview")
+    adminFetch("/api/seo/overview")
       .then((r) => r.json())
       .then((d) => {
         if (d.error) setOverviewError(d.error);
@@ -134,23 +136,23 @@ export default function SEOCommandCenterPage() {
       })
       .catch((e) => setOverviewError(e.message))
       .finally(() => setOverviewLoading(false));
-  };
+  }, [adminFetch]);
 
   useEffect(() => {
     fetchOverview();
-  }, []);
+  }, [fetchOverview]);
 
   useEffect(() => {
     setMappingLoading(true);
-    fetch("/api/seo/keyword-url-mapping")
+    adminFetch("/api/seo/keyword-url-mapping")
       .then((r) => r.json())
       .then((d) => { if (d.mappings && typeof d.mappings === "object") setKeywordUrlMapping(d.mappings); })
       .catch(() => setKeywordUrlMapping({}))
       .finally(() => setMappingLoading(false));
-  }, []);
+  }, [adminFetch]);
 
   useEffect(() => {
-    fetch("/api/seo/integrations")
+    adminFetch("/api/seo/integrations")
       .then((r) => r.json())
       .then((d) => {
         console.log("[SEO page] integrations response:", d);
@@ -162,7 +164,7 @@ export default function SEOCommandCenterPage() {
         setFirecrawlOk(false);
         setPerplexityOk(false);
       });
-  }, []);
+  }, [adminFetch]);
 
   const handleFetchKeywords = async () => {
     const list = keywordsInput
@@ -177,7 +179,7 @@ export default function SEOCommandCenterPage() {
     setKeywordsResult(null);
     setKeywordsLoading(true);
     try {
-      const res = await fetch("/api/seo/keywords", {
+      const res = await adminFetch("/api/seo/keywords", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ keywords: list, location_code: 2840 }),
@@ -213,7 +215,7 @@ export default function SEOCommandCenterPage() {
     setRankingsResult(null);
     setRankingsLoading(true);
     try {
-      const res = await fetch("/api/seo/rankings", {
+      const res = await adminFetch("/api/seo/rankings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -245,7 +247,7 @@ export default function SEOCommandCenterPage() {
     setScrapeResult(null);
     setScrapeLoading(true);
     try {
-      const res = await fetch("/api/seo/scrape", {
+      const res = await adminFetch("/api/seo/scrape", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url }),
@@ -273,7 +275,7 @@ export default function SEOCommandCenterPage() {
     setResearchResult(null);
     setResearchLoading(true);
     try {
-      const res = await fetch("/api/seo/research", {
+      const res = await adminFetch("/api/seo/research", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query }),
@@ -301,7 +303,7 @@ export default function SEOCommandCenterPage() {
     setAuditResult(null);
     setAuditLoading(true);
     try {
-      const res = await fetch("/api/seo/audit", {
+      const res = await adminFetch("/api/seo/audit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url }),
@@ -340,7 +342,7 @@ export default function SEOCommandCenterPage() {
     setMappingError(null);
     setMappingSaving(true);
     try {
-      const res = await fetch("/api/seo/keyword-url-mapping", {
+      const res = await adminFetch("/api/seo/keyword-url-mapping", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mappings: keywordUrlMapping }),
@@ -372,7 +374,7 @@ export default function SEOCommandCenterPage() {
     };
 
     try {
-      const res = await fetch("/api/seo/pipeline/stream", {
+      const res = await adminFetch("/api/seo/pipeline/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -426,7 +428,7 @@ export default function SEOCommandCenterPage() {
                 });
                 setAuditError(null);
               }
-              fetch("/api/seo/snapshots")
+              adminFetch("/api/seo/snapshots")
                 .then((r) => r.json())
                 .then((d) => {
                   if (d.search_volume?.result?.length) setKeywordsResult(d.search_volume);
@@ -499,7 +501,7 @@ export default function SEOCommandCenterPage() {
             setDocModalOpen(true);
             if (!docContent && !docLoading) {
               setDocLoading(true);
-              fetch("/api/seo/docs/flow")
+              adminFetch("/api/seo/docs/flow")
                 .then((r) => r.json())
                 .then((d) => { if (d.content) setDocContent(d.content); })
                 .catch(() => setDocContent("# Error\nCould not load the doc."))

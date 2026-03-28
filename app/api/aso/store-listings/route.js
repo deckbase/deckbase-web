@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server";
 import { fetchGooglePlayListings } from "@/lib/google-play-listings";
 import { fetchAppStoreListings } from "@/lib/appstore-connect-listings";
+import { requireAdmin } from "@/lib/require-admin-auth";
 
 /**
  * GET /api/aso/store-listings
  * Returns current store listing data for Google Play and App Store (for display on ASO dashboard).
  */
-export async function GET() {
+export async function GET(request) {
+  const denied = await requireAdmin(request);
+  if (denied) return denied;
   const androidPkg = process.env.ANDROID_PACKAGE_NAME?.trim();
   const iosAppId = process.env.APPSTORE_APP_ID?.trim();
   const iosBundleId = process.env.APPSTORE_BUNDLE_ID?.trim();

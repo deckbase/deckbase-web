@@ -3,8 +3,10 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, Smartphone, Loader2, Play, Check, X, ChevronDown, ChevronRight } from "lucide-react";
+import { useAdminFetch } from "@/hooks/useAdminFetch";
 
 export default function ASOCommandCenterPage() {
+  const adminFetch = useAdminFetch();
   const [keywordsInput, setKeywordsInput] = useState("");
   const [pipelineLoading, setPipelineLoading] = useState(false);
   const [pipelineError, setPipelineError] = useState(null);
@@ -26,14 +28,14 @@ export default function ASOCommandCenterPage() {
   const [snapshotsLoading, setSnapshotsLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/aso/integrations")
+    adminFetch("/api/aso/integrations")
       .then((r) => r.json())
       .then((d) => setIntegrations(d))
       .catch(() => setIntegrations({}));
-  }, []);
+  }, [adminFetch]);
 
   useEffect(() => {
-    fetch("/api/aso/snapshots?list=1")
+    adminFetch("/api/aso/snapshots?list=1")
       .then((r) => r.json())
       .then((d) => {
         if (d.opportunity_mapping) setLastRun({ opportunityMapping: d.opportunity_mapping, keywordShortlist: d.keyword_shortlist });
@@ -42,13 +44,13 @@ export default function ASOCommandCenterPage() {
       })
       .catch(() => setPastRuns([]))
       .finally(() => setSnapshotsLoading(false));
-  }, []);
+  }, [adminFetch]);
 
   useEffect(() => {
     if (integrations == null) return;
     if (integrations.googlePlay || integrations.appStoreConnect) {
       setStoreListingsLoading(true);
-      fetch("/api/aso/store-listings")
+      adminFetch("/api/aso/store-listings")
         .then((r) => r.json())
         .then((d) => setStoreListings(d))
         .catch(() => setStoreListings({}))
@@ -56,12 +58,12 @@ export default function ASOCommandCenterPage() {
     } else {
       setStoreListings({ googlePlay: { ok: false }, appStore: { ok: false } });
     }
-  }, [integrations?.googlePlay, integrations?.appStoreConnect]);
+  }, [adminFetch, integrations?.googlePlay, integrations?.appStoreConnect]);
 
   const refreshStoreListings = () => {
     if (!integrations?.googlePlay && !integrations?.appStoreConnect) return;
     setStoreListingsLoading(true);
-    fetch("/api/aso/store-listings")
+    adminFetch("/api/aso/store-listings")
       .then((r) => r.json())
       .then((d) => setStoreListings(d))
       .catch(() => setStoreListings({}))
@@ -71,7 +73,7 @@ export default function ASOCommandCenterPage() {
   const handleGenerateDrafts = () => {
     setMetadataDraftsError(null);
     setMetadataDraftsLoading(true);
-    fetch("/api/aso/metadata-drafts", { method: "POST" })
+    adminFetch("/api/aso/metadata-drafts", { method: "POST" })
       .then((r) => r.json())
       .then((d) => {
         if (d.error) {
@@ -102,7 +104,7 @@ export default function ASOCommandCenterPage() {
     };
 
     try {
-      const res = await fetch("/api/aso/pipeline/stream", {
+      const res = await adminFetch("/api/aso/pipeline/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -148,7 +150,7 @@ export default function ASOCommandCenterPage() {
                   keywordShortlist: null,
                 });
                 // Refetch snapshots so past runs list includes this run
-                fetch("/api/aso/snapshots?list=1")
+                adminFetch("/api/aso/snapshots?list=1")
                   .then((r) => r.json())
                   .then((d) => {
                     if (Array.isArray(d.past_runs)) setPastRuns(d.past_runs);

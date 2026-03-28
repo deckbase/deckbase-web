@@ -29,10 +29,39 @@ export default function DashboardLayout({ children }) {
   const pathname = usePathname();
   const [accountOpen, setAccountOpen] = useState(false);
   const accountRef = useRef(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminGateReady, setAdminGateReady] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) router.push("/login");
   }, [user, loading, router]);
+
+  useEffect(() => {
+    if (!user) {
+      setIsAdmin(false);
+      setAdminGateReady(true);
+      return;
+    }
+    let cancelled = false;
+    setAdminGateReady(false);
+    (async () => {
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch("/api/user/is-admin", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const j = await res.json().catch(() => ({}));
+        if (!cancelled) setIsAdmin(!!j.isAdmin);
+      } catch {
+        if (!cancelled) setIsAdmin(false);
+      } finally {
+        if (!cancelled) setAdminGateReady(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   useEffect(() => {
     setAccountOpen(false);
@@ -68,7 +97,7 @@ export default function DashboardLayout({ children }) {
   const isActive = (item) =>
     item.exact ? pathname === item.href : pathname.startsWith(item.href);
 
-  if (loading) {
+  if (loading || !adminGateReady) {
     return (
       <div className="min-h-screen bg-[#080808] flex items-center justify-center">
         <div className="w-7 h-7 rounded-full border-2 border-white/[0.07] border-t-accent animate-spin" />
@@ -77,6 +106,10 @@ export default function DashboardLayout({ children }) {
   }
 
   if (!user) return null;
+
+  const visibleNavItems = navItems.filter(
+    (item) => item.href !== "/dashboard/admin" || isAdmin,
+  );
 
   const displayName = userProfile?.displayName || user?.email || "U";
   const avatarUrl = userProfile?.profileUrl || user?.photoURL;
@@ -104,7 +137,7 @@ export default function DashboardLayout({ children }) {
 
           {/* Nav links */}
           <div className="flex items-center gap-0.5 overflow-x-auto">
-            {navItems.map((item) => {
+            {visibleNavItems.map((item) => {
               const active = isActive(item);
               const Icon = item.icon;
               return (

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { fetchGA4Overview } from "@/lib/ga4";
 import { fetchSearchConsoleOverview } from "@/lib/search-console";
+import { requireAdmin } from "@/lib/require-admin-auth";
 
 /**
  * GET /api/seo/overview
@@ -8,7 +9,9 @@ import { fetchSearchConsoleOverview } from "@/lib/search-console";
  * Requires: GOOGLE_SERVICE_ACCOUNT_JSON or GOOGLE_APPLICATION_CREDENTIALS,
  *           GA4_PROPERTY_ID, GSC_SITE_URL.
  */
-export async function GET() {
+export async function GET(request) {
+  const denied = await requireAdmin(request);
+  if (denied) return denied;
   try {
     const hasJson = !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON?.trim();
     const jsonLen = (process.env.GOOGLE_SERVICE_ACCOUNT_JSON || "").length;

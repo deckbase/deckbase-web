@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { scrapeUrl } from "@/lib/firecrawl";
+import { requireAdmin } from "@/lib/require-admin-auth";
 
 /**
  * POST /api/seo/scrape
@@ -7,6 +8,8 @@ import { scrapeUrl } from "@/lib/firecrawl";
  * Returns { markdown, title, description } from Firecrawl.
  */
 export async function POST(request) {
+  const denied = await requireAdmin(request);
+  if (denied) return denied;
   try {
     const body = await request.json().catch(() => ({}));
     const url = body.url;

@@ -1,8 +1,11 @@
 import fs from "fs";
 import path from "path";
 import ExcelJS from "exceljs";
+import { requireAdmin } from "@/lib/require-admin-auth";
 
-export async function GET() {
+export async function GET(request) {
+  const denied = await requireAdmin(request);
+  if (denied) return denied;
   try {
     const jsonPath = path.join(process.cwd(), "nic-english-phrases-full.json");
 

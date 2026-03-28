@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { researchQuery } from "@/lib/perplexity";
+import { requireAdmin } from "@/lib/require-admin-auth";
 
 /**
  * POST /api/seo/research
@@ -7,6 +8,8 @@ import { researchQuery } from "@/lib/perplexity";
  * Returns { content, citations } from Perplexity Sonar.
  */
 export async function POST(request) {
+  const denied = await requireAdmin(request);
+  if (denied) return denied;
   try {
     const body = await request.json().catch(() => ({}));
     const query = body.query;

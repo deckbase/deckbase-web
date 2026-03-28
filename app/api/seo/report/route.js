@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { getLatestSeoSnapshots } from "@/lib/seo-firestore";
+import { requireAdmin } from "@/lib/require-admin-auth";
 
 /**
  * GET /api/seo/report
  * Returns the latest Step 4 output (serp_opportunity_mapping) for the interactive report page.
  */
-export async function GET() {
+export async function GET(request) {
+  const denied = await requireAdmin(request);
+  if (denied) return denied;
   try {
     const snapshots = await getLatestSeoSnapshots("serp_opportunity_mapping", 1);
     const latest = Array.isArray(snapshots) ? snapshots[0] : null;

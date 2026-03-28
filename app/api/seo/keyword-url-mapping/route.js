@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { getKeywordUrlMapping, setKeywordUrlMapping } from "@/lib/seo-firestore";
+import { requireAdmin } from "@/lib/require-admin-auth";
 
 /**
  * GET /api/seo/keyword-url-mapping
  * Returns the current keyword → URL mapping for Step 4 → Step 5 hand-off.
  */
-export async function GET() {
+export async function GET(request) {
+  const denied = await requireAdmin(request);
+  if (denied) return denied;
   try {
     const mappings = await getKeywordUrlMapping();
     return NextResponse.json({ mappings });
@@ -23,6 +26,8 @@ export async function GET() {
  * Body: { mappings: Record<string, string> } — full replace (so client can remove entries by omitting them).
  */
 export async function POST(request) {
+  const denied = await requireAdmin(request);
+  if (denied) return denied;
   try {
     const body = await request.json().catch(() => ({}));
     const incoming = body.mappings && typeof body.mappings === "object" ? body.mappings : {};

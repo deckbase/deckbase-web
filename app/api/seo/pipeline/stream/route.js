@@ -1,4 +1,5 @@
 import { runSeoPipeline } from "@/lib/seo-pipeline-runner";
+import { requireAdmin } from "@/lib/require-admin-auth";
 
 /**
  * POST /api/seo/pipeline/stream
@@ -6,6 +7,8 @@ import { runSeoPipeline } from "@/lib/seo-pipeline-runner";
  * Each line: { type: "progress", step, status, message } or { type: "result", data } or { type: "error", error }.
  */
 export async function POST(request) {
+  const denied = await requireAdmin(request);
+  if (denied) return denied;
   const body = await request.json().catch(() => ({}));
   const encoder = new TextEncoder();
 

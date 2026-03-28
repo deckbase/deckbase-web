@@ -3,15 +3,17 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, BarChart2, Loader2, Download } from "lucide-react";
+import { useAdminFetch } from "@/hooks/useAdminFetch";
 
 export default function SEOReportPage() {
+  const adminFetch = useAdminFetch();
   const [report, setReport] = useState(null);
   const [message, setMessage] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch("/api/seo/report")
+    adminFetch("/api/seo/report")
       .then((r) => r.json())
       .then((d) => {
         if (d.error) setError(d.error);
@@ -22,7 +24,7 @@ export default function SEOReportPage() {
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [adminFetch]);
 
   const downloadHtml = () => {
     if (!report) return;

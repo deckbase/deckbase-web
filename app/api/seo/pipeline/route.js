@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { runSeoPipeline } from "@/lib/seo-pipeline-runner";
+import { requireAdmin } from "@/lib/require-admin-auth";
 
 /**
  * POST /api/seo/pipeline
@@ -7,6 +8,8 @@ import { runSeoPipeline } from "@/lib/seo-pipeline-runner";
  * For streaming progress from the UI, use POST /api/seo/pipeline/stream instead.
  */
 export async function POST(request) {
+  const denied = await requireAdmin(request);
+  if (denied) return denied;
   try {
     const body = await request.json().catch(() => ({}));
     const result = await runSeoPipeline(body);

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { fetchKeywordRankings } from "@/lib/dataforseo";
 import { saveSeoSnapshot } from "@/lib/seo-firestore";
+import { requireAdmin } from "@/lib/require-admin-auth";
 
 /**
  * POST /api/seo/rankings
@@ -9,6 +10,8 @@ import { saveSeoSnapshot } from "@/lib/seo-firestore";
  * Credentials: DATAFORSEO_LOGIN, DATAFORSEO_PASSWORD in env.
  */
 export async function POST(request) {
+  const denied = await requireAdmin(request);
+  if (denied) return denied;
   try {
     const body = await request.json().catch(() => ({}));
     const domain = (body.domain || "deckbase.co").toString().trim();

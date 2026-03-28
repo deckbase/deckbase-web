@@ -115,7 +115,8 @@ async function handleToolsList() {
       },
       {
         name: "list_decks",
-        description: "List the user's flashcard decks. Requires hosted MCP with API key.",
+        description:
+          "List the user's flashcard decks (deckId, title, description, defaultTemplateId, iconEmoji). iconEmoji is optional deck icon. Requires hosted MCP with API key.",
         inputSchema: { type: "object", properties: {} },
       },
       {
@@ -137,17 +138,26 @@ async function handleToolsList() {
       },
       {
         name: "create_deck",
-        description: "Create a new flashcard deck. Requires hosted MCP with API key.",
+        description:
+          "Create a new flashcard deck. No emoji catalog API—use standard Unicode. Pass icon_emoji/iconEmoji: one emoji matching title/description unless user opts out (hosted MCP only).",
         inputSchema: {
           type: "object",
-          properties: { title: { type: "string" }, description: { type: "string" } },
+          properties: {
+            title: { type: "string" },
+            description: { type: "string" },
+            icon_emoji: {
+              type: "string",
+              description: "One emoji; infer from title/description if user did not specify (alias: iconEmoji)",
+            },
+            iconEmoji: { type: "string", description: "Alias for icon_emoji" },
+          },
           required: ["title"],
         },
       },
       {
         name: "update_deck",
         description:
-          "Update deck title, description, default template. Requires hosted MCP with API key.",
+          "Update deck title, description, default template, icon. Pass icon_emoji or iconEmoji as empty string to clear. Requires hosted MCP with API key.",
         inputSchema: {
           type: "object",
           properties: {
@@ -155,6 +165,8 @@ async function handleToolsList() {
             title: { type: "string" },
             description: { type: "string" },
             default_template_id: { type: "string" },
+            icon_emoji: { type: "string", description: "Set/clear deck icon (alias: iconEmoji)" },
+            iconEmoji: { type: "string", description: "Alias for icon_emoji" },
           },
           required: ["deckId"],
         },

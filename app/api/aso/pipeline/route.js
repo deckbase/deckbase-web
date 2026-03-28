@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { runAsoPipeline } from "@/lib/aso-pipeline-runner";
+import { requireAdmin } from "@/lib/require-admin-auth";
 
 /**
  * POST /api/aso/pipeline
@@ -7,6 +8,8 @@ import { runAsoPipeline } from "@/lib/aso-pipeline-runner";
  * For streaming progress, use POST /api/aso/pipeline/stream instead.
  */
 export async function POST(request) {
+  const denied = await requireAdmin(request);
+  if (denied) return denied;
   try {
     const body = await request.json().catch(() => ({}));
     const result = await runAsoPipeline(body);

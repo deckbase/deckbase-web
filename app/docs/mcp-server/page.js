@@ -186,18 +186,29 @@ export default function McpServerDocPage() {
         <TableSection label="Decks & Cards — require API key" icon={Lock}>
           <tr className="hover:bg-white/[0.02] transition-colors">
             <ToolName>list_decks</ToolName>
-            <Td>User&apos;s decks (<C>deckId</C>, title, description, optional <C>defaultTemplateId</C>).</Td>
+            <Td>
+              User&apos;s decks (<C>deckId</C>, title, description, optional <C>defaultTemplateId</C>, optional{" "}
+              <C>iconEmoji</C>).
+            </Td>
             <Td className="text-white/30 italic">None.</Td>
           </tr>
           <tr className="hover:bg-white/[0.02] transition-colors">
             <ToolName>create_deck</ToolName>
-            <Td>Create a deck. Returns <C>deckId</C>.</Td>
-            <Td><C>title</C> (required), <C>description</C> (optional).</Td>
+            <Td>
+              Create a deck. Returns <C>deckId</C>, <C>icon_emoji</C> / <C>iconEmoji</C> when set.
+            </Td>
+            <Td>
+              <C>title</C> (required), <C>description</C> (optional), optional <C>icon_emoji</C> or <C>iconEmoji</C>{" "}
+              (single emoji; AI clients should pick one that fits the title unless the user opts out).
+            </Td>
           </tr>
           <tr className="hover:bg-white/[0.02] transition-colors">
             <ToolName>update_deck</ToolName>
-            <Td>Update title, description, or default template.</Td>
-            <Td><C>deckId</C> (required); optional title, description, <C>default_template_id</C>.</Td>
+            <Td>Update title, description, default template, or deck icon.</Td>
+            <Td>
+              <C>deckId</C> (required); optional title, description, <C>default_template_id</C>,{" "}
+              <C>icon_emoji</C> or <C>iconEmoji</C> (empty string clears the icon).
+            </Td>
           </tr>
           <tr className="hover:bg-white/[0.02] transition-colors">
             <ToolName>list_templates</ToolName>
@@ -327,7 +338,7 @@ export default function McpServerDocPage() {
             <>Configure your client with the MCP URL and <C>Authorization: Bearer YOUR_API_KEY</C>.</>,
             <>Call <strong className="text-white/80 font-mono text-[13px]">list_templates</strong>. If empty, use <strong className="text-white/80 font-mono text-[13px]">list_template_block_types</strong> and <strong className="text-white/80 font-mono text-[13px]">create_template</strong> first.</>,
             <>Call <strong className="text-white/80 font-mono text-[13px]">get_template_schema</strong> with the chosen <C>templateId</C> to learn exact <C>blockId</C> keys and <C>side</C> values.</>,
-            <>Call <strong className="text-white/80 font-mono text-[13px]">create_deck</strong> with a <C>title</C> and optional <C>description</C>.</>,
+            <>Call <strong className="text-white/80 font-mono text-[13px]">create_deck</strong> with a <C>title</C>, optional <C>description</C>, and <C>icon_emoji</C> when the agent should pick a matching icon for the topic.</>,
             <>Call <strong className="text-white/80 font-mono text-[13px]">create_card</strong> with <C>deckId</C> and optionally <C>templateId</C>, <C>front</C>, or <C>block_text</C>.</>,
           ].map((step, i) => (
             <li key={i} className="flex items-start gap-3">
