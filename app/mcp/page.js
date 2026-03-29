@@ -10,6 +10,13 @@ import {
   BookOpen,
   PlusCircle,
   List,
+  ChevronDown,
+  ChevronUp,
+  FileSearch,
+  Pencil,
+  Link2,
+  Download,
+  Trash2,
 } from "lucide-react";
 import { useState, useCallback } from "react";
 import Image from "next/image";
@@ -131,10 +138,55 @@ function InlineCode({ children }) {
   );
 }
 
+/** Must stay in sync with tool names in lib/mcp-handlers.js (handleToolsList). */
+const ALL_MCP_TOOLS = [
+  "list_docs",
+  "read_doc",
+  "list_template_block_types",
+  "list_block_schemas",
+  "list_elevenlabs_voices",
+  "list_decks",
+  "list_templates",
+  "get_template_schema",
+  "create_deck",
+  "update_deck",
+  "update_card",
+  "delete_card",
+  "delete_cards",
+  "create_card",
+  "create_cards",
+  "attach_audio_to_card",
+  "export_deck",
+  "create_template",
+  "update_template",
+];
+
+const MCP_TOOLS_PREVIEW = [
+  "list_docs",
+  "read_doc",
+  "list_decks",
+  "create_deck",
+  "create_card",
+];
+
+function McpToolIcon({ name }) {
+  const c = "w-3.5 h-3.5 text-accent/70 flex-shrink-0";
+  if (name.startsWith("list_")) return <List className={c} aria-hidden />;
+  if (name.startsWith("read_")) return <BookOpen className={c} aria-hidden />;
+  if (name.startsWith("get_")) return <FileSearch className={c} aria-hidden />;
+  if (name.startsWith("create_")) return <PlusCircle className={c} aria-hidden />;
+  if (name.startsWith("update_")) return <Pencil className={c} aria-hidden />;
+  if (name.startsWith("attach_")) return <Link2 className={c} aria-hidden />;
+  if (name.startsWith("export_")) return <Download className={c} aria-hidden />;
+  if (name.startsWith("delete_")) return <Trash2 className={c} aria-hidden />;
+  return <Terminal className={c} aria-hidden />;
+}
+
 export default function McpPage() {
   const [activeTab, setActiveTab] = useState("cursor");
   const [copiedId, setCopiedId] = useState(null);
   const [showProjectConfig, setShowProjectConfig] = useState(false);
+  const [showAllMcpTools, setShowAllMcpTools] = useState(false);
 
   const baseUrl =
     typeof window !== "undefined" &&
@@ -302,28 +354,53 @@ url = "${mcpUrl}"`;
           </div>
 
           {/* Available tools */}
-          <div className="flex flex-wrap gap-2">
-            {[
-              { icon: <List className="w-3.5 h-3.5" />, label: "list_docs" },
-              { icon: <BookOpen className="w-3.5 h-3.5" />, label: "read_doc" },
-              { icon: <List className="w-3.5 h-3.5" />, label: "list_decks" },
-              {
-                icon: <PlusCircle className="w-3.5 h-3.5" />,
-                label: "create_deck",
-              },
-              {
-                icon: <PlusCircle className="w-3.5 h-3.5" />,
-                label: "create_card",
-              },
-            ].map((tool) => (
-              <span
-                key={tool.label}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[12px] font-mono text-white/60 bg-white/[0.04] border border-white/[0.07]"
-              >
-                <span className="text-accent/70">{tool.icon}</span>
-                {tool.label}
-              </span>
-            ))}
+          <div className="space-y-3">
+            <p className="text-xs font-semibold tracking-widest uppercase text-white/30">
+              Available tools
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {(showAllMcpTools ? ALL_MCP_TOOLS : MCP_TOOLS_PREVIEW).map(
+                (name) => (
+                  <span
+                    key={name}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[12px] font-mono text-white/60 bg-white/[0.04] border border-white/[0.07]"
+                  >
+                    <McpToolIcon name={name} />
+                    {name}
+                  </span>
+                ),
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowAllMcpTools(!showAllMcpTools)}
+              className="inline-flex items-center gap-1.5 text-sm text-accent/90 hover:text-accent transition-colors"
+              aria-expanded={showAllMcpTools}
+            >
+              {showAllMcpTools ? (
+                <>
+                  <ChevronUp className="w-4 h-4" aria-hidden />
+                  Show fewer tools
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="w-4 h-4" aria-hidden />
+                  See all {ALL_MCP_TOOLS.length} tools
+                </>
+              )}
+            </button>
+            {showAllMcpTools && (
+              <p className="text-xs text-white/35 max-w-[560px] leading-relaxed">
+                Full parameter reference and behavior notes are in the{" "}
+                <Link
+                  href="/docs/mcp-server"
+                  className="text-accent/80 hover:underline underline-offset-2"
+                >
+                  MCP server docs
+                </Link>
+                .
+              </p>
+            )}
           </div>
         </motion.div>
 

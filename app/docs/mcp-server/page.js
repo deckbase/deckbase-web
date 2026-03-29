@@ -252,6 +252,23 @@ export default function McpServerDocPage() {
             </Td>
           </tr>
           <tr className="hover:bg-white/[0.02] transition-colors">
+            <ToolName>delete_card</ToolName>
+            <Td>
+              Soft-delete one card (trash). The server refuses unless <C>user_confirmed</C> is{" "}
+              <strong className="text-white/70">true</strong> — use only after explicit human consent.
+            </Td>
+            <Td>
+              <C>deckId</C>, <C>cardId</C>, <C>user_confirmed</C> (required boolean).
+            </Td>
+          </tr>
+          <tr className="hover:bg-white/[0.02] transition-colors">
+            <ToolName>delete_cards</ToolName>
+            <Td>Bulk soft-delete in one deck. Same consent rule as <C>delete_card</C>. Max 50 per request.</Td>
+            <Td>
+              <C>deckId</C>, <C>card_ids</C> (non-empty array), <C>user_confirmed</C>.
+            </Td>
+          </tr>
+          <tr className="hover:bg-white/[0.02] transition-colors">
             <ToolName>attach_audio_to_card</ToolName>
             <Td>ElevenLabs TTS for an existing card.</Td>
             <Td>

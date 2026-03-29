@@ -208,6 +208,34 @@ async function handleToolsList() {
         },
       },
       {
+        name: "delete_card",
+        description:
+          "Soft-delete one card. DESTRUCTIVE. Hosted MCP only. Ask the user first; pass user_confirmed: true only after explicit consent.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            deckId: { type: "string" },
+            cardId: { type: "string" },
+            user_confirmed: { type: "boolean", description: "Must be true after user confirms" },
+          },
+          required: ["deckId", "cardId", "user_confirmed"],
+        },
+      },
+      {
+        name: "delete_cards",
+        description:
+          "Soft-delete multiple cards in one deck. Same consent as delete_card. Max 50 per request. Hosted MCP only.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            deckId: { type: "string" },
+            card_ids: { type: "array", items: { type: "string" } },
+            user_confirmed: { type: "boolean" },
+          },
+          required: ["deckId", "card_ids", "user_confirmed"],
+        },
+      },
+      {
         name: "create_cards",
         description:
           "Bulk create cards; per-card front + block_text (back blocks same as create_card). Voice defaults + per-card overrides. Max 50. Hosted MCP.",
@@ -345,6 +373,8 @@ async function handleToolCall(name, args) {
     name === "update_deck" ||
     name === "create_card" ||
     name === "update_card" ||
+    name === "delete_card" ||
+    name === "delete_cards" ||
     name === "create_cards" ||
     name === "attach_audio_to_card" ||
     name === "export_deck" ||

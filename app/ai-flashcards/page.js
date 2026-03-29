@@ -19,6 +19,7 @@ import {
 const PAGE_PATH = "/ai-flashcards";
 const pageUrl = absoluteUrl(PAGE_PATH);
 const homeUrl = absoluteUrl("/");
+const resourcesUrl = absoluteUrl("/resources");
 const publishedAt = "2026-03-29";
 const updatedAt = "2026-03-29";
 const orgId = `${homeUrl}/#organization`;
@@ -120,7 +121,8 @@ const jsonLd = {
         "@type": "BreadcrumbList",
         itemListElement: [
           { "@type": "ListItem", position: 1, name: "Home", item: homeUrl },
-          { "@type": "ListItem", position: 2, name: "AI flashcards", item: pageUrl },
+          { "@type": "ListItem", position: 2, name: "Resources", item: resourcesUrl },
+          { "@type": "ListItem", position: 3, name: "AI flashcards", item: pageUrl },
         ],
       },
     },
@@ -174,6 +176,7 @@ export default function AiFlashcardsPage() {
         <ArticleBreadcrumb
           crumbs={[
             { label: "Home", href: "/" },
+            { label: "Resources", href: "/resources" },
             { label: "AI flashcards" },
           ]}
         />

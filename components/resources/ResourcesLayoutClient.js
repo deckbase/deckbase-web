@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const resourceNav = [
   { href: "/resources", label: "Overview" },
+  { href: "/ai-flashcards", label: "AI flashcards" },
   { href: "/resources/mcp", label: "MCP for flashcards" },
   { href: "/anki-alternatives", label: "Anki alternatives" },
   { href: "/quizlet-alternatives", label: "Quizlet alternatives" },
@@ -40,6 +41,13 @@ const pageAnchors = {
     { id: "how-to-choose", label: "How to choose" },
     { id: "shortlist", label: "Shortlist" },
     { id: "try-deckbase", label: "Try Deckbase" },
+    { id: "faq", label: "FAQ" },
+    { id: "related", label: "Related" },
+  ],
+  "/ai-flashcards": [
+    { id: "why", label: "Why Deckbase" },
+    { id: "mcp", label: "MCP + flashcards" },
+    { id: "cta", label: "Try Deckbase" },
     { id: "faq", label: "FAQ" },
     { id: "related", label: "Related" },
   ],
