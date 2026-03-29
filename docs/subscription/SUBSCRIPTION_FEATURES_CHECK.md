@@ -2,6 +2,8 @@
 
 Summary of what is gated by plan (Free / Basic / Pro) and how it aligns with [PRICING.md](./PRICING.md).
 
+**AI image generation (planned):** See **[`../features/AI_IMAGE_FAL_FEASIBILITY.md`](../features/AI_IMAGE_FAL_FEASIBILITY.md)** for the full spec (credits, models, style library, reference images).
+
 ---
 
 ## Tiers and entitlement source
@@ -80,6 +82,25 @@ Summary of what is gated by plan (Free / Basic / Pro) and how it aligns with [PR
 **Limits:** **Basic:** 30,000 characters/month. **Pro:** 50,000 characters/month. Free = not allowed. Stored in same `users/{uid}/usage/{YYYY-MM}` doc as `ttsChars`.
 
 **Status:** ✅ Gated (UI + API) and tier-based monthly limit enforced.
+
+---
+
+### 5b. AI image generation (fal.ai) — planned
+
+**Product:** Basic and Pro only; **40 / 100 AI image credits/month** (not raw image count). Each resolved `model_id` consumes a **credit weight**; track **`imageCreditsUsed`** + optional **`imageGenerationsByModel`** map on `users/{uid}/usage/{YYYY-MM}`. Separate from **`aiGenerations`**. See [**AI_IMAGE_FAL_FEASIBILITY.md**](../features/AI_IMAGE_FAL_FEASIBILITY.md) (*Usage tracking & quota*) and [PRICING.md](./PRICING.md).
+
+| Where | Intended behavior (when implemented) |
+|-------|--------------------------------------|
+| **Card editor – Image block** | Same entitlement pattern as TTS; model picker from curated list; show **remaining credits** / cost; optional **style prompt library** (preset snippets merged into prompt; **tag filters** for subject/style — see [AI_IMAGE_FAL_FEASIBILITY.md](../features/AI_IMAGE_FAL_FEASIBILITY.md#style-prompt-library-curated-presets)); call server route; then `uploadImage` + save. |
+| **API** `GET` style library (e.g. `/api/ai/image-style-prompts`) | **Subscribers only** (Basic/Pro/VIP): returns curated style presets (with `tags[]`); optional `?tag=` filter. Free **403** or empty + upgrade message. |
+| **API** `POST` (e.g. `/api/fal/...` or `/api/ai/generate-image`) | `isBasicOrProOrVip` → 403 if Free; resolve **`model_id`** (including reference → edit endpoint); optional **`style_prompt_id`** resolved server-side; `checkImageGenerationLimit(uid, resolvedModelId)` → 403 if `used + CREDIT_COST > cap`; `incrementImageUsage` on success. |
+| **Import / Use AI** | Per-row image gen consumes credits by resolved model. |
+| **Mobile** | Same API + auth as TTS (`X-API-Key`, optional `body.uid`). |
+| **MCP** | Tool args for prompt + allowlisted `model_id`; same credit-based limits server-side. |
+
+**Marketing:** Update copy to **“AI image credits”** (not flat “images”) in `components/PricingPolicy.js` and `app/dashboard/subscription/page.js` (`BENEFITS_BY_TIER`) when the feature ships.
+
+**Status:** 🔲 Documented; implementation pending.
 
 ---
 

@@ -66,6 +66,15 @@ const guides = [
 
 const articles = [
   {
+    href: "/ai-flashcards",
+    title: "AI flashcard maker (Deckbase)",
+    description:
+      "AI-generated flashcards from PDFs and notes, FSRS review, mobile sync, and optional MCP for Cursor and Claude.",
+    icon: Sparkles,
+    tag: "Product",
+    readTime: "4 min read",
+  },
+  {
     href: "/anki-alternatives",
     title: "Best Anki alternatives",
     description:
@@ -135,6 +144,8 @@ const related = [
 const tagStyles = {
   Guide:
     "text-accent bg-accent/10 border-accent/20",
+  Product:
+    "text-sky-400 bg-sky-400/10 border-sky-400/20",
   Article:
     "text-emerald-400 bg-emerald-400/10 border-emerald-400/20",
   Comparison:

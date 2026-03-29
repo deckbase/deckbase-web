@@ -271,13 +271,35 @@ url = "${mcpUrl}"`;
           </div>
 
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-5">
-            Connect your AI to Deckbase
+            Connect your AI to Deckbase flashcards
           </h1>
 
           <p className="text-white/55 text-base sm:text-lg leading-relaxed max-w-[600px] mb-8">
             Add the Deckbase MCP server to your AI tool to read docs and manage
             flashcard decks — directly from your coding environment.
           </p>
+
+          <div className="rounded-xl border border-white/[0.1] bg-white/[0.03] px-4 py-3.5 mb-8 max-w-[600px]">
+            <p className="text-sm text-white/70 leading-relaxed">
+              <span className="text-white/90 font-medium">Flashcards + MCP:</span>{" "}
+              same decks sync to the Deckbase app and mobile. For positioning vs
+              other MCP servers and card workflows, see{" "}
+              <Link
+                href="/resources/mcp"
+                className="text-accent hover:underline underline-offset-2"
+              >
+                MCP for flashcards
+              </Link>{" "}
+              or the{" "}
+              <Link
+                href="/ai-flashcards"
+                className="text-accent hover:underline underline-offset-2"
+              >
+                AI flashcard maker
+              </Link>{" "}
+              overview.
+            </p>
+          </div>
 
           {/* Available tools */}
           <div className="flex flex-wrap gap-2">

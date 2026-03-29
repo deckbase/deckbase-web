@@ -16,6 +16,7 @@ Index of project documentation. Use this to find specs, setup guides, and featur
 | [features/FILE_TO_AI_CARDS_IMPLEMENTATION_PLAN.md](./features/FILE_TO_AI_CARDS_IMPLEMENTATION_PLAN.md) | Implementation plan for File-to-AI cards. |
 | [features/FSRS_AND_FIREBASE_ADDENDUM.md](./features/FSRS_AND_FIREBASE_ADDENDUM.md) | FSRS scheduling and Firebase integration addendum. |
 | [features/ELEVENLABS_API_MOBILE.md](./features/ELEVENLABS_API_MOBILE.md) | ElevenLabs text-to-speech API for mobile. |
+| [features/AI_IMAGE_FAL_FEASIBILITY.md](./features/AI_IMAGE_FAL_FEASIBILITY.md) | **AI images (fal.ai)** — models, pricing, credits, style library, reference images. See also [PRICING](./subscription/PRICING.md), [SUBSCRIPTION_FEATURES_CHECK](./subscription/SUBSCRIPTION_FEATURES_CHECK.md). |
 | [features/MOBILE_ADD_CARDS_WITH_AI.md](./features/MOBILE_ADD_CARDS_WITH_AI.md) | Add-cards-with-AI API and flow for mobile. |
 | [features/MOBILE_DEFAULT_TEMPLATE_PER_DECK.md](./features/MOBILE_DEFAULT_TEMPLATE_PER_DECK.md) | Default template per deck (mobile). |
 | [features/MOBILE_MEDIA_SYNC.md](./features/MOBILE_MEDIA_SYNC.md) | Audio/image media: Storage + Firestore + card `media_ids` contract for mobile → web. |
@@ -28,7 +29,7 @@ Index of project documentation. Use this to find specs, setup guides, and featur
 
 | Doc | Description |
 |-----|--------------|
-| [subscription/PRICING.md](./subscription/PRICING.md) | Subscription pricing: Free, Basic ($5.99/mo), Pro ($11.99/mo) and feature limits. |
+| [subscription/PRICING.md](./subscription/PRICING.md) | Subscription pricing: Free, Basic ($5.99/mo), Pro ($11.99/mo) and feature limits. Cross-links [**AI_IMAGE_FAL_FEASIBILITY**](./features/AI_IMAGE_FAL_FEASIBILITY.md) for fal.ai image credits. |
 | [subscription/CONFIGURE_REVENUECAT.md](./subscription/CONFIGURE_REVENUECAT.md) | Step-by-step RevenueCat setup for the Deckbase project. |
 | [subscription/REVENUECAT_SUBSCRIPTIONS.md](./subscription/REVENUECAT_SUBSCRIPTIONS.md) | How RevenueCat subscriptions work on web (usage, gating). |
 

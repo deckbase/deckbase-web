@@ -71,6 +71,12 @@ const Footer = () => {
             <h2 className="text-silver pb-2">RESOURCES</h2>
             <div className="flex flex-col items-center gap-2 text-[#fff] lg:items-start">
               <Link
+                href="/ai-flashcards"
+                className="cursor-pointer transition-all hover:text-silver"
+              >
+                AI flashcards
+              </Link>
+              <Link
                 href="/resources/mcp"
                 className="cursor-pointer transition-all hover:text-silver"
               >
