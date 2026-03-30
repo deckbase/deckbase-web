@@ -10,6 +10,7 @@ import GooglePlayDownloadButton from "@/components/GooglePlayDownloadButton";
 import HowItWorks from "@/components/HowItWorks";
 import AppFeatures from "@/components/AppFeatures";
 import UserTestimonials from "@/components/UserTestimonials";
+import ProductHuntReviews from "@/components/ProductHuntReviews";
 import Start from "@/components/Start";
 import Faqs from "@/components/Faqs";
 import faqs from "@/components/data/faqs";
@@ -263,6 +264,7 @@ export default function Home() {
       <HowItWorks />
       <AppFeatures />
       <UserTestimonials />
+      <ProductHuntReviews />
       <Start />
       <Faqs />
     </>

@@ -1,0 +1,100 @@
+[
+  {
+    "id": "subject-history",
+    "label": "History — periods & events",
+    "description": "Time period, figures, or turning points (content, not art style).",
+    "prompt": "Historical subject: clear period-appropriate setting, one focal event or figure, museum-quality clarity, no readable text or labels in the image",
+    "tags": ["history", "social-studies", "timeline"]
+  },
+  {
+    "id": "subject-chemistry",
+    "label": "Chemistry — molecules & lab",
+    "description": "Structures, glassware, or reaction concepts.",
+    "prompt": "Chemistry subject: ball-and-stick or space-filling molecules, lab glassware, or reaction diagram suggestion, clean scientific illustration, no readable formulas or text",
+    "tags": ["chemistry", "stem", "science"]
+  },
+  {
+    "id": "subject-math",
+    "label": "Mathematics — shapes & structure",
+    "description": "Geometry, graphs, or spatial ideas as visuals.",
+    "prompt": "Mathematics subject: geometric shapes, coordinate grid or graph suggestion, spatial relationships, crisp instructional look, no readable equations or numbers",
+    "tags": ["math", "mathematics", "stem"]
+  },
+  {
+    "id": "subject-biology",
+    "label": "Biology — life science",
+    "description": "Cells, organisms, systems, or ecology.",
+    "prompt": "Biology subject: cross-section or diagram-style life science, cellular or organism focus, clear educational focal point, no readable labels",
+    "tags": ["biology", "stem", "science"]
+  },
+  {
+    "id": "subject-physics",
+    "label": "Physics — forces & energy",
+    "description": "Motion, waves, circuits, or forces.",
+    "prompt": "Physics subject: forces, motion vectors, waves, or simple apparatus suggested schematically, high-contrast educational poster feel, no readable text",
+    "tags": ["physics", "stem", "diagram"]
+  },
+  {
+    "id": "subject-geography",
+    "label": "Geography — places & terrain",
+    "description": "Landforms, climate, regions, or human–environment ideas.",
+    "prompt": "Geography subject: landscape emphasizing terrain, climate, or settlement pattern, map-like clarity without readable labels, natural colors",
+    "tags": ["geography", "places", "earth"]
+  },
+  {
+    "id": "subject-spanish",
+    "label": "Spanish — scenes & culture",
+    "description": "Contexts for Spanish vocabulary and conversation.",
+    "prompt": "Spanish learning: everyday scene or cultural context suitable for Spanish study, clear focal action, Latin America or Spain-neutral setting, no text in the image",
+    "tags": ["spanish", "language-learning", "esl"]
+  },
+  {
+    "id": "subject-english",
+    "label": "English — literacy & scenes",
+    "description": "Reading, writing, or everyday English contexts.",
+    "prompt": "English learning: classroom, reading, conversation, or everyday life scene supporting English study, one clear idea, no text in the image",
+    "tags": ["english", "language-learning", "literacy"]
+  },
+  {
+    "id": "subject-phrases",
+    "label": "Phrases — situational chunks",
+    "description": "Common expressions in a concrete situation.",
+    "prompt": "Phrase learning: one clear everyday situation that matches a spoken phrase or dialog cue, natural body language, no speech bubbles or text",
+    "tags": ["phrases", "conversation", "language-learning"]
+  },
+  {
+    "id": "subject-idioms",
+    "label": "Idioms — literal vs figurative hook",
+    "description": "Visual pun or contrast to remember figurative language.",
+    "prompt": "Idiom card: playful contrast between literal and figurative meaning, single memorable visual joke, friendly tone, no text in the image",
+    "tags": ["idioms", "figurative", "language-learning"]
+  },
+  {
+    "id": "subject-vocabulary",
+    "label": "Vocabulary — term to image",
+    "description": "One word or definition → one clear picture.",
+    "prompt": "Vocabulary: one unambiguous object, action, or concept on a simple background, educational clarity, no text in the image",
+    "tags": ["vocabulary", "words", "definitions"]
+  },
+  {
+    "id": "subject-stem-diagram",
+    "label": "STEM — relationships & flow",
+    "description": "Processes, systems, or comparisons across STEM.",
+    "prompt": "STEM concept: clean diagram suggesting steps, inputs and outputs, or simple comparison, soft colors, arrows or connectors implied, no readable text",
+    "tags": ["stem", "diagram", "process"]
+  },
+  {
+    "id": "subject-timeline",
+    "label": "Sequence — order of events",
+    "description": "History, procedures, or story order.",
+    "prompt": "Sequence or timeline: left-to-right or vertical stages with simple icons or scenes, infographic clarity, no dates or readable text",
+    "tags": ["sequence", "timeline", "order"]
+  },
+  {
+    "id": "subject-compare",
+    "label": "Compare — A vs B",
+    "description": "Side-by-side contrast for study.",
+    "prompt": "Comparison: two subjects side by side with obvious visual contrast, balanced layout, simple background, no labels",
+    "tags": ["compare", "contrast", "exam"]
+  }
+]

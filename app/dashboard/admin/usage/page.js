@@ -147,6 +147,20 @@ export default function AdminUsagePage() {
 
           <div className="rounded-xl bg-white/5 border border-white/10 p-4">
             <div className="flex justify-between text-sm">
+              <span className="text-white/70">AI image credits</span>
+              <span className="text-white tabular-nums">
+                {(data.imageCreditsUsed ?? 0).toLocaleString()} /{" "}
+                {(data.imageCreditLimit ?? 0).toLocaleString()}
+              </span>
+            </div>
+            <UsageBar used={data.imageCreditsUsed ?? 0} limit={data.imageCreditLimit ?? 0} />
+            <p className="text-white/40 text-xs mt-2">
+              Weighted by model (fal.ai). Resets monthly with other usage.
+            </p>
+          </div>
+
+          <div className="rounded-xl bg-white/5 border border-white/10 p-4">
+            <div className="flex justify-between text-sm">
               <span className="text-white/70">MCP requests</span>
               <span className="text-white tabular-nums">{(data.mcpUsed ?? 0).toLocaleString()}</span>
             </div>

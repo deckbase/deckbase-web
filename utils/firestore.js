@@ -664,10 +664,10 @@ export const deleteTemplate = async (uid, templateId) => {
  * Upload image to Storage and create media doc.
  * @param {string} uid - User id
  * @param {File|Blob} file - Image file (e.g. from crop)
- * @param {{ onProgress?: (percent: number) => void }} options - Optional onProgress(0-100) for upload progress
+ * @param {{ onProgress?: (percent: number) => void, tags?: string[] }} options - Optional onProgress; optional tags for search/filter
  */
 export const uploadImage = async (uid, file, options = {}) => {
-  const { onProgress } = options;
+  const { onProgress, tags } = options;
   const mediaId = uuidv4();
   const name = file.name || "image.png";
   const extension =
@@ -709,10 +709,30 @@ export const uploadImage = async (uid, file, options = {}) => {
     created_at: now,
     updated_at: now,
     is_deleted: false,
+    ...(Array.isArray(tags) && tags.length > 0
+      ? { tags: tags.filter((t) => typeof t === "string" && t.trim()) }
+      : {}),
   };
 
   await setDoc(doc(getMediaCollection(uid), mediaId), media);
   return transformMediaFromFirestore(media);
+};
+
+/**
+ * Replace searchable tags on a media doc (e.g. after upload).
+ * @param {string} uid
+ * @param {string} mediaId
+ * @param {string[]} tags - normalized slugs (see lib/unified-prompt-library normalizeMediaTag)
+ */
+export const updateMediaTags = async (uid, mediaId, tags) => {
+  const ref = doc(getMediaCollection(uid), mediaId);
+  const clean = Array.isArray(tags)
+    ? [...new Set(tags.map((t) => (typeof t === "string" ? t.trim() : "")).filter(Boolean))]
+    : [];
+  await updateDoc(ref, {
+    tags: clean,
+    updated_at: Timestamp.now(),
+  });
 };
 
 export const uploadAudio = async (uid, file) => {
@@ -873,28 +893,58 @@ export const getMedia = async (uid, mediaId) => {
   return null;
 };
 
+/**
+ * Remove a media file from Storage and remove the Firestore media document.
+ * Resolves `storage_path` from the doc or by probing Storage when the path is unknown.
+ * @param {string} uid
+ * @param {string} mediaId
+ * @param {string | null | undefined} storagePath - Optional known path (skips lookup when set)
+ */
 export const deleteMedia = async (uid, mediaId, storagePath) => {
-  // Delete from Storage when path is known
-  if (storagePath) {
-    try {
-      const storageRef = ref(storage, storagePath);
-      await deleteObject(storageRef);
-    } catch (error) {
-      console.error("Error deleting file from storage:", error);
+  let resolvedPath =
+    typeof storagePath === "string" && storagePath.trim()
+      ? storagePath.trim()
+      : null;
+
+  if (!resolvedPath) {
+    const mediaSnap = await getDoc(doc(getMediaCollection(uid), mediaId));
+    if (mediaSnap.exists()) {
+      const data = mediaSnap.data() || {};
+      resolvedPath =
+        data.storage_path || data.storagePath || data.path || null;
     }
   }
 
-  // Soft delete from Firestore
+  if (!resolvedPath) {
+    const fallback = await resolveDownloadUrlByMediaId(uid, mediaId);
+    resolvedPath = fallback.resolvedStoragePath || null;
+  }
+
+  const pathsToTry = new Set();
+  if (resolvedPath) pathsToTry.add(resolvedPath);
+  for (const ext of MEDIA_EXTENSION_CANDIDATES) {
+    pathsToTry.add(`users/${uid}/media/${mediaId}.${ext}`);
+  }
+
+  for (const p of pathsToTry) {
+    try {
+      await deleteObject(ref(storage, p));
+    } catch (error) {
+      if (error?.code !== "storage/object-not-found") {
+        console.error("Error deleting file from storage:", p, error);
+      }
+    }
+  }
+
   const mediaRef = doc(getMediaCollection(uid), mediaId);
-  await setDoc(
-    mediaRef,
-    {
-      is_deleted: true,
-      deleted_at: Timestamp.now(),
-      updated_at: Timestamp.now(),
-    },
-    { merge: true },
-  );
+  try {
+    await deleteDoc(mediaRef);
+  } catch (error) {
+    console.warn("deleteMedia: Firestore deleteDoc failed (doc may not exist)", {
+      mediaId,
+      error: error?.message || error,
+    });
+  }
 };
 
 // ============== CARD COUNT ==============
@@ -1359,6 +1409,7 @@ const transformMediaFromFirestore = (data) => {
     updatedAt,
     deletedAt,
     isDeleted: data.is_deleted || false,
+    tags: Array.isArray(data.tags) ? data.tags : undefined,
   };
 };
 

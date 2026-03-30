@@ -46,6 +46,9 @@ const pageAnchors = {
   ],
   "/ai-flashcards": [
     { id: "why", label: "Why Deckbase" },
+    { id: "pdf-notes", label: "PDF & notes" },
+    { id: "app-web", label: "AI flashcard app" },
+    { id: "anki-bridge", label: "Anki & Quizlet" },
     { id: "mcp", label: "MCP + flashcards" },
     { id: "cta", label: "Try Deckbase" },
     { id: "faq", label: "FAQ" },

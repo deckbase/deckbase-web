@@ -55,8 +55,10 @@ import {
   getCropStateFromConfig,
   CROP_ASPECT_OPTIONS,
   DEFAULT_CROP_ASPECT,
+  parseImageBlockConfig,
 } from "@/lib/image-block-config";
 import ImageCropModal from "@/components/ImageCropModal";
+import AiImageGenerateWizard from "@/components/AiImageGenerateWizard";
 
 const safeJsonParse = (value) => {
   if (!value || typeof value !== "string") return null;
@@ -66,6 +68,15 @@ const safeJsonParse = (value) => {
     return null;
   }
 };
+
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result || ""));
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(file);
+  });
+}
 
 // Get block config object; template/card may store configJson or config_json (Firestore), as string or object
 const getBlockConfig = (block) => {
@@ -185,7 +196,13 @@ function CardEditorPageInner() {
   const [mainBlockId, setMainBlockId] = useState(null);
   const [subBlockId, setSubBlockId] = useState(null);
   const [generatingAudioBlockId, setGeneratingAudioBlockId] = useState(null);
+  const [generatingImageBlockId, setGeneratingImageBlockId] = useState(null);
+  const [imageUsageCredits, setImageUsageCredits] = useState(null);
+  /** undefined = N/A (not subscribed); null = loading; object = library payload */
+  const [stylePromptLibrary, setStylePromptLibrary] = useState(undefined);
   const [saveSnackbarOpen, setSaveSnackbarOpen] = useState(false);
+  const [autoSavedFlash, setAutoSavedFlash] = useState(false);
+  const autoSavedFlashTimerRef = useRef(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [imageCropPending, setImageCropPending] = useState(null);
   const [imageUploadProgress, setImageUploadProgress] = useState(null);
@@ -194,6 +211,8 @@ function CardEditorPageInner() {
   const valuesRef = useRef(values);
   const blocksRef = useRef(blocks);
   const saveDebounceRef = useRef(null);
+  const persistCardRef = useRef(async () => {});
+  const scheduleAutoSaveRef = useRef(() => {});
   useEffect(() => {
     valuesRef.current = values;
     blocksRef.current = blocks;
@@ -242,37 +261,73 @@ function CardEditorPageInner() {
     };
   }, [showDeleteModal]);
 
-  const DEBOUNCE_MS = 800;
-  const scheduleTextAutoSave = useCallback(() => {
-    if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
-    saveDebounceRef.current = setTimeout(async () => {
-      saveDebounceRef.current = null;
-      const v = valuesRef.current;
-      const b = blocksRef.current;
-      const imageBlocksInRef = (b || []).filter((x) => isImageBlock(x));
-      if (imageBlocksInRef.length) {
-        console.log(
-          "[RATIO] debounce saving — blocksRef image blocks",
-          imageBlocksInRef.map((x) => ({
-            blockId: x.blockId,
-            configJson: x.configJson,
-          })),
-        );
-      }
-      setSaving(true);
+  useEffect(() => {
+    if (!user) {
+      setImageUsageCredits(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
       try {
-        await persistCard(b, v, { redirect: false });
-      } catch (err) {
-        console.error("Auto-save after text edit:", err);
-      } finally {
-        setSaving(false);
+        const token = await user.getIdToken();
+        const headers = {};
+        if (token) headers.Authorization = `Bearer ${token}`;
+        const res = await fetch("/api/user/usage", { headers });
+        if (!res.ok || cancelled) return;
+        const j = await res.json();
+        if (!cancelled) {
+          setImageUsageCredits({
+            used: j.imageCreditsUsed ?? 0,
+            limit: j.imageCreditLimit ?? 0,
+          });
+        }
+      } catch {
+        if (!cancelled) setImageUsageCredits(null);
       }
-    }, DEBOUNCE_MS);
-  }, []);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.uid]);
+
+  useEffect(() => {
+    if (!user || !audioProEntitled) {
+      setStylePromptLibrary(undefined);
+      return;
+    }
+    let cancelled = false;
+    setStylePromptLibrary(null);
+    (async () => {
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch("/api/ai/image-style-prompts", {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (!res.ok || cancelled) {
+          if (!cancelled) setStylePromptLibrary({ entries: [], tags: [] });
+          return;
+        }
+        const j = await res.json();
+        if (!cancelled) {
+          setStylePromptLibrary({
+            entries: Array.isArray(j.entries) ? j.entries : [],
+            tags: Array.isArray(j.tags) ? j.tags : [],
+          });
+        }
+      } catch {
+        if (!cancelled) setStylePromptLibrary({ entries: [], tags: [] });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.uid, audioProEntitled]);
 
   useEffect(() => {
     return () => {
       if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
+      if (autoSavedFlashTimerRef.current)
+        clearTimeout(autoSavedFlashTimerRef.current);
     };
   }, []);
 
@@ -427,7 +482,7 @@ function CardEditorPageInner() {
         text,
       },
     }));
-    scheduleTextAutoSave();
+    scheduleAutoSaveRef.current();
   };
 
   // Update a block's configJson (quiz, space, image crop aspect, etc.); debounced auto-save scheduled
@@ -457,7 +512,7 @@ function CardEditorPageInner() {
       }
       return next;
     });
-    scheduleTextAutoSave();
+    scheduleAutoSaveRef.current();
   };
 
   // Add a new block (optionally on back face — matches template editor)
@@ -517,6 +572,7 @@ function CardEditorPageInner() {
       },
     }));
     setBlockPickerSide(null);
+    scheduleAutoSaveRef.current();
   };
 
   const addBackOfCard = () => {
@@ -547,6 +603,7 @@ function CardEditorPageInner() {
       });
     }
     setShowBackSectionIntent(false);
+    scheduleAutoSaveRef.current();
   };
 
   // Remove a block
@@ -560,6 +617,7 @@ function CardEditorPageInner() {
       delete newValues[blockId];
       return newValues;
     });
+    scheduleAutoSaveRef.current();
   };
 
   // Reorder block by drag-and-drop (fromIndex → toIndex)
@@ -571,6 +629,7 @@ function CardEditorPageInner() {
       newBlocks.splice(toIndex, 0, removed);
       return newBlocks;
     });
+    scheduleAutoSaveRef.current();
   };
 
   const [draggedBlockIndex, setDraggedBlockIndex] = useState(null);
@@ -1076,6 +1135,7 @@ function CardEditorPageInner() {
         },
       };
     });
+    scheduleAutoSaveRef.current();
   };
 
   // Handle audio upload
@@ -1108,10 +1168,24 @@ function CardEditorPageInner() {
         console.error("Error uploading audio:", error);
       }
     }
+    scheduleAutoSaveRef.current();
   };
 
-  // Remove audio from block
-  const removeAudio = (blockId, mediaId) => {
+  // Remove audio from block (delete Storage object + Firestore media doc)
+  const removeAudio = async (blockId, mediaId) => {
+    try {
+      const media = mediaCache[mediaId];
+      const storagePath =
+        media?.storagePath ?? (await getMedia(user.uid, mediaId))?.storagePath;
+      await deleteMedia(user.uid, mediaId, storagePath ?? null);
+    } catch (error) {
+      console.error("Error deleting audio from storage/Firestore:", error);
+    }
+    setMediaCache((prev) => {
+      const next = { ...prev };
+      delete next[mediaId];
+      return next;
+    });
     setValues((prev) => {
       const currentValue = prev[blockId];
       if (!currentValue?.mediaIds) return prev;
@@ -1124,6 +1198,7 @@ function CardEditorPageInner() {
         },
       };
     });
+    scheduleAutoSaveRef.current();
   };
 
   // Persist card (optionally redirect after save). Ensure image blocks have configJson so crop aspect is saved.
@@ -1171,6 +1246,42 @@ function CardEditorPageInner() {
       if (redirect) router.push(`/dashboard/deck/${deckId}`);
     }
   };
+
+  persistCardRef.current = persistCard;
+
+  const DEBOUNCE_MS = 800;
+  const scheduleAutoSave = useCallback(() => {
+    if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
+    saveDebounceRef.current = setTimeout(async () => {
+      saveDebounceRef.current = null;
+      const v = valuesRef.current;
+      const b = blocksRef.current;
+      const imageBlocksInRef = (b || []).filter((x) => isImageBlock(x));
+      if (imageBlocksInRef.length) {
+        console.log(
+          "[RATIO] debounce saving — blocksRef image blocks",
+          imageBlocksInRef.map((x) => ({
+            blockId: x.blockId,
+            configJson: x.configJson,
+          })),
+        );
+      }
+      try {
+        await persistCardRef.current(b, v, { redirect: false });
+        if (autoSavedFlashTimerRef.current)
+          clearTimeout(autoSavedFlashTimerRef.current);
+        setAutoSavedFlash(true);
+        autoSavedFlashTimerRef.current = setTimeout(() => {
+          setAutoSavedFlash(false);
+          autoSavedFlashTimerRef.current = null;
+        }, 2200);
+      } catch (err) {
+        console.error("Auto-save:", err);
+      }
+    }, DEBOUNCE_MS);
+  }, []);
+
+  scheduleAutoSaveRef.current = scheduleAutoSave;
 
   // Generate audio with ElevenLabs AI and add to block
   const handleGenerateAudio = async (blockId, text, voiceId) => {
@@ -1228,6 +1339,147 @@ function CardEditorPageInner() {
       alert(error.message || "Failed to generate audio");
     } finally {
       setGeneratingAudioBlockId(null);
+    }
+  };
+
+  const handleGenerateImage = async (blockId, payload) => {
+    const finalPrompt =
+      typeof payload === "string"
+        ? payload
+        : typeof payload?.finalPrompt === "string"
+          ? payload.finalPrompt
+          : "";
+    const modelId =
+      typeof payload === "object" && payload != null && typeof payload.modelId === "string"
+        ? payload.modelId
+        : "fal-ai/flux/schnell";
+    const userTags =
+      typeof payload === "object" && payload != null && Array.isArray(payload.tags)
+        ? payload.tags
+        : [];
+    const referenceMediaId =
+      typeof payload === "object" &&
+      payload != null &&
+      typeof payload.referenceMediaId === "string"
+        ? payload.referenceMediaId.trim()
+        : "";
+    const referenceFile =
+      typeof payload === "object" &&
+      payload != null &&
+      payload.referenceFile instanceof File
+        ? payload.referenceFile
+        : null;
+    if (!finalPrompt?.trim() || !user) return;
+    const resolvedModel =
+      typeof modelId === "string" && modelId.trim()
+        ? modelId.trim()
+        : "fal-ai/flux/schnell";
+    setGeneratingImageBlockId(blockId);
+    try {
+      let reference_image_url;
+      let reference_image_data_url;
+      if (referenceMediaId && mediaCache[referenceMediaId]?.downloadUrl) {
+        reference_image_url = mediaCache[referenceMediaId].downloadUrl;
+      } else if (referenceFile) {
+        reference_image_data_url = await fileToDataUrl(referenceFile);
+      }
+
+      const headers = { "Content-Type": "application/json" };
+      if (isProduction && user) {
+        const token = await user.getIdToken();
+        if (token) headers.Authorization = `Bearer ${token}`;
+      }
+      const res = await fetch("/api/ai/generate-image", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          prompt: finalPrompt.trim(),
+          model_id: resolvedModel,
+          ...(reference_image_url && { reference_image_url }),
+          ...(reference_image_data_url && { reference_image_data_url }),
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || res.statusText || "Generation failed");
+      }
+      const data = await res.json();
+      const imageUrl = data?.imageUrl;
+      if (!imageUrl || typeof imageUrl !== "string") {
+        throw new Error("Invalid response from image API");
+      }
+
+      const imgRes = await fetch(imageUrl);
+      if (!imgRes.ok) {
+        throw new Error("Failed to download generated image");
+      }
+      const blob = await imgRes.blob();
+      const ext = blob.type.includes("png") ? "png" : "jpg";
+      const mime = blob.type || (ext === "png" ? "image/png" : "image/jpeg");
+      const file = new File([blob], `generated.${ext}`, { type: mime });
+
+      const storageCheck = await checkStorageBeforeUpload(user, file.size);
+      if (!storageCheck.allowed) {
+        throw new Error(storageCheck.message || "Cloud backup limit reached.");
+      }
+
+      setImageUploadProgress({ blockId, progress: 0 });
+      let media;
+      try {
+        media = await uploadImage(user.uid, file, {
+          onProgress: (percent) =>
+            setImageUploadProgress((p) =>
+              p?.blockId === blockId ? { ...p, progress: percent } : p,
+            ),
+          tags: userTags.length > 0 ? userTags : undefined,
+        });
+      } finally {
+        setImageUploadProgress((p) => (p?.blockId === blockId ? null : p));
+      }
+
+      setMediaCache((prev) => ({ ...prev, [media.mediaId]: media }));
+      const newValues = (prev) => {
+        const currentValue = prev[blockId] || { blockId, type: "image" };
+        const currentMediaIds = currentValue.mediaIds || [];
+        return {
+          ...prev,
+          [blockId]: {
+            ...currentValue,
+            mediaIds: [...currentMediaIds, media.mediaId],
+          },
+        };
+      };
+      setValues(newValues);
+      const valuesToSave = newValues(values);
+      setSaving(true);
+      try {
+        await persistCard(blocks, valuesToSave, { redirect: false });
+      } catch (saveErr) {
+        console.error("Auto-save after generate image:", saveErr);
+      } finally {
+        setSaving(false);
+      }
+
+      try {
+        const token = await user.getIdToken();
+        const usageRes = await fetch("/api/user/usage", {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (usageRes.ok) {
+          const j = await usageRes.json();
+          setImageUsageCredits({
+            used: j.imageCreditsUsed ?? 0,
+            limit: j.imageCreditLimit ?? 0,
+          });
+        }
+      } catch {
+        /* ignore usage refresh */
+      }
+    } catch (error) {
+      console.error("Generate image error:", error);
+      alert(error.message || "Failed to generate image");
+    } finally {
+      setGeneratingImageBlockId(null);
     }
   };
 
@@ -1331,12 +1583,22 @@ function CardEditorPageInner() {
       blockTypeNum !== null
         ? BlockTypeNames[blockTypeNum] === "audio"
         : block.type === "audio";
+    const isImage =
+      blockTypeNum !== null
+        ? BlockTypeNames[blockTypeNum] === "image"
+        : block.type === "image";
     const audioConfig = isAudio
       ? parseAudioBlockConfig(block.configJson, { mainBlockId })
       : {};
+    const imageConfig = isImage
+      ? parseImageBlockConfig(block.configJson, { mainBlockId })
+      : {};
     const defaultVoiceId = audioConfig.defaultVoiceId || undefined;
-    const defaultSourceBlockId =
-      audioConfig.defaultSourceBlockId || undefined;
+    const defaultSourceBlockId = isAudio
+      ? audioConfig.defaultSourceBlockId || undefined
+      : isImage
+        ? imageConfig.defaultSourceBlockId || undefined
+        : undefined;
     const isDragging = draggedBlockIndex === globalIndex;
     const showDropDivider = dragOverBlockIndex === globalIndex;
 
@@ -1431,6 +1693,15 @@ function CardEditorPageInner() {
                 : undefined
             }
             generateAudioProRequired={isProduction && !audioProEntitled}
+            onGenerateImage={
+              audioProEntitled ? (p) => handleGenerateImage(block.blockId, p) : undefined
+            }
+            deckMainBlockId={mainBlockId}
+            stylePromptLibrary={audioProEntitled ? stylePromptLibrary : undefined}
+            generateImageProRequired={isProduction && !audioProEntitled}
+            generatingImage={generatingImageBlockId === block.blockId}
+            imageCreditsUsed={imageUsageCredits?.used}
+            imageCreditsLimit={imageUsageCredits?.limit}
             defaultVoiceId={defaultVoiceId}
             defaultSourceBlockId={defaultSourceBlockId}
             generatingAudio={generatingAudioBlockId === block.blockId}
@@ -1453,9 +1724,16 @@ function CardEditorPageInner() {
             <ArrowLeft className="w-4 h-4" />
           </Link>
           <div>
-            <h1 className="text-[16px] font-semibold text-white tracking-tight">
-              {isNewCard ? "New Card" : "Edit Card"}
-            </h1>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-[16px] font-semibold text-white tracking-tight">
+                {isNewCard ? "New Card" : "Edit Card"}
+              </h1>
+              {autoSavedFlash && (
+                <span className="text-[11px] font-medium text-emerald-400/90 tabular-nums">
+                  Auto-saved
+                </span>
+              )}
+            </div>
             <p className="text-[12px] text-white/35 mt-0.5">{deck?.title}</p>
           </div>
         </div>
@@ -1790,10 +2068,17 @@ function BlockEditor({
   onAudioRemove,
   onGenerateAudio,
   generateAudioProRequired,
+  onGenerateImage,
+  generateImageProRequired,
+  generatingImage,
+  imageCreditsUsed,
+  imageCreditsLimit,
+  stylePromptLibrary,
   generatingAudio,
   onConfigChange,
   defaultVoiceId,
   defaultSourceBlockId,
+  deckMainBlockId,
 }) {
   // Normalize so numeric (e.g. 7) or string "7" from templates matches "audio", etc.
   const blockType =
@@ -1804,6 +2089,18 @@ function BlockEditor({
         : block.type;
   const config = BLOCK_TYPES[blockType] || {};
   const Icon = config.icon || Type;
+
+  const referenceImageOptions = useMemo(() => {
+    if (blockType !== "image") return [];
+    const ids = value?.mediaIds ?? [];
+    return ids
+      .map((id) => {
+        const m = mediaCache[id];
+        return m?.downloadUrl ? { id, url: m.downloadUrl } : null;
+      })
+      .filter(Boolean);
+  }, [blockType, value?.mediaIds, mediaCache]);
+
   const [generateAudioText, setGenerateAudioText] = useState(() => {
     if (!defaultSourceBlockId || !allValues) return "";
     const t = allValues[defaultSourceBlockId]?.text;
@@ -2041,6 +2338,20 @@ function BlockEditor({
               <span className="text-[12px] text-white/30 group-hover:text-white/50 transition-colors">Click to upload images</span>
               <input type="file" accept="image/*" multiple onChange={(e) => { const files = e.target.files; if (files?.length) onImageFileSelect(files); e.target.value = ""; }} className="hidden" />
             </label>
+
+            <AiImageGenerateWizard
+              allBlocks={allBlocks}
+              allValues={allValues}
+              defaultSourceBlockId={defaultSourceBlockId}
+              mainBlockId={deckMainBlockId}
+              stylePromptLibrary={stylePromptLibrary}
+              referenceImageOptions={referenceImageOptions}
+              imageCreditsUsed={imageCreditsUsed}
+              imageCreditsLimit={imageCreditsLimit}
+              generatingImage={generatingImage}
+              generateImageProRequired={generateImageProRequired}
+              onGenerate={onGenerateImage}
+            />
           </div>
         );
       }

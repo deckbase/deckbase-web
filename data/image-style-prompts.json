@@ -1,0 +1,93 @@
+[
+  {
+    "id": "style-ghibli-soft",
+    "label": "Pastoral anime — hand-painted film",
+    "description": "Hand-drawn feature animation: lush painted backgrounds, wonder, nostalgia (put the scene—train, window, countryside—in your main prompt).",
+    "snippet": "beautiful hand-drawn Japanese feature animation aesthetic, lush painterly backgrounds mixing watercolor and gouache, soft detailed environments, expressive character animation, warm natural light, open skies and rolling countryside mood, gentle sense of wonder and nostalgia, cinematic wide composition, aspect ratio 16:9, no readable text, no copyrighted characters",
+    "tags": ["pastoral", "anime", "hand-painted", "painterly", "countryside", "film", "nostalgia"]
+  },
+  {
+    "id": "style-anime",
+    "label": "Anime — clean cel look",
+    "description": "Classic anime illustration: line art and cel shading.",
+    "snippet": "anime illustration, clean ink lines, cel shading, vibrant balanced colors, expressive lighting, single clear focal subject, high detail",
+    "tags": ["anime", "cel-shading", "line-art"]
+  },
+  {
+    "id": "style-anime-80s-lofi",
+    "label": "Anime — 80s lo-fi",
+    "description": "Vintage 1980s cel anime look with a soft lo-fi mood (describe subject or scene in the main prompt).",
+    "snippet": "1980s anime-inspired illustration, 2D cel-shaded, detailed illustration, classic 1980s Japanese TV and OVA anime aesthetic, vintage retro palette, lo-fi mood: soft grain, gentle color drift, nostalgic warmth, hand-painted cel shading, bold but slightly soft outlines, scenic or character focus, no copyrighted characters or identifiable series art direction",
+    "tags": ["lofi", "lo-fi", "anime", "80s", "retro", "cel", "vintage"]
+  },
+  {
+    "id": "style-anime-90s-jp-dvd",
+    "label": "Anime — 90s Japanese (DVD still)",
+    "description": "Late-90s Japanese cel anime look, like a frame from a DVD or TV broadcast.",
+    "snippet": "themed illustration as a DVD still from Japanese anime circa 1999, authentic late-90s cel animation, bold ink outlines, flat cel shading, slight film grain and scanline hint, analog color cast and mild bloom, nostalgic OVA or TV broadcast aesthetic, 4:3 framing feel, unpolished raw capture look, no modern glossy digital gradients, no copyrighted characters",
+    "tags": ["anime", "japanese", "retro", "90s", "dvd", "cel"]
+  },
+  {
+    "id": "style-anime-90s-vhs-retro",
+    "label": "Anime — 90s VHS retro portrait",
+    "description": "Sharp cel shading, flat color, heavy VHS artifacts; dark fantasy portrait mood (put your subject in the main prompt).",
+    "snippet": "still image of 90s Japanese anime, sharp cel shading, flat limited color, bold outlines, portrait framing, VHS tape aesthetic: chroma noise, tracking lines, horizontal jitter, color bleed, scanlines, soft RF noise, slight vignette, moody dramatic lighting, dark gritty late-90s seinen fantasy OVA atmosphere, no copyrighted characters, aspect ratio 3:4",
+    "tags": ["anime", "90s", "vhs", "retro", "cel", "portrait"]
+  },
+  {
+    "id": "style-creepy",
+    "label": "Creepy — noir cartoon",
+    "description": "Dark cinematic cartoon: noir comics, adult animation, night mood, VHS texture.",
+    "snippet": "drawn in a dark, cinematic cartoon style, with heavy shadows, dramatic lighting, night-time setting, detailed linework, and an eerie, surreal atmosphere. Inspired by adult animated shows and noir comics. Subtle neon glow, slightly distorted facial expressions, thick outlines, VHS effect, muted colors, and vintage textures. Stylized background with twilight skies, mysterious environments, and emotional tension. 4K, highly detailed, digital painting. Aspect ratio 9:16",
+    "tags": ["creepy", "dark", "noir", "cartoon", "vhs"]
+  },
+  {
+    "id": "style-scary",
+    "label": "Scary — horror mood",
+    "description": "Strong horror atmosphere and dramatic contrast.",
+    "snippet": "horror atmosphere, dramatic chiaroscuro, deep shadows, cold highlights, tense composition, cinematic dread, no explicit gore",
+    "tags": ["scary", "horror", "dark"]
+  },
+  {
+    "id": "style-abstract",
+    "label": "Abstract — shapes & color",
+    "description": "Non-literal composition for concepts and memory hooks.",
+    "snippet": "abstract composition, bold geometric shapes, harmonious color blocks, modern art poster style, no text, no literal objects unless minimal",
+    "tags": ["abstract", "geometric", "minimal"]
+  },
+  {
+    "id": "style-watercolor",
+    "label": "Watercolor — soft wash",
+    "description": "Loose painted wash and paper texture.",
+    "snippet": "watercolor painting, soft washes, visible paper texture, gentle bleeding edges, light palette, artistic but readable focal area",
+    "tags": ["watercolor", "painted", "soft"]
+  },
+  {
+    "id": "style-photorealistic",
+    "label": "Photorealistic — photo-like",
+    "description": "Convincing real-world lighting and detail.",
+    "snippet": "photorealistic rendering, natural lighting, shallow depth of field, neutral color grading, sharp focus on subject, high detail",
+    "tags": ["photorealistic", "photo", "realistic"]
+  },
+  {
+    "id": "style-minimal-flat",
+    "label": "Minimal flat — vector",
+    "description": "Simple flat shapes and limited palette (look only, not subject matter).",
+    "snippet": "flat vector illustration, simple geometric forms, limited color palette, crisp edges, plenty of negative space, modern UI-adjacent aesthetic",
+    "tags": ["flat", "vector", "minimal"]
+  },
+  {
+    "id": "style-comic-ink",
+    "label": "Comic — ink & halftone",
+    "description": "Bold comic book line weight and optional halftone.",
+    "snippet": "comic book illustration, bold ink outlines, halftone or flat fills, dynamic composition, high contrast, graphic novel style",
+    "tags": ["comic", "ink", "graphic"]
+  },
+  {
+    "id": "style-noir",
+    "label": "Noir — film shadows",
+    "description": "High-contrast moody lighting (style only).",
+    "snippet": "film noir lighting, strong rim light, deep blacks, smoky or rainy mood, cinematic framing, monochrome or desaturated with one accent color",
+    "tags": ["noir", "cinematic", "dark"]
+  }
+]

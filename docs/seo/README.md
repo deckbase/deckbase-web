@@ -3,7 +3,7 @@
 Docs in this folder cover **website SEO** for deckbase.co: action plans, audits, competitor pages, and DataForSEO MCP.
 
 **Full index:** [../README.md](../README.md)  
-**Tracked checklist:** [TODO.md](./TODO.md) · [IndexNow](./INDEXNOW.md) · [Cloudflare AI bots](./CLOUDFLARE-AI-BOTS.md)
+**Tracked checklist:** [TODO.md](./TODO.md) · [IndexNow](./INDEXNOW.md) · [Cloudflare AI bots](./CLOUDFLARE-AI-BOTS.md) · [Ghost blog](./ghost/README.md)
 
 ---
 
@@ -19,6 +19,9 @@ Docs in this folder cover **website SEO** for deckbase.co: action plans, audits,
 | [FULL-AUDIT-REPORT.md](./FULL-AUDIT-REPORT.md) | Audit date 2026-03-11; “Stack” line conflates repos—prefer this README for scope. |
 | [COMPETITOR-PAGES.md](./COMPETITOR-PAGES.md) | `/deckbase-vs-anki` and `/deckbase-vs-quizlet` exist under `app/`; `app/sitemap.js` already lists them. |
 | [DATA_FOR_SEO_MCP_PROMPTS.md](./DATA_FOR_SEO_MCP_PROMPTS.md) | Prompt library for DataForSEO MCP; not repo-specific. |
+| [KEYWORD_RESEARCH_RELATED_KEYWORDS_REPORT.md](./KEYWORD_RESEARCH_RELATED_KEYWORDS_REPORT.md) | DataForSEO **related keywords** (US, en): `ai flashcards`, `anki alternatives` — Mar 2026. |
+| [SEO_KEYWORD_ACTION_PLAN.md](./SEO_KEYWORD_ACTION_PLAN.md) | Keyword priorities and checklist derived from that research. |
+| [ghost/README.md](./ghost/README.md) | Ghost CMS: MCP (`@fanyangmeng/ghost-mcp`), Admin API key format, `npm run ghost:publish-initial`, post-publish SEO checklist. |
 
 ---
 

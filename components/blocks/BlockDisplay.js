@@ -2,8 +2,8 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
-import { Eye, EyeOff, ChevronLeft, ChevronRight, Check } from "lucide-react";
+import { motion } from "framer-motion";
+import { ChevronDown, ChevronLeft, ChevronRight, Check, Eye, EyeOff } from "lucide-react";
 import { normalizeBlockTypeName } from "@/utils/firestore";
 import { getCropAspectFromConfig } from "@/lib/image-block-config";
 
@@ -114,6 +114,9 @@ export default function BlockDisplay({
   forceImageAspectRatio = null,
   /** When true, hidden-text reveal toggle is disabled (e.g. quiz global reveal in study). */
   revealToggleDisabled = false,
+  /** Mobile deck preview: header sizes / line-height (FlashcardView parity). */
+  previewTypography = false,
+  centerAlign = true,
 }) {
   const [imageIndex, setImageIndex] = useState(0);
   const swipeStartRef = useRef(null);
@@ -132,31 +135,54 @@ export default function BlockDisplay({
   }, []);
 
   const type = normalizeBlockTypeName(block?.type);
-  if (!value && type !== "divider" && type !== "space") return null;
+  const headerWithLabel =
+    (type === "header1" || type === "header2" || type === "header3") && block?.label;
+  if (!value && type !== "divider" && type !== "space" && !headerWithLabel) return null;
 
   const content = (() => {
     switch (type) {
       case "header1":
         return (
-          <h1 className="text-center text-[22px] font-bold text-white leading-tight tracking-tight">
-            {value?.text}
+          <h1
+            className={`${centerAlign ? "text-center" : "text-left"} text-white ${
+              previewTypography
+                ? "text-[42px] font-extrabold leading-[1.05] tracking-[-0.025em]"
+                : "text-[22px] font-bold leading-tight tracking-tight"
+            }`}
+          >
+            {value?.text ?? block?.label}
           </h1>
         );
       case "header2":
         return (
-          <h2 className="text-center text-[18px] font-semibold text-white leading-snug">
-            {value?.text}
+          <h2
+            className={`${centerAlign ? "text-center" : "text-left"} text-white ${
+              previewTypography
+                ? "text-[28px] font-bold leading-[1.15] tracking-[-0.015em]"
+                : "text-[18px] font-semibold leading-snug"
+            }`}
+          >
+            {value?.text ?? block?.label}
           </h2>
         );
       case "header3":
         return (
-          <h3 className="text-center text-[15px] font-semibold text-white/85 leading-snug">
-            {value?.text}
+          <h3
+            className={`${centerAlign ? "text-center" : "text-left"} text-white ${
+              previewTypography
+                ? "text-[21px] font-bold leading-[1.2] tracking-[-0.0075em]"
+                : "text-[15px] font-semibold text-white/85 leading-snug"
+            }`}
+          >
+            {value?.text ?? block?.label}
           </h3>
         );
       case "text":
+        if (!value?.text?.trim()) return null;
         return (
-          <p className="text-center text-[14px] text-white/70 whitespace-pre-wrap leading-relaxed">
+          <p
+            className={`${centerAlign ? "text-center" : "text-left"} text-[14px] text-white/70 whitespace-pre-wrap leading-relaxed`}
+          >
             {value?.text}
           </p>
         );
@@ -169,105 +195,122 @@ export default function BlockDisplay({
         );
       case "hiddenText": {
         const isRevealed = revealedBlocks[block.blockId];
+        const textAlign = centerAlign ? "text-center" : "text-left";
         return (
-          <div className="relative w-full text-center">
-            {/* Top hairline — subtle “vault” frame */}
-            <div
-              className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/40 to-transparent"
-              aria-hidden
-            />
+          <div className={`w-full ${textAlign}`}>
             <div
               role="region"
               aria-label="Hidden answer"
-              className={[
-                "relative overflow-hidden rounded-2xl border border-white/[0.09]",
-                "bg-gradient-to-br from-white/[0.07] via-white/[0.02] to-black/50",
-                "shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_12px_40px_rgba(0,0,0,0.45)]",
-              ].join(" ")}
+              className="relative overflow-hidden rounded-2xl border border-white/[0.09] bg-[#0a0c10] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_12px_40px_rgba(0,0,0,0.45)]"
             >
               <div
-                className="pointer-events-none absolute inset-0 rounded-2xl opacity-[0.14] mix-blend-overlay"
+                className="pointer-events-none absolute inset-0 opacity-[0.55]"
                 style={{
                   backgroundImage:
-                    "radial-gradient(rgba(255,255,255,0.14) 1px, transparent 1px)",
-                  backgroundSize: "5px 5px",
+                    "radial-gradient(ellipse 80% 50% at 50% -20%, rgba(35,131,226,0.18), transparent 55%), radial-gradient(ellipse 60% 40% at 100% 100%, rgba(35,131,226,0.06), transparent 50%)",
                 }}
+                aria-hidden
+              />
+              <div
+                className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent"
                 aria-hidden
               />
 
               {onToggleReveal && (
-                <button
-                  type="button"
-                  onClick={() => onToggleReveal(block.blockId)}
-                  disabled={revealToggleDisabled}
-                  className={[
-                    "relative z-[1] w-full text-center px-4 py-3.5 flex flex-col items-center gap-2 transition-colors",
-                    isRevealed
-                      ? "border-b border-white/[0.07] hover:bg-white/[0.04]"
-                      : "hover:bg-white/[0.05] active:bg-white/[0.07]",
-                    revealToggleDisabled ? "cursor-not-allowed opacity-70" : "",
-                  ].join(" ")}
-                  aria-expanded={isRevealed}
-                  aria-controls={`hidden-text-${block.blockId}`}
-                >
-                  <span
+                <div className="relative flex justify-center px-3 pt-3 pb-1">
+                  <motion.button
+                    type="button"
+                    onClick={() => onToggleReveal(block.blockId)}
+                    disabled={revealToggleDisabled}
+                    whileTap={revealToggleDisabled ? undefined : { scale: 0.98 }}
+                    whileHover={revealToggleDisabled ? undefined : { scale: 1.015 }}
+                    transition={{ type: "spring", stiffness: 520, damping: 28 }}
                     className={[
-                      "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
-                      isRevealed
-                        ? "bg-white/[0.06] ring-1 ring-white/10 text-white/45"
-                        : "bg-accent/12 ring-1 ring-accent/35 text-accent",
+                      "group relative flex max-w-[min(100%,18rem)] items-center justify-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-medium tracking-tight shadow-md transition-colors duration-200",
+                      revealToggleDisabled
+                        ? "cursor-not-allowed border-white/[0.06] bg-white/[0.04] text-white/35"
+                        : isRevealed
+                          ? "border-accent/35 bg-accent/12 text-white/95 shadow-[0_0_0_1px_rgba(35,131,226,0.15)]"
+                          : "cursor-pointer border-white/[0.12] bg-white/[0.05] text-white/90 hover:border-accent/45 hover:bg-accent/10 hover:text-white hover:shadow-[0_0_16px_rgba(35,131,226,0.12)]",
                     ].join(" ")}
+                    aria-expanded={isRevealed}
+                    aria-controls={`hidden-text-${block.blockId}`}
                   >
-                    {isRevealed ? (
-                      <EyeOff className="h-4 w-4" strokeWidth={2.2} />
-                    ) : (
-                      <Eye className="h-4 w-4" strokeWidth={2.2} />
-                    )}
-                  </span>
-                  <span className="min-w-0 w-full">
-                    <span className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-white/35">
-                      Hidden answer
-                    </span>
-                    <span className="mt-0.5 block text-[13px] font-medium text-white/80">
-                      {isRevealed ? "Visible — tap to hide" : "Tap to reveal"}
+                    <motion.span
+                      key={isRevealed ? "eye" : "eye-off"}
+                      initial={{ scale: 0.92, opacity: 0.75 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ type: "spring", stiffness: 420, damping: 24 }}
+                      className="flex shrink-0"
+                      aria-hidden
+                    >
+                      {isRevealed ? (
+                        <Eye className="h-3.5 w-3.5 text-accent" strokeWidth={2} />
+                      ) : (
+                        <EyeOff
+                          className="h-3.5 w-3.5 text-accent/85 transition-colors group-hover:text-accent"
+                          strokeWidth={2}
+                        />
+                      )}
+                    </motion.span>
+                    <span className="whitespace-nowrap">
+                      {isRevealed ? "Hide answer" : "Reveal answer"}
                     </span>
                     {revealToggleDisabled && (
-                      <span className="mt-1 block text-[11px] text-white/30">
-                        Shown with quiz reveal
+                      <span className="ml-0.5 rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-white/38">
+                        Quiz
                       </span>
                     )}
-                  </span>
-                  <span
-                    className={[
-                      "shrink-0 rounded-lg px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide",
-                      isRevealed ? "bg-white/[0.06] text-white/45" : "bg-accent/15 text-accent/90",
-                    ].join(" ")}
-                  >
-                    {isRevealed ? "Hide" : "Reveal"}
-                  </span>
-                </button>
+                  </motion.button>
+                </div>
               )}
 
-              <AnimatePresence initial={false}>
-                {isRevealed && (
+              <div
+                className={[
+                  "overflow-hidden px-3",
+                  onToggleReveal ? "pb-3 pt-1" : "py-3",
+                  onToggleReveal && !isRevealed ? "h-[5.5rem]" : "min-h-0",
+                ].join(" ")}
+              >
+                <div
+                  className={[
+                    "relative overflow-hidden rounded-lg bg-gradient-to-b from-white/[0.02] to-black/20",
+                    onToggleReveal && !isRevealed ? "h-full" : "min-h-0",
+                  ].join(" ")}
+                >
+                  {!isRevealed && (
+                    <div
+                      className="pointer-events-none absolute inset-0 z-[1] rounded-lg bg-gradient-to-b from-[#07090d]/92 via-[#0a0c10]/88 to-[#07090d]/95 backdrop-blur-[3px]"
+                      aria-hidden
+                    />
+                  )}
                   <motion.div
                     id={`hidden-text-${block.blockId}`}
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
-                    className="relative z-[1] overflow-hidden"
+                    initial={false}
+                    animate={{
+                      opacity: isRevealed ? 1 : 0,
+                    }}
+                    transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                    className={[
+                      "relative z-0 px-2.5 py-2",
+                      onToggleReveal && !isRevealed
+                        ? "h-full overflow-hidden"
+                        : "max-h-[min(70vh,28rem)] overflow-y-auto",
+                      isRevealed ? "pointer-events-auto" : "pointer-events-none select-none",
+                    ].join(" ")}
+                    aria-hidden={!isRevealed}
                   >
-                    <div className="px-4 pb-4 pt-1">
-                      <div className="relative rounded-xl border border-white/[0.06] bg-black/35 px-3 py-3.5 backdrop-blur-[2px]">
-                        <p className="text-[14px] leading-relaxed tracking-[0.01em] text-white/[0.88] whitespace-pre-wrap text-center">
-                          {value?.text || "No answer provided."}
-                        </p>
-                      </div>
-                    </div>
+                    <p
+                      className={[
+                        "text-[13px] leading-relaxed text-white/[0.92] antialiased whitespace-pre-wrap",
+                        textAlign,
+                      ].join(" ")}
+                    >
+                      {value?.text || "No answer provided."}
+                    </p>
                   </motion.div>
-                )}
-              </AnimatePresence>
+                </div>
+              </div>
             </div>
           </div>
         );
@@ -297,10 +340,13 @@ export default function BlockDisplay({
         const currentMedia = mediaCache[mediaIds[currentIndex]];
 
         return (
-          <div className="flex w-full min-w-0 max-w-full flex-col items-center gap-2">
+          <div className="flex w-full min-w-0 max-w-full flex-col gap-2">
             <div
-              className={`relative w-full max-w-full overflow-hidden rounded-xl ${showCarousel ? "touch-pan-y cursor-grab active:cursor-grabbing select-none" : ""}`}
-              style={{ aspectRatio: cropAspect }}
+              className={`relative w-full min-w-0 max-w-full shrink-0 overflow-hidden rounded-xl ${showCarousel ? "touch-pan-y cursor-grab active:cursor-grabbing select-none" : ""}`}
+              style={{
+                aspectRatio: cropAspect,
+                width: "100%",
+              }}
               role="region"
               aria-label={showCarousel ? "Image carousel - swipe or use arrows to change image" : "Card image"}
               onPointerDown={
@@ -336,7 +382,7 @@ export default function BlockDisplay({
                     src={currentMedia.downloadUrl}
                     alt=""
                     fill
-                    className="object-contain object-center rounded-xl"
+                    className="object-cover object-center rounded-xl"
                     sizes="(max-width: 32rem) 96vw, 32rem"
                   />
                 </div>
@@ -454,5 +500,12 @@ export default function BlockDisplay({
   })();
 
   if (content === null) return null;
-  return <div className="w-full min-w-0 text-center">{content}</div>;
+  const isImageBlock = normalizeBlockTypeName(block?.type) === "image";
+  return (
+    <div
+      className={`w-full min-w-0 ${isImageBlock ? "max-w-none" : "text-center"}`}
+    >
+      {content}
+    </div>
+  );
 }

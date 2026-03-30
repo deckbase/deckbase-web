@@ -64,6 +64,7 @@ import {
 import { exportApkgToBlob } from "@/utils/apkgExport";
 import { deckTitleToExportFilenameBase } from "@/utils/exportFilename";
 import { parseAudioBlockConfig } from "@/lib/audio-block-config";
+import { parseImageBlockConfig } from "@/lib/image-block-config";
 import ExcelJS from "exceljs";
 
 // Import steps matching mobile
@@ -148,6 +149,9 @@ export default function DeckDetailPage() {
   const [importAudioGenerating, setImportAudioGenerating] = useState(false); // true while calling ElevenLabs for current card
   const [importAudioCompleted, setImportAudioCompleted] = useState(0);
   const [importAudioFailed, setImportAudioFailed] = useState(0);
+  const [importImageGenerating, setImportImageGenerating] = useState(false);
+  const [importImageCompleted, setImportImageCompleted] = useState(0);
+  const [importImageFailed, setImportImageFailed] = useState(0);
 
   // Add card with AI
   const [showAddWithAIModal, setShowAddWithAIModal] = useState(false);
@@ -403,7 +407,8 @@ export default function DeckDetailPage() {
     }
   }, [user]);
 
-  const isImageBlock = (b) => b?.type === "image" || b?.type === 6;
+  const isImageBlock = (b) =>
+    b?.type === "image" || b?.type === 6 || b?.type === "6";
   const isAudioBlockType = (b) => b?.type === "audio" || b?.type === 7 || b?.type === "7";
 
   // Load first image/audio media URL per card for carousel preview (parallel fetches)
@@ -943,6 +948,7 @@ export default function DeckDetailPage() {
     const t = block?.type;
     if (t == null) return false;
     if (t === "audio" || t === 7 || t === "7") return true;
+    if (t === "image" || t === 6 || t === "6") return true;
     const tNum = typeof t === "string" && /^[0-9]+$/.test(t) ? parseInt(t, 10) : t;
     if (tNum === 8 || tNum === 9 || tNum === 10) return true;
     const tStr = String(t).toLowerCase();
@@ -1000,6 +1006,8 @@ export default function DeckDetailPage() {
     setImportProgress(0);
     setImportedCount(0);
     setImportAIGenerating(false);
+    setImportImageCompleted(0);
+    setImportImageFailed(0);
 
     try {
       const rows = getRowsToImport();
@@ -1018,7 +1026,7 @@ export default function DeckDetailPage() {
         for (let i = 0; i < tableRows.length; i += CHUNK_SIZE) {
           chunks.push(tableRows.slice(i, i + CHUNK_SIZE));
         }
-        // Claude generates quiz only. Audio "Use AI" uses row main text (TTS later).
+        // Claude generates quiz only. Audio/image "Use AI" use row main text (TTS / fal image after create).
         const quizBlockIds = (columnMappings || [])
           .filter((m) => m.generateWithAI)
           .filter((m) => {
@@ -1105,6 +1113,12 @@ export default function DeckDetailPage() {
         side: block.side === "back" ? "back" : "front",
       }));
 
+      const hasImageAIGenerate = columnMappings.some((m) => {
+        if (!m.generateWithAI) return false;
+        const b = selectedTemplate.blocks.find((bl) => bl.blockId === m.blockId);
+        return b && isImageBlock(b);
+      });
+
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
 
@@ -1133,6 +1147,8 @@ export default function DeckDetailPage() {
           if (mapping.generateWithAI) {
             if (isAudioBlockType(block)) {
               text = mainTextForRow;
+            } else if (isImageBlock(block)) {
+              text = "";
             } else {
               const aiCard = aiCards[i];
               if (aiCard?.values) {
@@ -1147,9 +1163,9 @@ export default function DeckDetailPage() {
 
           let mediaIds = [];
           const isAudioBlock = isAudioBlockType(block);
-          const isImageBlock = block?.type === "image" || block?.type === 6 || block?.type === "6";
+          const isImgBlock = isImageBlock(block);
 
-          if (hasImportMedia && (isAudioBlock || isImageBlock) && text) {
+          if (hasImportMedia && (isAudioBlock || isImgBlock) && text) {
             const audioRegex = /\[audio:\s*([^\]]+)\]/g;
             const imageRegex = /\[image:\s*([^\]]+)\]/g;
             if (isAudioBlock) {
@@ -1174,7 +1190,7 @@ export default function DeckDetailPage() {
                 text = text.replace(audioRegex, "").trim().replace(/\s+/g, " ");
               }
             }
-            if (isImageBlock) {
+            if (isImgBlock) {
               const matches = [...text.matchAll(imageRegex)];
               for (const m of matches) {
                 const filename = m[1].trim();
@@ -1274,6 +1290,18 @@ export default function DeckDetailPage() {
         }
 
         const hasAnyText = values.some((v) => (v.text || "").trim());
+        const imageBlockForPrompt = selectedTemplate.blocks.find(isImageBlock);
+        const imageImportCfg = imageBlockForPrompt
+          ? parseImageBlockConfig(imageBlockForPrompt.configJson, {
+              mainBlockId: selectedTemplate.mainBlockId,
+            })
+          : null;
+        const imagePromptSourceBlockId =
+          imageImportCfg?.defaultSourceBlockId || selectedTemplate.mainBlockId;
+        const imagePromptForRow =
+          (values.find((v) => v.blockId === imagePromptSourceBlockId)?.text || "").trim() ||
+          mainTextForRow.trim();
+
         const hasAIGeneratedQuizContent =
           hasAIMappings &&
           aiCards[i]?.blocksSnapshot?.length &&
@@ -1296,7 +1324,11 @@ export default function DeckDetailPage() {
               return false;
             }
           });
-        if (!hasAnyText && !hasAIGeneratedQuizContent) {
+        if (
+          !hasAnyText &&
+          !hasAIGeneratedQuizContent &&
+          !(hasImageAIGenerate && imagePromptForRow)
+        ) {
           if (i === 0 || hasAIMappings) {
             console.log("[Import AI] skip row", i, {
               hasAnyText,
@@ -1413,6 +1445,9 @@ export default function DeckDetailPage() {
           selectedTemplate.subBlockId ?? null
         );
 
+        /** Latest values for this row if audio/image post-processing updates the card */
+        let mutableValues = values;
+
         // If this row has audio "Use AI" with text, generate TTS (ElevenLabs) and update card
         const audioMapping = (columnMappings || []).find((m) => {
           if (!m.generateWithAI) return false;
@@ -1457,6 +1492,7 @@ export default function DeckDetailPage() {
                   selectedTemplate.mainBlockId ?? null,
                   selectedTemplate.subBlockId ?? null
                 );
+                mutableValues = updatedValues;
                 setImportAudioCompleted((c) => c + 1);
               }
             } else {
@@ -1467,6 +1503,83 @@ export default function DeckDetailPage() {
             setImportAudioFailed((f) => f + 1);
           } finally {
             setImportAudioGenerating(false);
+          }
+        }
+
+        const imageAIMappings = (columnMappings || []).filter((m) => {
+          if (!m.generateWithAI) return false;
+          const b = selectedTemplate.blocks.find((bl) => bl.blockId === m.blockId);
+          return b && isImageBlock(b);
+        });
+        if (imageAIMappings.length > 0 && imagePromptForRow && created?.cardId) {
+          setImportImageGenerating(true);
+          try {
+            const imageHeaders = { "Content-Type": "application/json" };
+            if (isProduction && user) {
+              const token = await user.getIdToken();
+              if (token) imageHeaders.Authorization = `Bearer ${token}`;
+            }
+            let nextValues = mutableValues;
+            for (const imageAIMapping of imageAIMappings) {
+              const genRes = await fetch("/api/ai/generate-image", {
+                method: "POST",
+                headers: imageHeaders,
+                body: JSON.stringify({
+                  prompt: imagePromptForRow,
+                  model_id: "fal-ai/flux/schnell",
+                }),
+              });
+              if (!genRes.ok) {
+                setImportImageFailed((f) => f + 1);
+                continue;
+              }
+              const data = await genRes.json();
+              const imageUrl = data?.imageUrl;
+              if (!imageUrl || typeof imageUrl !== "string") {
+                setImportImageFailed((f) => f + 1);
+                continue;
+              }
+              const imgRes = await fetch(imageUrl);
+              if (!imgRes.ok) {
+                setImportImageFailed((f) => f + 1);
+                continue;
+              }
+              const blob = await imgRes.blob();
+              const ext = blob.type.includes("png") ? "png" : "jpg";
+              const mime = blob.type || (ext === "png" ? "image/png" : "image/jpeg");
+              const file = new File([blob], `import-ai.${ext}`, { type: mime });
+              const storageCheck = await checkStorageBeforeUpload(user, file.size);
+              if (!storageCheck.allowed) {
+                setImportImageFailed((f) => f + 1);
+                continue;
+              }
+              const media = await uploadImage(user.uid, file);
+              nextValues = nextValues.map((v) =>
+                v.blockId === imageAIMapping.blockId
+                  ? {
+                      ...v,
+                      mediaIds: [...(v.mediaIds || []), media.mediaId],
+                    }
+                  : v
+              );
+              setImportImageCompleted((c) => c + 1);
+            }
+            if (nextValues !== mutableValues) {
+              await updateCard(
+                user.uid,
+                created.cardId,
+                deckId,
+                nextValues,
+                rowBlocksSnapshot,
+                selectedTemplate.mainBlockId ?? null,
+                selectedTemplate.subBlockId ?? null
+              );
+            }
+          } catch (imgErr) {
+            console.warn("[Import] Image generation failed for row", i + 1, imgErr);
+            setImportImageFailed((f) => f + 1);
+          } finally {
+            setImportImageGenerating(false);
           }
         }
 
@@ -1486,6 +1599,9 @@ export default function DeckDetailPage() {
       setImportAudioGenerating(false);
       setImportAudioCompleted(0);
       setImportAudioFailed(0);
+      setImportImageGenerating(false);
+      setImportImageCompleted(0);
+      setImportImageFailed(0);
     }
   };
 
@@ -1504,6 +1620,9 @@ export default function DeckDetailPage() {
     setImportAudioGenerating(false);
     setImportAudioCompleted(0);
     setImportAudioFailed(0);
+    setImportImageGenerating(false);
+    setImportImageCompleted(0);
+    setImportImageFailed(0);
     setImportProgress(0);
     setImportedCount(0);
     setImportUseAILoading(false);
@@ -4993,15 +5112,16 @@ export default function DeckDetailPage() {
                             : "Click a column or template block to start mapping"}
                         </p>
 
-                        {/* Template Blocks - Clickable + Generate with AI (quiz/audio only) */}
+                        {/* Template Blocks - Clickable + Generate with AI (quiz/audio/image) */}
                         <div className="mb-4 p-3 bg-white/5 rounded-lg">
                           <h4 className="text-white/70 text-sm mb-2">
                             Template Blocks:
                           </h4>
                           <p className="text-white/45 text-xs mb-2">
-                            Click a block then a column to map. Use &quot;AI&quot; only for{" "}
-                            <strong className="text-white/60">quiz or audio</strong> blocks — AI
-                            generates that block per row from the table context.
+                            Click a block then a column to map. Use &quot;Use AI&quot; for{" "}
+                            <strong className="text-white/60">quiz, audio, or image</strong> blocks —
+                            quiz uses the table; audio and image use each row&apos;s main text (or first
+                            mapped column) as the spoken line or image prompt.
                           </p>
                           {(() => {
                             const blocks = selectedTemplate.blocks || [];
@@ -5245,7 +5365,7 @@ export default function DeckDetailPage() {
                             );
                           })()}
 
-                        {/* Use AI - above table, when a quiz/audio block is selected */}
+                        {/* Use AI - above table, when a quiz/audio/image block is selected */}
                         {importStep === ImportStep.mapColumns &&
                           selectedTemplate &&
                           aiEntitled &&
@@ -5267,7 +5387,7 @@ export default function DeckDetailPage() {
                                   onClick={() =>
                                     setMappingGenerateWithAI(pendingBlockId)
                                   }
-                                  title="Generate this block with AI per row (quiz/audio only)"
+                                  title="Generate this block with AI per row (quiz from table; audio/image from row prompt text)"
                                   className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
                                     isAI
                                       ? "bg-amber-500 text-amber-50 hover:bg-amber-400"
@@ -5476,11 +5596,24 @@ export default function DeckDetailPage() {
                                 Generating audio...
                               </p>
                             )}
+                            {importImageGenerating && (
+                              <p className="text-amber-400/90 text-sm mt-2">
+                                Generating images...
+                              </p>
+                            )}
                             {(importAudioCompleted > 0 || importAudioFailed > 0) && (
                               <p className="text-white/60 text-sm mt-2">
                                 Audio: {importAudioCompleted} completed
                                 {importAudioFailed > 0 && (
                                   <span className="text-red-400/90">, {importAudioFailed} failed</span>
+                                )}
+                              </p>
+                            )}
+                            {(importImageCompleted > 0 || importImageFailed > 0) && (
+                              <p className="text-white/60 text-sm mt-2">
+                                Images: {importImageCompleted} completed
+                                {importImageFailed > 0 && (
+                                  <span className="text-red-400/90">, {importImageFailed} failed</span>
                                 )}
                               </p>
                             )}
@@ -5502,6 +5635,14 @@ export default function DeckDetailPage() {
                               Audio: {importAudioCompleted} completed
                               {importAudioFailed > 0 && (
                                 <span className="text-red-400/90">, {importAudioFailed} failed</span>
+                              )}
+                            </span>
+                          )}
+                          {(importImageCompleted > 0 || importImageFailed > 0) && (
+                            <span className="block mt-1 text-white/60">
+                              Images: {importImageCompleted} completed
+                              {importImageFailed > 0 && (
+                                <span className="text-red-400/90">, {importImageFailed} failed</span>
                               )}
                             </span>
                           )}

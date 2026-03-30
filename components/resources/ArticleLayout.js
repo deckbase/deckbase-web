@@ -251,13 +251,19 @@ export function ArticleCard({ title, titleAccent, badge, children }) {
 // FAQ
 // ---------------------------------------------------------------------------
 
+/**
+ * @param {{ items: Array<{ q: string, a: import('react').ReactNode, answerPlain?: string }> }} props
+ * `answerPlain` — optional plain string for JSON-LD when `a` is JSX; defaults to `a` when `a` is a string.
+ */
 export function ArticleFaq({ items }) {
   return (
     <div className="flex flex-col divide-y divide-white/[0.06] border-y border-white/[0.06]">
       {items.map(({ q, a }) => (
         <div key={q} className="py-5 flex flex-col gap-2">
           <h3 className="text-[14px] font-semibold text-white/80 leading-snug">{q}</h3>
-          <p className="text-[13px] text-white/45 leading-relaxed">{a}</p>
+          <div className="text-[13px] text-white/45 leading-relaxed [&_a]:text-accent [&_a]:underline [&_a]:underline-offset-2 [&_a]:hover:text-accent/90">
+            {a}
+          </div>
         </div>
       ))}
     </div>

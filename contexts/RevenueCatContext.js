@@ -1,7 +1,6 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
-import { Purchases } from "@revenuecat/purchases-js";
 import { useAuth } from "@/contexts/AuthContext";
 import { REVENUECAT_ENTITLEMENT_ID } from "@/lib/revenuecat-config";
 
@@ -106,6 +105,7 @@ export function RevenueCatProvider({ children, entitlementId = REVENUECAT_ENTITL
 
     (async () => {
       try {
+        const { Purchases } = await import("@revenuecat/purchases-js");
         if (typeof Purchases.isConfigured === "function" && Purchases.isConfigured()) {
           try {
             const existing = Purchases.getSharedInstance();

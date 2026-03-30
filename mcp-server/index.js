@@ -274,6 +274,35 @@ async function handleToolsList() {
         },
       },
       {
+        name: "list_image_style_prompts",
+        description:
+          "Curated AI image style presets (tags, snippets). Subscribers only on hosted MCP. Optional tag filter. Use style_prompt_id with attach_image_to_card.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            tag: { type: "string", description: "Optional kebab-case tag filter" },
+          },
+        },
+      },
+      {
+        name: "attach_image_to_card",
+        description:
+          "fal.ai image generation attached to a card image block. Requires hosted MCP + FAL_KEY. Required: deckId, cardId, prompt. Optional model_id, style_prompt_id, block_id, replace_existing.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            deckId: { type: "string" },
+            cardId: { type: "string" },
+            prompt: { type: "string" },
+            model_id: { type: "string" },
+            style_prompt_id: { type: "string" },
+            block_id: { type: "string" },
+            replace_existing: { type: "boolean" },
+          },
+          required: ["deckId", "cardId", "prompt"],
+        },
+      },
+      {
         name: "export_deck",
         description:
           "Export a deck as JSON (metadata and cards). export_type: full (default) or values_only. Requires hosted MCP with API key.",
@@ -377,6 +406,8 @@ async function handleToolCall(name, args) {
     name === "delete_cards" ||
     name === "create_cards" ||
     name === "attach_audio_to_card" ||
+    name === "list_image_style_prompts" ||
+    name === "attach_image_to_card" ||
     name === "export_deck" ||
     name === "create_template" ||
     name === "update_template"

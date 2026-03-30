@@ -17,7 +17,8 @@
     "backfill:deleted-at": "node scripts/backfill-deleted-at.js",
     "optimize:logo": "node scripts/optimize-app-logo.mjs",
     "optimize:mock-images": "node scripts/optimize-mock-images.mjs",
-    "generate:preview-audio": "node scripts/generate-preview-sample-audio.js"
+    "generate:preview-audio": "node scripts/generate-preview-sample-audio.js",
+    "ghost:publish-initial": "node scripts/ghost-publish-initial-post.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
@@ -69,6 +70,7 @@
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
     "@tailwindcss/typography": "^0.5.16",
+    "@tryghost/admin-api": "^1.14.7",
     "cheerio": "^1.2.0",
     "eslint": "^9",
     "eslint-config-next": "15.2.1",

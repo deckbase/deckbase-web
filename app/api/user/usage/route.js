@@ -6,13 +6,14 @@ import {
   getStorageUsage,
   AI_GENERATIONS_LIMIT_PRO,
   TTS_CHARS_LIMIT_PRO,
+  IMAGE_CREDIT_LIMIT_PRO,
 } from "@/lib/usage-limits";
 
 /**
  * GET /api/user/usage
  * Auth: Bearer <Firebase ID token>
- * Returns: { aiUsed, aiLimit, ttsUsed, ttsLimit, mcpUsed, storageUsed, storageLimit, isPro, tier } for the current user.
- * tier = 'free' | 'basic' | 'pro'. Limits: Basic 250 AI / 30K TTS / 2GB; Pro 600 AI / 50K TTS / 20GB.
+ * Returns: { aiUsed, aiLimit, ttsUsed, ttsLimit, imageCreditsUsed, imageCreditLimit, mcpUsed, storageUsed, storageLimit, isPro, tier } for the current user.
+ * tier = 'free' | 'basic' | 'pro'. Limits: Basic 250 AI / 30K TTS / 40 image credits / 2GB; Pro 600 AI / 50K TTS / 100 image credits / 20GB.
  */
 export async function GET(request) {
   try {
@@ -22,6 +23,8 @@ export async function GET(request) {
       aiLimit: AI_GENERATIONS_LIMIT_PRO,
       ttsUsed: 0,
       ttsLimit: TTS_CHARS_LIMIT_PRO,
+      imageCreditsUsed: 0,
+      imageCreditLimit: IMAGE_CREDIT_LIMIT_PRO,
       mcpUsed: 0,
       storageUsed: 0,
       storageLimit: 20 * 1024 * 1024 * 1024,
@@ -63,7 +66,7 @@ export async function GET(request) {
       getLimitsForUser(uid),
       getStorageUsage(uid),
     ]);
-    const { aiLimit, ttsLimit, storageLimit, tier } = limits;
+    const { aiLimit, ttsLimit, storageLimit, imageCreditLimit, tier } = limits;
     const isPro = tier !== "free";
 
     return NextResponse.json({
@@ -71,6 +74,8 @@ export async function GET(request) {
       aiLimit,
       ttsUsed: usage?.ttsChars ?? 0,
       ttsLimit,
+      imageCreditsUsed: usage?.imageCreditsUsed ?? 0,
+      imageCreditLimit,
       mcpUsed: usage?.mcpRequests ?? 0,
       storageUsed,
       storageLimit,

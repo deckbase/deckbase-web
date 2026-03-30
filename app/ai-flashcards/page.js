@@ -28,14 +28,19 @@ const authorId = `${homeUrl}/#deckbase-editorial`;
 export const metadata = {
   title: "AI Flashcard Maker — Generate Flashcards from PDFs, Notes & Books",
   description:
-    "Deckbase is an AI flashcard maker: turn PDFs, lecture notes, and articles into study-ready cards in seconds. FSRS spaced repetition, mobile apps, optional Model Context Protocol (MCP) for Cursor and Claude — plus Anki-friendly import.",
+    "Deckbase is an AI flashcard maker and generator: turn PDFs, lecture notes, and articles into study-ready cards. FSRS spaced repetition, iOS and Android apps, optional MCP for Cursor and Claude. Free tier for manual cards; AI generation is a paid feature.",
   keywords: [
     "AI flashcard maker",
     "AI flashcards",
     "ai flashcard generator",
+    "flashcard maker",
+    "flash card generator",
+    "PDF to flashcards",
     "PDF to flashcards AI",
     "flashcards from notes",
+    "ai flashcard app",
     "spaced repetition flashcards",
+    "anki alternative",
     "Deckbase",
   ],
   alternates: defaultLanguageAlternates(PAGE_PATH),
@@ -69,8 +74,8 @@ export const metadata = {
 
 const pillars = [
   {
-    title: "Fast AI card creation",
-    body: "Upload PDFs, paste notes, or scan pages — Deckbase builds front/back cards aligned to your deck templates, so you spend time reviewing, not retyping.",
+    title: "Flashcard maker from real material",
+    body: "Use Deckbase as a flashcard maker and generator: upload PDFs, paste notes, or scan pages — AI-assisted creation (on paid plans) proposes cards aligned to your deck templates so you edit, then review.",
   },
   {
     title: "Retention-first scheduling",
@@ -88,20 +93,84 @@ const pillars = [
 
 const faqs = [
   {
-    q: "Is Deckbase an AI flashcard generator?",
-    a: "Yes. Deckbase generates flashcards from text and documents using AI, organized into decks and templates you control. You can edit cards anytime before review.",
+    q: "Is Deckbase a free AI flashcard generator?",
+    a: (
+      <>
+        You can use Deckbase on a free tier with manual cards and core study flows.
+        AI-powered card generation and other premium capabilities require a paid plan
+        (Basic or Pro). See{" "}
+        <Link href="/premium">Pricing</Link>{" "}
+        for current limits.
+      </>
+    ),
+    answerPlain:
+      "You can use Deckbase on a free tier with manual cards and core study flows. AI-powered card generation and other premium capabilities require a paid plan (Basic or Pro). See the Pricing page for current limits.",
   },
   {
-    q: "Can I make AI flashcards from a PDF?",
-    a: "Yes. Upload PDFs (and similar sources depending on your plan) and let Deckbase propose cards; refine them in the editor before study.",
+    q: "Is Deckbase an AI flashcard generator and flashcard maker?",
+    a: "Yes. Subscribers can generate flashcards from text and documents using AI, organized into decks and templates you control. You can edit cards anytime before review.",
+    answerPlain:
+      "Yes. Subscribers can generate flashcards from text and documents using AI, organized into decks and templates you control. You can edit cards anytime before review.",
+  },
+  {
+    q: "Can I make flashcards from a PDF?",
+    a: "Yes. Upload PDFs and other supported sources (per plan) and use Deckbase as a PDF-to-flashcards workflow: proposed cards open in the editor so you confirm wording before study.",
+    answerPlain:
+      "Yes. Upload PDFs and other supported sources (per plan) and use Deckbase as a PDF-to-flashcards workflow: proposed cards open in the editor so you confirm wording before study.",
+  },
+  {
+    q: "Is there an AI flashcard app for iPhone or Android?",
+    a: (
+      <>
+        Yes. Deckbase has iOS and Android apps plus a web dashboard so your decks and
+        review queue stay in sync. Get the apps from our{" "}
+        <Link href="/download">download page</Link>
+        .
+      </>
+    ),
+    answerPlain:
+      "Yes. Deckbase has iOS and Android apps plus a web dashboard so your decks and review queue stay in sync. Get the apps from the official download page.",
+  },
+  {
+    q: "Is Deckbase an Anki alternative?",
+    a: (
+      <>
+        Many learners use Deckbase alongside or instead of Anki for AI-assisted creation
+        and mobile-first study. We support Anki import paths for migration. Read{" "}
+        <Link href="/anki-alternatives">Anki alternatives</Link> and{" "}
+        <Link href="/deckbase-vs-anki">Deckbase vs Anki</Link>{" "}
+        for an honest comparison.
+      </>
+    ),
+    answerPlain:
+      "Many learners use Deckbase alongside or instead of Anki for AI-assisted creation and mobile-first study. We support Anki import paths for migration. See Anki alternatives and Deckbase vs Anki for an honest comparison.",
   },
   {
     q: "How is this different from Quizlet AI flashcards?",
-    a: "Deckbase emphasizes FSRS-style scheduling, deep mobile workflows, optional MCP for developers, and Anki-friendly migration paths. For a direct comparison, see Deckbase vs Quizlet.",
+    a: (
+      <>
+        Deckbase emphasizes FSRS-style scheduling, deep mobile workflows, optional MCP for
+        developers, and Anki-friendly migration paths. For a direct comparison, see{" "}
+        <Link href="/deckbase-vs-quizlet">Deckbase vs Quizlet</Link>
+        .
+      </>
+    ),
+    answerPlain:
+      "Deckbase emphasizes FSRS-style scheduling, deep mobile workflows, optional MCP for developers, and Anki-friendly migration paths. For a direct comparison, see Deckbase vs Quizlet.",
   },
   {
     q: "What is MCP in Deckbase?",
-    a: "Model Context Protocol lets supported AI tools call Deckbase’s HTTP MCP endpoint with your API key to manage decks and cards. Setup and comparison guides live on /mcp and /resources/mcp.",
+    a: (
+      <>
+        Model Context Protocol lets supported AI tools call Deckbase’s HTTP MCP endpoint
+        with your API key to manage decks and cards. Start on{" "}
+        <Link href="/mcp">/mcp</Link> or read{" "}
+        <Link href="/resources/mcp">Deckbase MCP for flashcards</Link>
+        .
+      </>
+    ),
+    answerPlain:
+      "Model Context Protocol lets supported AI tools call Deckbase’s HTTP MCP endpoint with your API key to manage decks and cards. Setup and comparison guides live on /mcp and /resources/mcp.",
   },
 ];
 
@@ -138,7 +207,13 @@ const jsonLd = {
       datePublished: publishedAt,
       dateModified: updatedAt,
       image: absoluteUrl("/app_logo.webp"),
-      about: ["AI flashcards", "Spaced repetition", "Model Context Protocol"],
+      about: [
+        "AI flashcards",
+        "Flashcard maker",
+        "PDF to flashcards",
+        "Spaced repetition",
+        "Model Context Protocol",
+      ],
     },
     {
       "@type": "Organization",
@@ -155,10 +230,10 @@ const jsonLd = {
     },
     {
       "@type": "FAQPage",
-      mainEntity: faqs.map(({ q, a }) => ({
+      mainEntity: faqs.map(({ q, answerPlain }) => ({
         "@type": "Question",
         name: q,
-        acceptedAnswer: { "@type": "Answer", text: a },
+        acceptedAnswer: { "@type": "Answer", text: answerPlain },
       })),
     },
   ],
@@ -184,8 +259,8 @@ export default function AiFlashcardsPage() {
         <ArticleHeader
           kicker="Product · Updated March 2026"
           title="AI flashcard maker for real study workflows"
-          lead="Deckbase turns notes, PDFs, and articles into flashcards you can refine, then reviews them with FSRS-style spaced repetition on web and mobile. Optional MCP connects Cursor, VS Code, and Claude Code to the same library."
-          readTime="4 min read"
+          lead="Use Deckbase as an AI flashcard maker and generator: turn notes, PDFs, and articles into cards you can refine, then review with FSRS-style spaced repetition on web, iPhone, and Android. Optional MCP connects Cursor, VS Code, and Claude Code to the same library."
+          readTime="6 min read"
         />
 
         <ArticleSection id="why">
@@ -213,6 +288,63 @@ export default function AiFlashcardsPage() {
               Quizlet alternatives
             </Link>
             .
+          </ArticleBody>
+        </ArticleSection>
+
+        <ArticleSection id="pdf-notes">
+          <ArticleH2>PDF and notes to flashcards</ArticleH2>
+          <ArticleBody>
+            People search for a{" "}
+            <strong>flashcard maker from PDF</strong> or a{" "}
+            <strong>PDF-to-flashcards</strong> workflow — Deckbase is built around
+            turning lecture PDFs and notes into draft cards, then letting you edit
+            before they enter your review queue. Paste text, upload documents, or
+            combine sources; keep quality high by treating AI output as a starting
+            point, not the final answer.
+          </ArticleBody>
+        </ArticleSection>
+
+        <ArticleSection id="app-web">
+          <ArticleH2>AI flashcard app: web, iOS, and Android</ArticleH2>
+          <ArticleBody>
+            Deckbase works as an <strong>AI flashcard app</strong> on phones and in
+            the browser: same decks, sync, and scheduling whether you create on
+            desktop or review on the go. Grab the{" "}
+            <Link href="/download" className="text-accent hover:underline underline-offset-2">
+              iOS and Android apps
+            </Link>{" "}
+            or sign in on the web — your study session should not depend on a single
+            device.
+          </ArticleBody>
+        </ArticleSection>
+
+        <ArticleSection id="anki-bridge">
+          <ArticleH2>From Anki, Quizlet, or other tools</ArticleH2>
+          <ArticleBody>
+            If you are comparing an <strong>Anki alternative</strong> or moving from
+            Quizlet, Deckbase fits learners who want AI-assisted creation with FSRS
+            scheduling and strong mobile review. Start with{" "}
+            <Link
+              href="/anki-alternatives"
+              className="text-accent hover:underline underline-offset-2"
+            >
+              Anki alternatives
+            </Link>
+            , then dive into{" "}
+            <Link
+              href="/deckbase-vs-anki"
+              className="text-accent hover:underline underline-offset-2"
+            >
+              Deckbase vs Anki
+            </Link>{" "}
+            or{" "}
+            <Link
+              href="/deckbase-vs-quizlet"
+              className="text-accent hover:underline underline-offset-2"
+            >
+              Deckbase vs Quizlet
+            </Link>{" "}
+            for feature-level trade-offs.
           </ArticleBody>
         </ArticleSection>
 
@@ -256,6 +388,7 @@ export default function AiFlashcardsPage() {
           <ArticleH2>Related</ArticleH2>
           <ArticleRelated
             links={[
+              { href: "/anki-alternatives", label: "Anki alternatives" },
               { href: "/mcp", label: "Connect Deckbase MCP" },
               { href: "/resources/mcp", label: "MCP for flashcards (guide)" },
               { href: "/deckbase-vs-quizlet", label: "Deckbase vs Quizlet" },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -41,7 +41,12 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import ElevenlabsVoicePicker from "@/components/ElevenlabsVoicePicker";
 import { parseAudioBlockConfig } from "@/lib/audio-block-config";
-import { CROP_ASPECT_OPTIONS, DEFAULT_CROP_ASPECT, getCropAspectFromConfig } from "@/lib/image-block-config";
+import {
+  CROP_ASPECT_OPTIONS,
+  DEFAULT_CROP_ASPECT,
+  getCropAspectFromConfig,
+  parseImageBlockConfig,
+} from "@/lib/image-block-config";
 
 const LOG_AUDIO_BLOCK = true; // set to false to reduce console noise
 function logAudio(...args) {
@@ -207,6 +212,8 @@ export default function TemplateEditorPage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [autoSavedFlash, setAutoSavedFlash] = useState(false);
+  const [createdTemplateId, setCreatedTemplateId] = useState(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [blocks, setBlocks] = useState([]);
@@ -218,6 +225,33 @@ export default function TemplateEditorPage() {
   const [mainBlockId, setMainBlockId] = useState(null);
   const [subBlockId, setSubBlockId] = useState(null);
   const prevBackBlockCountRef = useRef(0);
+  const saveDebounceRef = useRef(null);
+  const autoSavedFlashTimerRef = useRef(null);
+  const nameRef = useRef(name);
+  const descriptionRef = useRef(description);
+  const blocksRef = useRef(blocks);
+  const mainBlockIdRef = useRef(mainBlockId);
+  const subBlockIdRef = useRef(subBlockId);
+  const createdTemplateIdRef = useRef(createdTemplateId);
+  const persistTemplateDraftRef = useRef(async () => {});
+  const scheduleTemplateAutoSaveRef = useRef(() => {});
+
+  useEffect(() => {
+    nameRef.current = name;
+    descriptionRef.current = description;
+    blocksRef.current = blocks;
+    mainBlockIdRef.current = mainBlockId;
+    subBlockIdRef.current = subBlockId;
+    createdTemplateIdRef.current = createdTemplateId;
+  }, [name, description, blocks, mainBlockId, subBlockId, createdTemplateId]);
+
+  useEffect(() => {
+    return () => {
+      if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
+      if (autoSavedFlashTimerRef.current)
+        clearTimeout(autoSavedFlashTimerRef.current);
+    };
+  }, []);
 
   // Fetch template data
   useEffect(() => {
@@ -269,6 +303,10 @@ export default function TemplateEditorPage() {
 
     fetchData();
   }, [user, templateId, isNewTemplate, router]);
+
+  useEffect(() => {
+    if (templateId === "new") setCreatedTemplateId(null);
+  }, [templateId]);
 
   // Collapse empty “back section” intent only when the last back block is removed (not when opening an empty back panel).
   useEffect(() => {
@@ -330,6 +368,7 @@ export default function TemplateEditorPage() {
       return next;
     });
     setBlockPickerSide(null);
+    scheduleTemplateAutoSaveRef.current();
   };
 
   /** Reveal Back section; user adds blocks via “Add block” (no default block). */
@@ -350,10 +389,12 @@ export default function TemplateEditorPage() {
       setBlocks((prev) => prev.filter((b) => effectiveTemplateSide(b) === "front"));
     }
     setShowBackSectionIntent(false);
+    scheduleTemplateAutoSaveRef.current();
   };
 
   const moveBlockToSide = (blockId, targetSide) => {
     setBlocks((prev) => reorderBlockToFaceEnd(prev, blockId, targetSide));
+    scheduleTemplateAutoSaveRef.current();
   };
 
   // Remove a block
@@ -362,6 +403,7 @@ export default function TemplateEditorPage() {
     // Clear main/sub if removed
     if (mainBlockId === blockId) setMainBlockId(null);
     if (subBlockId === blockId) setSubBlockId(null);
+    scheduleTemplateAutoSaveRef.current();
   };
 
   // Move block up within the same face only
@@ -395,6 +437,7 @@ export default function TemplateEditorPage() {
       newBlocks.splice(toIndex, 0, removed);
       return newBlocks;
     });
+    scheduleTemplateAutoSaveRef.current();
   };
 
   const [draggedBlockIndex, setDraggedBlockIndex] = useState(null);
@@ -424,6 +467,7 @@ export default function TemplateEditorPage() {
       newBlocks.splice(index + 1, 0, newBlock);
       return newBlocks;
     });
+    scheduleTemplateAutoSaveRef.current();
   };
 
   // Update block label
@@ -431,6 +475,7 @@ export default function TemplateEditorPage() {
     setBlocks((prev) =>
       prev.map((b) => (b.blockId === blockId ? { ...b, label } : b))
     );
+    scheduleTemplateAutoSaveRef.current();
   };
 
   // Update block config
@@ -440,6 +485,7 @@ export default function TemplateEditorPage() {
         b.blockId === blockId ? { ...b, configJson: JSON.stringify(config) } : b
       )
     );
+    scheduleTemplateAutoSaveRef.current();
   };
 
   // Check if template has a quiz block
@@ -476,7 +522,77 @@ export default function TemplateEditorPage() {
     return { effectiveMainBlockId, effectiveSubBlockId };
   };
 
-  // Save template
+  const persistTemplateDraft = async () => {
+    if (!user) return;
+    const n = nameRef.current.trim();
+    const blockList = blocksRef.current;
+    if (!n || blockList.length === 0) return;
+
+    const desc = descriptionRef.current.trim();
+    const frontBlocksOnly = blockList.filter((b) => effectiveTemplateSide(b) === "front");
+    const textBlocks = frontBlocksOnly.filter((b) => isTextBlock(b.type));
+    const m = mainBlockIdRef.current;
+    const s = subBlockIdRef.current;
+    const effectiveMainBlockId = m || (textBlocks[0]?.blockId ?? null);
+    const effectiveSubBlockId = s || (textBlocks[1]?.blockId ?? null);
+    const blocksWithSide = blockList.map((b) => ({
+      ...b,
+      side: effectiveTemplateSide(b) === "back" ? "back" : "front",
+    }));
+
+    const existingNewId = createdTemplateIdRef.current;
+    if (isNewTemplate && !existingNewId) {
+      const created = await createTemplate(
+        user.uid,
+        n,
+        desc,
+        blocksWithSide,
+        effectiveMainBlockId,
+        effectiveSubBlockId,
+      );
+      setCreatedTemplateId(created.templateId);
+      createdTemplateIdRef.current = created.templateId;
+      setExistingTemplate(created);
+      router.replace(`/dashboard/templates/${created.templateId}`);
+      return;
+    }
+
+    const id = isNewTemplate ? existingNewId : templateId;
+    await updateTemplate(user.uid, id, {
+      name: n,
+      description: desc,
+      blocks: blocksWithSide,
+      mainBlockId: effectiveMainBlockId,
+      subBlockId: effectiveSubBlockId,
+    });
+  };
+
+  persistTemplateDraftRef.current = persistTemplateDraft;
+
+  const TEMPLATE_DEBOUNCE_MS = 1000;
+  const scheduleTemplateAutoSave = useCallback(() => {
+    if (!user || loading) return;
+    if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
+    saveDebounceRef.current = setTimeout(async () => {
+      saveDebounceRef.current = null;
+      try {
+        await persistTemplateDraftRef.current();
+        if (autoSavedFlashTimerRef.current)
+          clearTimeout(autoSavedFlashTimerRef.current);
+        setAutoSavedFlash(true);
+        autoSavedFlashTimerRef.current = setTimeout(() => {
+          setAutoSavedFlash(false);
+          autoSavedFlashTimerRef.current = null;
+        }, 2200);
+      } catch (err) {
+        console.error("Template auto-save:", err);
+      }
+    }, TEMPLATE_DEBOUNCE_MS);
+  }, [user, loading]);
+
+  scheduleTemplateAutoSaveRef.current = scheduleTemplateAutoSave;
+
+  // Save template (persist and return to list)
   const handleSave = async () => {
     if (!name.trim()) {
       alert("Please enter a template name");
@@ -491,35 +607,11 @@ export default function TemplateEditorPage() {
     setSaving(true);
 
     try {
-      const { effectiveMainBlockId, effectiveSubBlockId } = getEffectiveMainSubBlocks();
-
-      const blocksWithSide = blocks.map((b) => ({
-        ...b,
-        side: effectiveTemplateSide(b) === "back" ? "back" : "front",
-      }));
-
-      if (isNewTemplate) {
-        await createTemplate(
-          user.uid,
-          name.trim(),
-          description.trim(),
-          blocksWithSide,
-          effectiveMainBlockId,
-          effectiveSubBlockId,
-        );
-      } else {
-        await updateTemplate(user.uid, templateId, {
-          name: name.trim(),
-          description: description.trim(),
-          blocks: blocksWithSide,
-          mainBlockId: effectiveMainBlockId,
-          subBlockId: effectiveSubBlockId,
-        });
-      }
-
+      await persistTemplateDraftRef.current();
       router.push("/dashboard/templates");
     } catch (error) {
       console.error("Error saving template:", error);
+    } finally {
       setSaving(false);
     }
   };
@@ -571,12 +663,14 @@ export default function TemplateEditorPage() {
             setSubBlockId(mainBlockId);
           }
           setMainBlockId(block.blockId);
+          scheduleTemplateAutoSaveRef.current();
         }}
         onSetAsSub={() => {
           if (mainBlockId === block.blockId) {
             setMainBlockId(subBlockId);
           }
           setSubBlockId(block.blockId);
+          scheduleTemplateAutoSaveRef.current();
         }}
         onMoveUp={() => moveBlockUp(globalIndex)}
         onMoveDown={() => moveBlockDown(globalIndex)}
@@ -633,9 +727,14 @@ export default function TemplateEditorPage() {
             <ArrowLeft className="w-5 h-5 text-white/70" />
           </Link>
           <div>
-            <h1 className="text-xl font-bold text-white">
-              {isNewTemplate ? "New Template" : "Edit Template"}
-            </h1>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-xl font-bold text-white">
+                {isNewTemplate ? "New Template" : "Edit Template"}
+              </h1>
+              {autoSavedFlash && (
+                <span className="text-xs font-medium text-emerald-400/90">Auto-saved</span>
+              )}
+            </div>
             {!isNewTemplate && existingTemplate && (
               <p className="text-white/50 text-sm">Version {existingTemplate.version}</p>
             )}
@@ -663,7 +762,10 @@ export default function TemplateEditorPage() {
           <input
             type="text"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => {
+              setName(e.target.value);
+              scheduleTemplateAutoSaveRef.current();
+            }}
             placeholder="Enter template name..."
             className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 focus:outline-none focus:border-accent text-lg font-semibold"
           />
@@ -672,7 +774,10 @@ export default function TemplateEditorPage() {
           <label className="block text-white/70 text-sm mb-2">Description</label>
           <textarea
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            onChange={(e) => {
+              setDescription(e.target.value);
+              scheduleTemplateAutoSaveRef.current();
+            }}
             placeholder="Add a description..."
             rows={2}
             className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 focus:outline-none focus:border-accent resize-none"
@@ -963,6 +1068,15 @@ function BlockCard({
       })),
     });
   }
+  if (isImageBlock) {
+    const normalized = parseImageBlockConfig(block.configJson, {
+      mainBlockId: effectiveMainBlockId ?? undefined,
+    });
+    blockConfig = {
+      ...blockConfig,
+      defaultSourceBlockId: normalized.defaultSourceBlockId,
+    };
+  }
 
   return (
     <motion.div
@@ -1150,6 +1264,7 @@ function BlockCard({
             <ImageBlockSettings
               config={blockConfig}
               onConfigChange={onConfigChange}
+              otherTextBlocks={otherTextBlocksForAudio ?? []}
             />
           )}
         </div>
@@ -1217,32 +1332,59 @@ function AudioBlockSettings({ config, onConfigChange, otherTextBlocks = [] }) {
   );
 }
 
-// Image Block Settings: default crop aspect (synced via configJson; mobile reads cropAspect)
-function ImageBlockSettings({ config, onConfigChange }) {
+// Image Block Settings: crop aspect + default text block for AI image prompt (same pattern as audio)
+function ImageBlockSettings({ config, onConfigChange, otherTextBlocks = [] }) {
   const cropAspect = getCropAspectFromConfig(config);
+  const defaultSourceBlockId =
+    config.defaultSourceBlockId ?? config.default_source_block_id ?? "";
 
   return (
-    <div className="mt-3 pt-3 border-t border-white/10">
-      <label className="text-white/70 text-sm block mb-2">Default crop aspect</label>
-      <div className="flex flex-wrap gap-2">
-        {CROP_ASPECT_OPTIONS.map((opt) => (
-          <button
-            key={opt.label}
-            type="button"
-            onClick={() => onConfigChange({ ...config, cropAspect: opt.value })}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-              cropAspect === opt.value
-                ? "bg-accent/20 text-accent"
-                : "bg-white/5 text-white/70 hover:bg-white/10"
-            }`}
-          >
-            {opt.label}
-          </button>
-        ))}
+    <div className="mt-3 pt-3 border-t border-white/10 space-y-4">
+      <div>
+        <label className="text-white/70 text-sm block mb-2">Default block for AI image prompt</label>
+        <p className="text-white/40 text-xs mb-2">
+          Pre-fills the Generate with AI prompt when editing a card (same idea as audio: text comes from the chosen block).
+        </p>
+        <select
+          value={defaultSourceBlockId}
+          onChange={(e) =>
+            onConfigChange({
+              ...config,
+              defaultSourceBlockId: e.target.value || null,
+            })
+          }
+          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent/50"
+        >
+          <option value="">Main block (default)</option>
+          {otherTextBlocks.map((b) => (
+            <option key={b.blockId} value={b.blockId}>
+              {b.label || b.blockId}
+            </option>
+          ))}
+        </select>
       </div>
-      <p className="text-white/40 text-xs mt-1">
-        Used when cropping images in cards. Synced to Firebase for mobile.
-      </p>
+      <div>
+        <label className="text-white/70 text-sm block mb-2">Default crop aspect</label>
+        <div className="flex flex-wrap gap-2">
+          {CROP_ASPECT_OPTIONS.map((opt) => (
+            <button
+              key={opt.label}
+              type="button"
+              onClick={() => onConfigChange({ ...config, cropAspect: opt.value })}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                cropAspect === opt.value
+                  ? "bg-accent/20 text-accent"
+                  : "bg-white/5 text-white/70 hover:bg-white/10"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        <p className="text-white/40 text-xs mt-1">
+          Used when cropping images in cards. Synced to Firebase for mobile.
+        </p>
+      </div>
     </div>
   );
 }
