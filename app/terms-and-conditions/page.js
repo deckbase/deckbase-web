@@ -113,11 +113,11 @@ const TermsAndConditions = () => {
           <p className="text-base font-semibold mt-2">Refund policy</p>
           <p className="text-base">
             We do not offer refunds for subscription fees already paid, except where required by law (e.g. consumer rights in your jurisdiction) or as stated by the platform (e.g. Google Play or App Store refund policies). If you believe you are entitled to a refund under applicable law, contact us at{" "}
-            <a href="mailto:support@deckbase.co" className="text-gray-400 underline hover:text-white">support@deckbase.co</a> with your account and transaction details.
+            <a href="mailto:hello@deckbase.co" className="text-gray-400 underline hover:text-white">hello@deckbase.co</a> with your account and transaction details.
           </p>
           <p className="text-base font-semibold mt-2">Disputes</p>
           <p className="text-base">
-            For billing or payment disputes, please contact us first at support@deckbase.co. If we cannot resolve the issue, you may contact your payment provider (e.g. Stripe, Google Play, Apple) in accordance with their dispute process. Chargebacks or payment disputes may result in suspension of your account until resolved.
+            For billing or payment disputes, please contact us first at hello@deckbase.co. If we cannot resolve the issue, you may contact your payment provider (e.g. Stripe, Google Play, Apple) in accordance with their dispute process. Chargebacks or payment disputes may result in suspension of your account until resolved.
           </p>
 
           <h3 className="text-lg font-bold mt-6">6. Intellectual Property</h3>

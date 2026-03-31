@@ -39,7 +39,7 @@ const values = [
 const editorialNotes = [
   { label: "Team", value: "Deckbase product and editorial team" },
   { label: "Updated", value: "March 2026" },
-  { label: "Contact", value: "support@deckbase.co" },
+  { label: "Contact", value: "hello@deckbase.co" },
 ];
 export default function About() {
   useEffect(() => {

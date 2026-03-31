@@ -3464,6 +3464,17 @@ export default function DeckDetailPage() {
                 }
               >
                 <div className="flex gap-3 items-stretch min-h-[3rem]">
+                  {cardMediaCache[card.cardId]?.imageUrl && (
+                    <div className="relative w-16 min-w-[4rem] min-h-[3rem] rounded-lg overflow-hidden bg-white/5 flex-shrink-0">
+                      <Image
+                        src={cardMediaCache[card.cardId].imageUrl}
+                        alt=""
+                        fill
+                        className="object-cover"
+                        sizes="64px"
+                      />
+                    </div>
+                  )}
                   <div className="flex-1 min-w-0 flex flex-col justify-center">
                     {(() => {
                       const preview = getCardPreview(card);
@@ -3500,37 +3511,24 @@ export default function DeckDetailPage() {
                       );
                     })()}
                   </div>
-                  <div className="flex gap-2 shrink-0 items-stretch">
-                    {cardMediaCache[card.cardId]?.imageUrl && (
-                      <div className="relative w-16 min-w-[4rem] min-h-[3rem] rounded-lg overflow-hidden bg-white/5 flex-shrink-0">
-                        <Image
-                          src={cardMediaCache[card.cardId].imageUrl}
-                          alt=""
-                          fill
-                          className="object-cover"
-                          sizes="64px"
-                        />
-                      </div>
-                    )}
-                    {cardMediaCache[card.cardId]?.audioUrl && (
-                      <div className="flex items-center gap-2 shrink-0 self-center">
-                        <button
-                          type="button"
-                          onClick={(e) => handleDeckCardAudioClick(e, card.cardId, cardMediaCache[card.cardId].audioUrl)}
-                          className={`flex items-center justify-center w-10 h-10 rounded-lg flex-shrink-0 transition-colors ${
-                            playingCardId === card.cardId ? "bg-accent text-white" : "bg-accent/20 text-accent hover:bg-accent/30"
-                          }`}
-                          title={playingCardId === card.cardId ? "Pause" : "Play audio"}
-                        >
-                          {playingCardId === card.cardId ? (
-                            <Pause className="w-5 h-5" />
-                          ) : (
-                            <Volume2 className="w-5 h-5" />
-                          )}
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                  {cardMediaCache[card.cardId]?.audioUrl && (
+                    <div className="flex items-center gap-2 shrink-0 self-center">
+                      <button
+                        type="button"
+                        onClick={(e) => handleDeckCardAudioClick(e, card.cardId, cardMediaCache[card.cardId].audioUrl)}
+                        className={`flex items-center justify-center w-10 h-10 rounded-lg flex-shrink-0 transition-colors ${
+                          playingCardId === card.cardId ? "bg-accent text-white" : "bg-accent/20 text-accent hover:bg-accent/30"
+                        }`}
+                        title={playingCardId === card.cardId ? "Pause" : "Play audio"}
+                      >
+                        {playingCardId === card.cardId ? (
+                          <Pause className="w-5 h-5" />
+                        ) : (
+                          <Volume2 className="w-5 h-5" />
+                        )}
+                      </button>
+                    </div>
+                  )}
                 </div>
               </Link>
 

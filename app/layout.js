@@ -145,7 +145,7 @@ const jsonLd = {
       ],
       contactPoint: {
         "@type": "ContactPoint",
-        email: "support@deckbase.co",
+        email: "hello@deckbase.co",
         contactType: "customer support",
       },
       ...(hasFounder ? { founder: { "@id": founderId } } : {}),

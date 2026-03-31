@@ -31,10 +31,10 @@ const Footer = () => {
             <p className="text-white/80 text-sm mt-1 text-center lg:text-left">
               Customer support:{" "}
               <a
-                href="mailto:support@deckbase.co"
+                href="mailto:hello@deckbase.co"
                 className="text-accent hover:underline"
               >
-                support@deckbase.co
+                hello@deckbase.co
               </a>
             </p>
           </section>

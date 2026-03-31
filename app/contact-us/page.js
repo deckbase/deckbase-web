@@ -122,7 +122,7 @@ const ContactForm = () => {
             </h2>
             <p className="text-white/80">
               Fill the form below and we will be in touch. You can also reach customer support at{" "}
-              <a href="mailto:support@deckbase.co" className="text-accent hover:underline">support@deckbase.co</a>.
+              <a href="mailto:hello@deckbase.co" className="text-accent hover:underline">hello@deckbase.co</a>.
             </p>
           </div>
 

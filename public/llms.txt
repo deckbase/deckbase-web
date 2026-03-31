@@ -34,4 +34,4 @@ Deckbase is an iOS and Android app with a free tier and Premium plans. It scans 
 
 ## Contact
 
-support@deckbase.co
+hello@deckbase.co
