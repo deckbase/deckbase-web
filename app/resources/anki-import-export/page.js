@@ -8,6 +8,7 @@ import {
   ArticleSection,
   ArticleH2,
   ArticleBody,
+  ArticleTable,
   ArticleSteps,
   ArticleFaq,
   ArticleRelated,
@@ -68,6 +69,27 @@ const faqs = [
     q: "Can I still use both apps?",
     a: "Yes. Many learners keep legacy decks in Anki while creating new AI-assisted decks in Deckbase, then gradually consolidate.",
   },
+];
+
+const migrationModes = [
+  ["Clean split", "Keep old decks in Anki, create new decks in Deckbase", "Low risk", "Learners who want immediate momentum"],
+  ["Progressive merge", "Import active Anki decks and standardize templates over time", "Medium", "Users consolidating to one system"],
+  ["Full cutover", "Move all decks quickly and enforce one template system", "High", "Teams with strict migration deadlines"],
+];
+
+const cleanupPriorityRows = [
+  ["Prompt ambiguity", "Directly raises lapse rate", "Rewrite with one clear recall target"],
+  ["Overloaded cards", "Inconsistent ratings and long review time", "Split into smaller atomic cards"],
+  ["Duplicate prompts", "Wasted review budget", "Deduplicate by prompt + answer pair"],
+  ["Formatting noise", "Lower readability during reviews", "Normalize punctuation and line breaks"],
+  ["Missing context tags", "Cross-topic confusion", "Add concise domain or chapter tags"],
+];
+
+const weekMetricsRows = [
+  ["Review completion", ">=80% planned days", "Stability of study habit"],
+  ["Average time per session", "Flat or declining", "Workflow efficiency"],
+  ["Lapse rate trend", "Down by week 2-3", "Card quality + scheduler fit"],
+  ["Import cleanup backlog", "Shrinking each week", "Operational health of migration"],
 ];
 
 const jsonLd = {
@@ -202,6 +224,75 @@ export default function AnkiImportExportPage() {
           <ArticleBody>
             By the end of week 2, you should have clear evidence on retention quality and workflow
             speed. Keep the setup that preserves daily completion and lowest lapse rate.
+          </ArticleBody>
+        </ArticleSection>
+
+        <ArticleSection id="choose-migration-mode">
+          <ArticleH2>Choose the right migration mode</ArticleH2>
+          <ArticleBody>
+            Not every learner should migrate the same way. A clean split is usually safest for
+            individual learners who need continuity. Progressive merge is better when you want one
+            eventual library but cannot afford a disruption period. Full cutover is fastest, but it
+            carries higher risk if card quality controls are weak.
+          </ArticleBody>
+          <ArticleTable
+            columns={["Mode", "How it works", "Risk", "Best for"]}
+            rows={migrationModes}
+          />
+          <ArticleBody>
+            If you are unsure, start with clean split for 2-4 weeks, then move into progressive merge
+            once your daily review completion is stable and your cleanup backlog is under control.
+          </ArticleBody>
+        </ArticleSection>
+
+        <ArticleSection id="cleanup-priorities">
+          <ArticleH2>Post-import cleanup priorities (in order)</ArticleH2>
+          <ArticleBody>
+            The highest leverage move is fixing only what affects recall quality first. Cosmetic edits
+            can wait. Many migrations fail because users spend days formatting cards while neglecting
+            prompt clarity, duplicates, and card granularity.
+          </ArticleBody>
+          <ArticleTable
+            columns={["Issue", "Why it matters", "First action"]}
+            rows={cleanupPriorityRows}
+          />
+          <ArticleBody>
+            Use short cleanup sessions (20-30 minutes) after daily reviews. This keeps momentum intact
+            and avoids rebuilding the entire deck library before seeing retention results.
+          </ArticleBody>
+        </ArticleSection>
+
+        <ArticleSection id="weekly-metrics">
+          <ArticleH2>Weekly migration scorecard</ArticleH2>
+          <ArticleBody>
+            During migration, run one lightweight scorecard every 7 days. This helps you detect early
+            friction before it becomes a motivation problem. If completion is falling or session time
+            spikes, reduce incoming card volume and prioritize card rewrites over new imports.
+          </ArticleBody>
+          <ArticleTable
+            columns={["Metric", "Healthy signal", "What it indicates"]}
+            rows={weekMetricsRows}
+          />
+          <ArticleBody>
+            A strong migration trend is simple: completion stays high, lapse rate declines, and backlog
+            of broken cards shrinks each week.
+          </ArticleBody>
+        </ArticleSection>
+
+        <ArticleSection id="failure-recovery">
+          <ArticleH2>Failure recovery: what to do if migration quality drops</ArticleH2>
+          <ArticleSteps
+            items={[
+              "Pause new imports for 3-5 days and stabilize daily review completion first.",
+              "Identify top 50 failing cards and classify causes (ambiguity, overload, duplicates, context mismatch).",
+              "Rewrite those cards, then remeasure lapse rate after one week before expanding imports.",
+              "Reintroduce imports in small batches and stop immediately if session time spikes again.",
+            ]}
+          />
+          <ArticleBody>
+            This recovery loop works because it protects your retention system before adding more
+            complexity. In most cases, users recover faster by reducing volume and improving card
+            design rather than tuning advanced scheduler settings.
           </ArticleBody>
         </ArticleSection>
 

@@ -83,6 +83,13 @@ const troubleshootingRows = [
   ["Progress stalls after 2-3 weeks", "No card maintenance loop", "Rewrite weakest cards weekly and remove low-value items"],
 ];
 
+const weeklyReviewRows = [
+  ["Completion rate", "How many planned days were fully reviewed", "At least 5 of 7 days"],
+  ["Average session time", "Whether workload is still sustainable", "15-35 minutes"],
+  ["Lapse concentration", "Which tags/topics fail most often", "Top 20% of tags cause most lapses"],
+  ["Card rewrite count", "How many low-quality cards were improved", "10-20 targeted rewrites"],
+];
+
 const faqs = [
   {
     q: "What is FSRS in one sentence?",
@@ -335,6 +342,39 @@ export default function FsrsGuidePage() {
             Both modes are valid. Choose the one that matches your timeline, then keep rules stable
             long enough to evaluate outcomes from real review data.
           </ArticleBody>
+        </ArticleSection>
+
+        <ArticleSection id="weekly-operations">
+          <ArticleH2>Weekly FSRS operations checklist</ArticleH2>
+          <ArticleBody>
+            FSRS performs best when you run it like an operating system, not a one-time setup. A
+            short weekly review loop keeps your card pool healthy and prevents small quality defects
+            from compounding into daily review fatigue.
+          </ArticleBody>
+          <ArticleTable
+            columns={["Operational metric", "What it tells you", "Practical target"]}
+            rows={weeklyReviewRows}
+          />
+          <ArticleSteps
+            items={[
+              <>
+                <strong className="text-white/75">Tag your misses.</strong> When cards fail, tag the
+                cause (ambiguous prompt, overloaded card, weak context, or pure memory gap).
+              </>,
+              <>
+                <strong className="text-white/75">Fix highest-impact tags first.</strong> Work from
+                the biggest lapse clusters rather than random card edits.
+              </>,
+              <>
+                <strong className="text-white/75">Keep card templates consistent.</strong> Similar
+                card types should follow the same answer format so rating behavior stays reliable.
+              </>,
+              <>
+                <strong className="text-white/75">Record one weekly note.</strong> Write what changed,
+                what improved, and what to test next week.
+              </>,
+            ]}
+          />
         </ArticleSection>
 
         <ArticleSection id="faq">
