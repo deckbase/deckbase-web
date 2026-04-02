@@ -92,6 +92,29 @@ const weekMetricsRows = [
   ["Import cleanup backlog", "Shrinking each week", "Operational health of migration"],
 ];
 
+const scenarioRows = [
+  [
+    "Medical exam prep (8-16 weeks)",
+    "Protect review consistency under time pressure",
+    "Migrate only active decks first, keep strict daily cap, defer cosmetic cleanup",
+  ],
+  [
+    "Language learning (ongoing)",
+    "Sustainability and low friction",
+    "Progressive merge with sentence-context template standardization",
+  ],
+  [
+    "Team/shared content migration",
+    "Template consistency across users",
+    "Define canonical template rules before high-volume imports",
+  ],
+  [
+    "Personal archive cleanup",
+    "Avoid carrying low-quality legacy cards",
+    "Import by topic and retire low-yield decks early",
+  ],
+];
+
 const jsonLd = {
   "@context": "https://schema.org",
   "@graph": [
@@ -293,6 +316,87 @@ export default function AnkiImportExportPage() {
             This recovery loop works because it protects your retention system before adding more
             complexity. In most cases, users recover faster by reducing volume and improving card
             design rather than tuning advanced scheduler settings.
+          </ArticleBody>
+        </ArticleSection>
+
+        <ArticleSection id="scenario-playbooks">
+          <ArticleH2>Scenario playbooks: choose migration strategy by context</ArticleH2>
+          <ArticleBody>
+            Migration advice is most useful when it maps to your real constraints. A learner preparing
+            for a high-stakes exam needs a different rollout than someone gradually modernizing a
+            personal archive. The table below helps you select a mode quickly and avoid over-migrating
+            before your daily review habit is stable.
+          </ArticleBody>
+          <ArticleTable
+            columns={["Scenario", "Main objective", "Recommended migration approach"]}
+            rows={scenarioRows}
+          />
+          <ArticleBody>
+            If two scenarios overlap, choose the lower-risk path first. In practice, consistency beats
+            speed: a slower migration with stable reviews almost always outperforms a fast migration
+            that disrupts your study loop.
+          </ArticleBody>
+        </ArticleSection>
+
+        <ArticleSection id="template-standardization">
+          <ArticleH2>Template standardization before large imports</ArticleH2>
+          <ArticleBody>
+            Template mismatch is one of the most expensive migration mistakes. If similar concepts are
+            represented with different field structures, review quality drops and batch automation
+            becomes unreliable. Before large imports, define one default template for each card type
+            (definition, cloze-like recall, bilingual vocabulary, formula recall, etc.).
+          </ArticleBody>
+          <ArticleSteps
+            items={[
+              "Define required fields for each card type and keep naming consistent across decks.",
+              "Set formatting rules for prompts and answers (length, punctuation, context style).",
+              "Map legacy fields to new template fields before batch imports start.",
+              "Validate 20-30 sample cards manually before scaling to full deck imports.",
+            ]}
+          />
+          <ArticleBody>
+            Standardization is not busywork. It increases rating consistency, lowers cleanup backlog,
+            and improves long-term maintainability when new cards are added from OCR or MCP workflows.
+          </ArticleBody>
+        </ArticleSection>
+
+        <ArticleSection id="quality-acceptance-gates">
+          <ArticleH2>Quality acceptance gates for each migration batch</ArticleH2>
+          <ArticleBody>
+            Use explicit pass/fail gates before importing the next batch. This prevents low-quality
+            cards from spreading across active decks and protects daily review confidence.
+          </ArticleBody>
+          <ArticleSteps
+            items={[
+              "Gate 1: At least 90% of sampled cards are understandable without editing.",
+              "Gate 2: Duplicate prompt rate stays below 2-3% in the current batch.",
+              "Gate 3: Average session time does not increase more than 10-15% week-over-week.",
+              "Gate 4: Lapse trend is stable or improving after one week of normal review.",
+            ]}
+          />
+          <ArticleBody>
+            If any gate fails, stop new imports and run a focused repair sprint. Correcting issues at
+            batch size 50 is far cheaper than fixing the same pattern after 2,000 imported cards.
+          </ArticleBody>
+        </ArticleSection>
+
+        <ArticleSection id="post-migration-operations">
+          <ArticleH2>Post-migration operations: keep the library healthy</ArticleH2>
+          <ArticleBody>
+            Migration is complete only when your weekly operations are stable. After cutover, run a
+            light maintenance rhythm so deck quality does not drift over time.
+          </ArticleBody>
+          <ArticleSteps
+            items={[
+              "Run a weekly duplicate check on recently imported decks.",
+              "Tag and rewrite cards with repeated lapses rather than increasing review load globally.",
+              "Archive low-yield legacy decks that no longer support current goals.",
+              "Document one workflow improvement per month (capture, cleanup, template, or review policy).",
+            ]}
+          />
+          <ArticleBody>
+            This operational layer is what keeps migration gains durable. Without it, card quality can
+            regress and recreate the same friction that triggered migration in the first place.
           </ArticleBody>
         </ArticleSection>
 

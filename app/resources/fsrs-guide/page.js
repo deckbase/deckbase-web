@@ -90,6 +90,29 @@ const weeklyReviewRows = [
   ["Card rewrite count", "How many low-quality cards were improved", "10-20 targeted rewrites"],
 ];
 
+const scenarioRows = [
+  [
+    "Medical exam in 10 weeks",
+    "High-volume facts, strict recall demands",
+    "Start 91-93%, cap new cards, aggressively rewrite ambiguous cards",
+  ],
+  [
+    "Language learning over 12 months",
+    "Mixed vocabulary and usage patterns",
+    "Start 90-92%, prioritize sentence-context cards, review consistently",
+  ],
+  [
+    "Technical certification while working full-time",
+    "Limited daily time, fatigue risk",
+    "Start 89-91%, optimize card brevity, protect completion over volume",
+  ],
+  [
+    "Long-term professional knowledge base",
+    "Durability matters more than speed",
+    "Use 90-92%, schedule weekly maintenance and tag-based cleanup",
+  ],
+];
+
 const faqs = [
   {
     q: "What is FSRS in one sentence?",
@@ -375,6 +398,83 @@ export default function FsrsGuidePage() {
               </>,
             ]}
           />
+        </ArticleSection>
+
+        <ArticleSection id="worked-scenarios">
+          <ArticleH2>Worked scenarios: how FSRS settings change by goal</ArticleH2>
+          <ArticleBody>
+            Learners often ask for one universal FSRS setup, but the optimal profile depends on
+            constraints: timeline, error tolerance, and available daily minutes. The same settings
+            that work for long-term language maintenance can feel overwhelming for short exam windows,
+            and the opposite is also true.
+          </ArticleBody>
+          <ArticleBody>
+            Use the table below as a decision shortcut. Start with the closest scenario, keep settings
+            stable for at least 10 days, then tune one variable at a time. This avoids false
+            conclusions caused by changing multiple factors simultaneously.
+          </ArticleBody>
+          <ArticleTable
+            columns={["Scenario", "Primary constraint", "Practical FSRS strategy"]}
+            rows={scenarioRows}
+          />
+          <ArticleBody>
+            The main idea is operational fit: a slightly lower retention target that you can sustain
+            daily usually outperforms an aggressive target you abandon after two weeks.
+          </ArticleBody>
+        </ArticleSection>
+
+        <ArticleSection id="failure-patterns">
+          <ArticleH2>Common failure patterns and how to recover fast</ArticleH2>
+          <ArticleBody>
+            When learners say FSRS &quot;is not working,&quot; the root cause is usually process quality, not
+            the scheduler itself. Three patterns appear repeatedly: uncontrolled new-card intake,
+            unclear card prompts, and inconsistent rating behavior after recall. All three produce
+            noisy signals that make interval planning less reliable.
+          </ArticleBody>
+          <ArticleSteps
+            items={[
+              <>
+                <strong className="text-white/75">Backlog spiral:</strong> new cards keep growing while
+                daily completion drops. Recovery: freeze new cards for 3-5 days and clear overdue
+                reviews before resuming intake.
+              </>,
+              <>
+                <strong className="text-white/75">Ambiguity spiral:</strong> prompts ask multiple things,
+                causing frequent &quot;almost knew it&quot; outcomes. Recovery: rewrite top lapse cards into one
+                question, one expected answer, one clear context.
+              </>,
+              <>
+                <strong className="text-white/75">Rating drift:</strong> ratings become generous during
+                busy weeks, then lapses spike later. Recovery: run 7 days of stricter self-rating and
+                re-check interval behavior.
+              </>,
+            ]}
+          />
+          <ArticleBody>
+            Fast recovery comes from reducing system noise first. Once your data quality improves,
+            small retention adjustments become meaningful and easier to interpret.
+          </ArticleBody>
+        </ArticleSection>
+
+        <ArticleSection id="implementation-checklist">
+          <ArticleH2>Implementation checklist you can reuse monthly</ArticleH2>
+          <ArticleBody>
+            Treat this as a recurring maintenance loop. The checklist helps keep review quality high
+            as your card library grows and study goals change over time.
+          </ArticleBody>
+          <ArticleSteps
+            items={[
+              "Set one explicit goal metric for the month (for example, keep completion above 85%).",
+              "Audit your top failing tags and rewrite the weakest 20 cards first.",
+              "Check whether average session time is rising faster than card volume.",
+              "Remove or suspend low-yield cards that repeatedly consume time without retention gain.",
+              "Document one process change and re-evaluate after 2 weeks of stable usage.",
+            ]}
+          />
+          <ArticleBody>
+            This monthly loop keeps FSRS aligned with your real workload. The best learners do not
+            only review cards; they also maintain the quality of the review system itself.
+          </ArticleBody>
         </ArticleSection>
 
         <ArticleSection id="faq">
