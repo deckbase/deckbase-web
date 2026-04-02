@@ -109,6 +109,29 @@ const troubleshootingRows = [
   ["Math/notation cards break", "OCR errors on symbols", "Use manual correction or typed fallback for critical formulas"],
 ];
 
+const sourceTypeRows = [
+  ["Printed textbook", "Headers, footers, page numbers", "Crop margins and remove recurring fragments before generation"],
+  ["Lecture slides PDF", "Bulleted fragments and incomplete sentences", "Merge adjacent bullets into complete statements before card creation"],
+  ["Scanned handwritten notes", "Character ambiguity and spacing errors", "Use smaller chunks and manual normalization for key terms"],
+  ["Research papers", "Dense paragraphs and citation clutter", "Extract definitions and claims first, defer citations to context fields"],
+];
+
+const extractionChecklistRows = [
+  ["Crop and alignment", "No clipped lines and no page tilt"],
+  ["Artifact cleanup", "Headers, footers, and page numbers removed"],
+  ["Sentence integrity", "No broken sentence tails or merged columns"],
+  ["Terminology normalization", "Consistent spelling and canonical terms"],
+  ["Concept chunking", "One concept block per capture segment"],
+];
+
+const monthlyKpiRows = [
+  ["Review completion", "How often learners actually execute reviews", ">=85% planned days"],
+  ["Lapse trend", "Signal of card clarity and interval fit", "Declining over 4-week period"],
+  ["Average session time", "Operational sustainability", "Stable or improving"],
+  ["Batch rejection rate", "Upstream OCR quality health", "Below 10%"],
+  ["Card rewrite velocity", "How fast low-quality cards are repaired", ">=20 rewrites per month"],
+];
+
 const jsonLd = {
   "@context": "https://schema.org",
   "@graph": [
@@ -306,6 +329,96 @@ export default function OcrStudyWorkflowsPage() {
           <ArticleBody>
             Most learners recover quickly when they reduce noise and tighten capture standards. Once
             batch quality is stable, you can scale volume safely again.
+          </ArticleBody>
+        </ArticleSection>
+
+        <ArticleSection id="source-specific-rules">
+          <ArticleH2>Source-specific OCR rules by content type</ArticleH2>
+          <ArticleBody>
+            OCR quality is not uniform across sources. A pipeline tuned for printed textbooks can fail
+            on slide decks or handwritten notes. Instead of one universal preprocessing step, apply
+            source-specific rules so extraction quality remains stable across different input formats.
+          </ArticleBody>
+          <ArticleTable
+            columns={["Source type", "Typical failure mode", "Recommended preprocessing"]}
+            rows={sourceTypeRows}
+          />
+          <ArticleBody>
+            This simple classification prevents repeated cleanup effort and makes downstream card
+            generation far more predictable.
+          </ArticleBody>
+        </ArticleSection>
+
+        <ArticleSection id="extraction-checklist">
+          <ArticleH2>Pre-generation extraction checklist</ArticleH2>
+          <ArticleBody>
+            Before generating cards, run a quick extraction audit. This is the highest-leverage point
+            in the workflow because defects introduced here propagate into every subsequent review.
+          </ArticleBody>
+          <ArticleTable
+            columns={["Check", "Pass condition"]}
+            rows={extractionChecklistRows}
+          />
+          <ArticleBody>
+            Teams that enforce this checklist typically reduce rewrite load and keep review sessions
+            more consistent week over week.
+          </ArticleBody>
+        </ArticleSection>
+
+        <ArticleSection id="card-design-patterns">
+          <ArticleH2>Card design patterns for OCR-derived content</ArticleH2>
+          <ArticleBody>
+            OCR captures often contain more detail than a single recall event can support. Turning raw
+            extraction into durable cards requires strict design patterns.
+          </ArticleBody>
+          <ArticleSteps
+            items={[
+              "Definition cards: one term, one canonical definition, optional concise context tag.",
+              "Process cards: one step per card, with sequence context in a separate field.",
+              "Comparison cards: one discriminating difference per prompt, not full side-by-side lists.",
+              "Formula cards: isolate symbols and units, avoid mixed prose and notation on first pass.",
+              "Exception cards: capture edge cases separately to avoid polluting core recall cards.",
+            ]}
+          />
+          <ArticleBody>
+            These patterns lower ambiguity and improve rating consistency, which in turn improves how
+            effectively FSRS schedules future reviews.
+          </ArticleBody>
+        </ArticleSection>
+
+        <ArticleSection id="monthly-kpis">
+          <ArticleH2>Monthly KPI dashboard for OCR workflow health</ArticleH2>
+          <ArticleBody>
+            Once a workflow is running, optimize with metrics, not intuition. A lightweight dashboard
+            helps you detect quality regression before learners feel the impact.
+          </ArticleBody>
+          <ArticleTable
+            columns={["KPI", "Why it matters", "Healthy range"]}
+            rows={monthlyKpiRows}
+          />
+          <ArticleBody>
+            If two or more KPIs trend in the wrong direction, pause scale-up and run a root-cause
+            review on recent OCR batches.
+          </ArticleBody>
+        </ArticleSection>
+
+        <ArticleSection id="scale-playbook">
+          <ArticleH2>Scale playbook: from pilot to high-throughput OCR</ArticleH2>
+          <ArticleBody>
+            Do not scale OCR card production in a single jump. Move through stages with explicit
+            acceptance gates so quality remains stable as volume increases.
+          </ArticleBody>
+          <ArticleSteps
+            items={[
+              "Stage 1 pilot: process 20-40 cards and verify extraction integrity manually.",
+              "Stage 2 controlled run: process 50-120 cards with dedupe and quality-gate enforcement.",
+              "Stage 3 production run: process larger batches only after stable KPI trends for 2 weeks.",
+              "Stage 4 maintenance: allocate weekly repair bandwidth for recurring failure categories.",
+            ]}
+          />
+          <ArticleBody>
+            This staged rollout keeps output quality high while still enabling throughput growth for
+            serious learners and teams.
           </ArticleBody>
         </ArticleSection>
 

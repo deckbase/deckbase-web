@@ -94,6 +94,27 @@ const failureRows = [
   ["Deck clutter after large runs", "No rollout gates", "Use staged batches and pause on quality threshold failure"],
 ];
 
+const integrationRows = [
+  ["Cursor", "High iteration speed during drafting", "Run preflight checks before each batch commit"],
+  ["Claude Code", "Long-form transformation and structure control", "Use explicit template schema snapshots per run"],
+  ["VS Code", "Scriptable workflows and tool orchestration", "Log failures to local artifacts for rerun filtering"],
+  ["Custom MCP client", "Full control over transport and retries", "Implement idempotency keys and strict timeout handling"],
+];
+
+const kpiRows = [
+  ["Create success rate", "Percentage of records created without errors", ">=95%"],
+  ["Duplicate prompt rate", "How often prompts collide in active decks", "Below 2%"],
+  ["Manual rewrite ratio", "Post-generation cleanup burden", "Below 15%"],
+  ["Schema mismatch incidents", "Template drift and mapper robustness", "Near zero"],
+  ["Rollback frequency", "Operational stability under scale", "Declining month over month"],
+];
+
+const incidentRows = [
+  ["P1", "Widespread malformed cards in active deck", "Freeze writes and rollback recent batch"],
+  ["P2", "Localized mapping errors in one template", "Patch mapper and rerun failed records"],
+  ["P3", "Minor formatting defects", "Queue for weekly cleanup cycle"],
+];
+
 const jsonLd = {
   "@context": "https://schema.org",
   "@graph": [
@@ -320,6 +341,105 @@ if (card.front.length > 180) reject("prompt too long")`}</CodeBlock>
           <ArticleBody>
             Weekly operations are what make automation sustainable. Without this layer, batch quality
             tends to drift and review performance declines over time.
+          </ArticleBody>
+        </ArticleSection>
+
+        <ArticleSection id="client-integration-patterns">
+          <ArticleH2>Client integration patterns that reduce production risk</ArticleH2>
+          <ArticleBody>
+            Different MCP clients encourage different operating styles. Standardizing integration
+            patterns by client helps teams avoid inconsistent tooling behavior and hidden reliability
+            gaps.
+          </ArticleBody>
+          <ArticleTable
+            columns={["Client", "Operational strength", "Recommended control"]}
+            rows={integrationRows}
+          />
+          <ArticleBody>
+            Pick one primary client path for production and keep other clients for experimentation only.
+            This makes incident diagnosis and replay logic much simpler.
+          </ArticleBody>
+        </ArticleSection>
+
+        <ArticleSection id="idempotency-and-retries">
+          <ArticleH2>Idempotency and retry strategy for safe automation</ArticleH2>
+          <ArticleBody>
+            Network retries without idempotency can generate duplicate cards even when transport errors
+            look harmless. Production systems should treat every batch write as potentially replayed and
+            protect writes with deterministic record keys.
+          </ArticleBody>
+          <CodeBlock>{`# safe write strategy
+record_key = hash(deckId + templateId + normalized_front)
+if seen(record_key): skip()
+else: create_card(...)
+
+# retry policy
+retry transient failures with backoff
+never retry schema-validation failures without mapper update`}</CodeBlock>
+          <ArticleBody>
+            This pattern dramatically lowers duplicate pollution and makes reruns predictable after
+            partial failures.
+          </ArticleBody>
+        </ArticleSection>
+
+        <ArticleSection id="observability">
+          <ArticleH2>Observability checklist for MCP card pipelines</ArticleH2>
+          <ArticleBody>
+            You cannot improve automation quality without visibility. Capture both technical and
+            pedagogical signals so incident response focuses on learner impact, not only API status.
+          </ArticleBody>
+          <ArticleSteps
+            items={[
+              "Log request IDs, deckId, templateId, and batch identifiers for every write operation.",
+              "Store per-record validation outcomes and failure reasons.",
+              "Track post-write sample quality scores and rewrite requirements.",
+              "Measure retention-side signals such as lapse changes on newly generated cards.",
+              "Maintain a weekly incident review with action items and owner assignment.",
+            ]}
+          />
+          <ArticleBody>
+            Strong observability shortens recovery time and improves confidence when scaling beyond
+            pilot workloads.
+          </ArticleBody>
+        </ArticleSection>
+
+        <ArticleSection id="kpi-dashboard">
+          <ArticleH2>KPI dashboard for automation quality</ArticleH2>
+          <ArticleBody>
+            Run a compact KPI dashboard each week to confirm that growth in batch volume is not
+            degrading learner outcomes.
+          </ArticleBody>
+          <ArticleTable
+            columns={["KPI", "Definition", "Healthy target"]}
+            rows={kpiRows}
+          />
+          <ArticleBody>
+            If two KPIs drift negatively, freeze scale-up and run targeted remediation before adding
+            more throughput.
+          </ArticleBody>
+        </ArticleSection>
+
+        <ArticleSection id="incident-response">
+          <ArticleH2>Incident response matrix for MCP operations</ArticleH2>
+          <ArticleBody>
+            Treat automation failures as operational incidents with severity levels. This gives teams a
+            predictable response path and prevents slow, ad-hoc cleanup.
+          </ArticleBody>
+          <ArticleTable
+            columns={["Severity", "Example condition", "Immediate action"]}
+            rows={incidentRows}
+          />
+          <ArticleSteps
+            items={[
+              "Declare severity and stop unsafe write paths immediately.",
+              "Isolate affected batches and identify exact failure boundaries.",
+              "Patch mapper or validation logic, then rerun only scoped failed records.",
+              "Publish a short post-incident note with preventive controls.",
+            ]}
+          />
+          <ArticleBody>
+            This framework keeps operational quality high as MCP automation shifts from experiments to
+            business-critical study workflows.
           </ArticleBody>
         </ArticleSection>
 
