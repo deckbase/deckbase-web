@@ -16,9 +16,9 @@ const TermsAndConditions = () => {
       transition={{ delay: 0.5 }}
       className="min-h-screen flex flex-col pt-20 bg-black"
     >
-      <h2 className="text-h2 pt-10 pb-10 lg:text-h3 text-white w-full text-center">
+      <h1 className="text-h2 pt-10 pb-10 lg:text-h3 text-white w-full text-center">
         Terms & Conditions
-      </h2>
+      </h1>
       <div className="mx-auto px-5 md:px-[5%] 2xl:px-0 py-10 container max-w-[1200px]">
         <article className="flex flex-col gap-5 text-white">
           <p className="py-5">

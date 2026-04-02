@@ -33,7 +33,7 @@ export const metadata = {
     template: "%s | Deckbase",
   },
   description:
-    "Deckbase turns notes, PDFs, and articles into study-ready flashcards in seconds. Generate cards with AI, retain more with spaced repetition, automate workflows with MCP, and move easily with Anki-friendly import/export.",
+    "Deckbase turns notes, PDFs, and scans into AI flashcards with FSRS scheduling. Study on iOS and Android, automate workflows with MCP, and migrate with Anki-friendly import/export.",
   keywords: [
     "flashcards",
     "AI flashcards",
@@ -63,7 +63,7 @@ export const metadata = {
   openGraph: {
     title: "Deckbase — AI flashcards from notes, PDFs, and articles",
     description:
-      "Deckbase turns notes, PDFs, and articles into study-ready flashcards in seconds. Generate cards with AI, retain more with spaced repetition, and use Anki-friendly import/export.",
+      "Deckbase turns notes, PDFs, and scans into AI flashcards with FSRS scheduling. Study on iOS and Android with Anki-friendly import/export.",
     url: SITE_URL,
     siteName: "Deckbase",
     images: [
@@ -81,7 +81,7 @@ export const metadata = {
     card: "summary_large_image",
     title: "Deckbase — AI flashcards from notes, PDFs, and articles",
     description:
-      "Deckbase turns notes, PDFs, and articles into study-ready flashcards in seconds. Generate with AI and retain more with spaced repetition.",
+      "Deckbase turns notes, PDFs, and scans into AI flashcards, then schedules review with FSRS on iOS and Android.",
     site: "@DeckbaseApp",
     images: ["/app_logo.webp"],
   },

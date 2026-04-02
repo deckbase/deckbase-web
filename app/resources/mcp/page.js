@@ -36,7 +36,7 @@ const authorId = `${homeUrl}/#deckbase-editorial`;
 export const metadata = {
   title: "Deckbase MCP for Flashcards: vs Other MCP Servers & How to Create Cards",
   description:
-    "How Deckbase's Model Context Protocol (MCP) compares to typical docs and code MCP servers, and how Pro/VIP users create decks and cards from Cursor, Claude Code, or VS Code — synced to the Deckbase app.",
+    "Compare Deckbase MCP with other MCP patterns and learn how Pro/VIP users create synced decks and cards from Cursor, Claude Code, and VS Code.",
   keywords: [
     "Deckbase MCP",
     "flashcard MCP",

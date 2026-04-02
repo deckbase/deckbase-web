@@ -82,6 +82,29 @@ const apps = [
   },
 ];
 
+const decisionRows = [
+  [
+    "USMLE / NCLEX / long exam runway",
+    "FSRS or equivalent scheduler, daily review loop",
+    "Deckbase or Anki",
+  ],
+  [
+    "Collaborative class study",
+    "Shared sets and classroom workflows",
+    "Quizlet or RemNote",
+  ],
+  [
+    "Reading-heavy inputs (books, PDFs)",
+    "Fast capture + editing before review",
+    "Deckbase",
+  ],
+  [
+    "Power-user customization",
+    "Add-ons and deep scheduling control",
+    "Anki",
+  ],
+];
+
 const faqs = [
   {
     q: "What is the best Quizlet alternative for long-term retention?",
@@ -257,6 +280,42 @@ export default function QuizletAlternativesPage() {
             </Link>
             .
           </ArticleBody>
+        </ArticleSection>
+
+        <ArticleSection id="choose-by-workflow">
+          <ArticleH2>Choose by workflow, not by brand</ArticleH2>
+          <ArticleBody>
+            Most Quizlet alternative roundups stop at feature lists. In practice, your result is
+            determined by workflow fit: how quickly you can create accurate cards, how consistently
+            you review, and whether the scheduler protects long-term retention when life gets busy.
+          </ArticleBody>
+          <ArticleTable
+            columns={["Study scenario", "What matters most", "Likely best fit"]}
+            rows={decisionRows}
+          />
+          <ArticleBody>
+            If your target is durable recall after 2-6 months, prioritize scheduling quality and
+            repeatability over novelty features. For many learners, that means a smaller toolset used
+            daily beats a broader toolset used irregularly.
+          </ArticleBody>
+        </ArticleSection>
+
+        <ArticleSection id="switch-plan">
+          <ArticleH2>7-day switch plan from Quizlet</ArticleH2>
+          <ArticleCardGrid cols={1}>
+            <ArticleCard title="Day 1-2: Build a pilot deck" titleAccent>
+              Move one active topic only, not your entire history. Keep this deck under 150 cards so
+              you can evaluate review quality quickly.
+            </ArticleCard>
+            <ArticleCard title="Day 3-5: Review daily and tune card quality">
+              Measure whether recall feels stronger after a few spaced sessions. Rewrite vague prompts
+              and split overloaded cards into smaller atomic cards.
+            </ArticleCard>
+            <ArticleCard title="Day 6-7: Decide with outcome metrics">
+              Choose based on retention signals: missed-card rate, review completion, and how often
+              you actually open the app. Keep the system that you can sustain.
+            </ArticleCard>
+          </ArticleCardGrid>
         </ArticleSection>
 
         <ArticleSection id="try-deckbase">

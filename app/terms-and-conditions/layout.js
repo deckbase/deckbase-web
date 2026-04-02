@@ -5,7 +5,7 @@ import { absoluteUrl } from "@/lib/site-url";
 export const metadata = {
   title: "Terms and Conditions",
   description:
-    "Deckbase terms and conditions: terms of use, acceptable use, and legal information for using our flashcard platform.",
+    "Deckbase terms and conditions including subscriptions, refunds, cancellations, acceptable use, intellectual property, and legal responsibilities.",
   openGraph: {
     title: "Terms and Conditions — Deckbase",
     description: "Terms of use and legal information for Deckbase.",

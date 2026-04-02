@@ -5,7 +5,7 @@ import { absoluteUrl } from "@/lib/site-url";
 export const metadata = {
   title: "Privacy Policy",
   description:
-    "Deckbase privacy policy: how we collect, use, and protect your data. Your learning data stays private and secure.",
+    "Deckbase privacy policy covering data collection, usage, storage, and security controls for your account, study content, and payment-related information.",
   openGraph: {
     title: "Privacy Policy — Deckbase",
     description: "How Deckbase collects, uses, and protects your data.",

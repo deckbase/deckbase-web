@@ -28,7 +28,7 @@ const authorId = `${homeUrl}/#deckbase-editorial`;
 export const metadata = {
   title: "AI Flashcard Maker — Generate Flashcards from PDFs, Notes & Books",
   description:
-    "Deckbase is an AI flashcard maker and generator: turn PDFs, lecture notes, and articles into study-ready cards. FSRS spaced repetition, iOS and Android apps, optional MCP for Cursor and Claude. Free tier for manual cards; AI generation is a paid feature.",
+    "Turn PDFs, notes, and books into AI flashcards with Deckbase. Review with FSRS on iOS and Android, and automate card workflows with optional MCP.",
   keywords: [
     "AI flashcard maker",
     "AI flashcards",

@@ -110,9 +110,9 @@ const ContactForm = () => {
         className="relative z-10 min-h-screen w-full bg-transparent"
       >
         <div className="bg-transparent pt-36 pb-20">
-          <h2 className="text-h2 lg:text-h3 text-white w-full text-center font-bold">
+          <h1 className="text-h2 lg:text-h3 text-white w-full text-center font-bold">
             Contact Us
-          </h2>
+          </h1>
         </div>
         <div className="mx-auto px-5 md:px-[5%] pb-20 container max-w-[1200px] space-y-8">
           {/* Header */}

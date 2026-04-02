@@ -71,6 +71,13 @@ export default function Home() {
                 </span>
               </motion.div>
 
+              <p className="mb-5 max-w-2xl text-sm sm:text-base text-white/70 leading-relaxed">
+                Deckbase is an AI flashcard app that converts notes, PDFs, and scanned
+                pages into spaced-repetition flashcards with FSRS. Study on iOS and
+                Android, automate with MCP, and migrate with Anki-friendly APKG
+                import/export.
+              </p>
+
               {/* Title */}
               <motion.div
                 initial={{ opacity: 0, y: 40 }}

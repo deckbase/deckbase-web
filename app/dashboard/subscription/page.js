@@ -6,6 +6,7 @@ import { Crown, Loader2, ExternalLink, ArrowLeft, Check, Minus, Sparkles } from 
 import Link from "next/link";
 import { motion } from "framer-motion";
 import PlanCard from "@/components/pricing/PlanCard";
+import { getPaidPlanPurchaseLabel, getWebBillingProduct } from "@/utils/revenuecatCta";
 
 const MONTHLY = "monthly";
 const YEARLY = "yearly";
@@ -182,6 +183,28 @@ function formatMonthlyEquivalent(product) {
   if (prefix) return `${prefix}${fallbackNumber}`;
   if (suffix) return `${fallbackNumber} ${suffix}`;
   return fallbackNumber;
+}
+
+function trialDurationLabel(pkg) {
+  const product = getWebBillingProduct(pkg);
+  const trial = product?.freeTrialPhase;
+  if (!trial) return null;
+
+  const count = Number(trial.billingCycleCount ?? trial.numberOfPeriods ?? 1);
+  const unitRaw = String(
+    trial.unit ??
+      trial.billingPeriod?.unit ??
+      trial.periodUnit ??
+      trial.isoUnit ??
+      ""
+  ).toLowerCase();
+
+  if (!Number.isFinite(count) || count <= 0) return "Free trial included";
+  if (unitRaw.includes("day")) return `${count}-day free trial`;
+  if (unitRaw.includes("week")) return `${count}-week free trial`;
+  if (unitRaw.includes("month")) return `${count}-month free trial`;
+  if (unitRaw.includes("year")) return `${count}-year free trial`;
+  return "Free trial included";
 }
 
 const BENEFITS_BY_TIER = {
@@ -521,6 +544,7 @@ export default function SubscriptionPage() {
                   billingPeriod === MONTHLY || (isAnnual && monthlyEquivalent) ? "/mo" : null;
                 const isFeatured = isAnnual && tierTag === "pro";
                 const benefits = BENEFITS_BY_TIER[tierTag] || BENEFITS_BY_TIER.pro;
+                const trialLabel = trialDurationLabel(pkg);
 
                 return (
                   <motion.div
@@ -540,7 +564,9 @@ export default function SubscriptionPage() {
                       price={displayPrice}
                       priceSuffix={displayPriceSuffix}
                       billingText={
-                        isAnnual
+                        trialLabel
+                          ? `${trialLabel} · ${isAnnual ? `Then billed annually at ${priceStr}` : `Then ${priceStr}/month`}`
+                          : isAnnual
                           ? monthlyEquivalent
                             ? `Billed annually at ${priceStr}`
                             : "Billed yearly"
@@ -549,7 +575,7 @@ export default function SubscriptionPage() {
                       badge={isFeatured ? "Most popular" : null}
                       tone={isFeatured ? "featured" : "default"}
                       liftFeatured={false}
-                      ctaLabel="Get started"
+                      ctaLabel={getPaidPlanPurchaseLabel(pkg)}
                     >
                       <ul className="flex flex-col gap-2.5">
                         {benefits.map((feature) => (

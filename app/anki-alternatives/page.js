@@ -26,7 +26,7 @@ const organizationId = "https://www.deckbase.co/#organization";
 export const metadata = {
   title: "Best Anki Alternatives (2026): AI Flashcards, FSRS & Mobile",
   description:
-    "Looking for an Anki alternative? Compare AI flashcard apps with FSRS scheduling, mobile apps, and easy card creation — plus how Deckbase fits med school, languages, and exams.",
+    "Compare Anki alternatives with AI card creation, FSRS scheduling, mobile support, and migration options for med school, language learning, and exams.",
   keywords: [
     "anki alternatives",
     "best anki alternative",

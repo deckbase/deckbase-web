@@ -5,7 +5,7 @@ import { absoluteUrl } from "@/lib/site-url";
 export const metadata = {
   title: "Contact Us — Support & Inquiries",
   description:
-    "Contact Deckbase for support, feature requests, partnerships, or general inquiries. We're here to help.",
+    "Contact Deckbase for support, feature requests, account help, developer questions, or partnerships. We'll reply with the right next steps.",
   openGraph: {
     title: "Contact Deckbase — Support & Inquiries",
     description: "Get in touch with Deckbase for support, partnerships, or questions.",

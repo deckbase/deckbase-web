@@ -300,6 +300,62 @@ export default function DeckbaseVsRemNote() {
             </div>
           </section>
 
+          <section id="decision-framework">
+            <h2 className="text-2xl md:text-3xl font-bold mb-6">Decision Framework: which path matches your goals?</h2>
+            <p className="text-gray-300 leading-relaxed mb-6">
+              A useful way to choose is to compare opportunity cost. If your bottleneck is card
+              creation speed and consistent daily reviews, a focused flashcard tool usually wins. If
+              your bottleneck is fragmented notes and weak concept linking, an all-in-one notes system
+              can justify extra complexity.
+            </p>
+            <div className="overflow-x-auto rounded-2xl border border-gray-800 mb-5">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-900 text-left">
+                    <th className="px-4 py-3 font-semibold text-gray-300 w-1/3">Your priority</th>
+                    <th className="px-4 py-3 font-semibold text-accent text-center w-1/3">Likely best fit</th>
+                    <th className="px-4 py-3 font-semibold text-gray-200 w-1/3">Reason</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    [
+                      "Weekly review consistency",
+                      "Deckbase",
+                      "Lower setup overhead helps maintain a stable review habit.",
+                    ],
+                    [
+                      "Knowledge graph and note linking",
+                      "RemNote",
+                      "Its core model is built around connected notes and documents.",
+                    ],
+                    [
+                      "Fast conversion from reading to cards",
+                      "Deckbase",
+                      "AI + OCR workflow reduces friction from source material to review.",
+                    ],
+                    [
+                      "Single workspace for notes and recall",
+                      "RemNote",
+                      "Integrated note and card workflows can reduce context switching.",
+                    ],
+                  ].map((row, i) => (
+                    <tr key={row[0]} className={i % 2 === 0 ? "bg-black" : "bg-gray-950"}>
+                      <td className="px-4 py-3 text-gray-300">{row[0]}</td>
+                      <td className="px-4 py-3 text-center text-gray-200">{row[1]}</td>
+                      <td className="px-4 py-3 text-gray-300">{row[2]}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-gray-300 leading-relaxed">
+              If you are uncertain, run a 7-day pilot: move one active topic into each workflow,
+              track completion rate and lapse rate, then keep the system you can sustain without
+              constant process tweaking.
+            </p>
+          </section>
+
           <section className="rounded-2xl bg-gradient-to-br from-accent/10 to-purple-900/20 border border-accent/30 p-8 text-center">
             <h2 className="text-2xl md:text-3xl font-bold mb-3">Try Deckbase Free</h2>
             <p className="text-gray-300 mb-8 max-w-xl mx-auto">

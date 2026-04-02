@@ -201,7 +201,7 @@ const PricingPlans = () => {
                   plan.price.monthly === 0
                     ? "Get started free"
                     : user
-                    ? plan.cta
+                    ? "Start free trial"
                     : "Sign in to subscribe"
                 }
               >

@@ -6,7 +6,7 @@ import { absoluteUrl } from "@/lib/site-url";
 export const metadata = {
   title: "Documentation",
   description:
-    "Technical documentation for Deckbase: integrations, APIs, and guides (MCP, developer setup).",
+    "Technical documentation for Deckbase integrations and APIs, including MCP setup, authentication, endpoints, and developer implementation guides.",
   alternates: { canonical: "/docs" },
   openGraph: {
     title: "Deckbase Documentation",

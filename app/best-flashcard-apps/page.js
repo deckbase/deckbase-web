@@ -27,7 +27,7 @@ const authorId = `${homeUrl}/#deckbase-editorial`;
 export const metadata = {
   title: "Best Flashcard Apps in 2026 (Med, Languages, AI)",
   description:
-    "A practical guide to the best flashcard apps in 2026: spaced repetition (FSRS), AI card creation, med school workflows, and language learning — including how Deckbase fits.",
+    "Practical guide to the best flashcard apps in 2026, including FSRS quality, AI card creation, mobile workflows, and fit for med school and language study.",
   keywords: [
     "best flashcard apps",
     "best flashcard app 2026",

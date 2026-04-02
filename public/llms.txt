@@ -2,6 +2,14 @@
 
 > AI-powered flashcard app that turns books, notes, and PDFs into spaced-repetition flashcards using OCR and the FSRS algorithm.
 
+## Key facts
+
+- AI flashcard generation from notes, PDFs, and scans
+- FSRS scheduling for retention-focused review
+- iOS, Android, and web app access
+- MCP support for Cursor and Claude workflows
+- Anki-friendly APKG import/export for migration
+
 ## Key pages
 
 - [Homepage](https://www.deckbase.co/)
@@ -20,7 +28,9 @@
 
 - [Deckbase vs Anki](https://www.deckbase.co/deckbase-vs-anki): Side-by-side comparison of AI card generation, FSRS vs SM-2 scheduling, pricing
 - [Deckbase vs Quizlet](https://www.deckbase.co/deckbase-vs-quizlet): Feature comparison for spaced repetition, AI workflows, and retention outcomes
+- [Deckbase vs Remnote](https://www.deckbase.co/deckbase-vs-remnote): Comparison for AI generation, workflow automation, and long-term review
 - [Best Anki Alternatives (2026)](https://www.deckbase.co/anki-alternatives): Roundup of top flashcard apps with strengths, trade-offs, and use cases
+- [Best Quizlet Alternatives (2026)](https://www.deckbase.co/quizlet-alternatives): Alternatives for spaced repetition, AI help, and migration flexibility
 - [Best Flashcard Apps (2026)](https://www.deckbase.co/best-flashcard-apps): Practical guide covering AI, FSRS, mobile, and student workflows
 - [MCP for Flashcards Guide](https://www.deckbase.co/resources/mcp): How Deckbase MCP compares to other MCP servers with example workflows
 - [FSRS practical guide](https://www.deckbase.co/resources/fsrs-guide): Plain-English explanation of FSRS, scheduling logic, and daily review workflow
@@ -31,6 +41,11 @@
 ## About
 
 Deckbase is an iOS and Android app with a free tier and Premium plans. It scans physical books and digital documents to generate flashcard decks and schedules reviews using FSRS (Free Spaced Repetition Scheduler) for retention.
+
+## App stores
+
+- [App Store](https://apps.apple.com/app/deckbase/id6748827564)
+- [Google Play](https://play.google.com/store/apps/details?id=co.deckbase.app)
 
 ## Contact
 

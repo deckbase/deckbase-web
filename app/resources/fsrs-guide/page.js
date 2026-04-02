@@ -63,6 +63,12 @@ const fsrsVsLegacy = [
   ["Daily workload", "Can drift over time", "Better balance between recall and volume"],
 ];
 
+const retentionTargets = [
+  ["New topic ramp-up", "85-90%", "Faster card turnover while concepts are unstable"],
+  ["Core exam material", "90-93%", "Balanced workload with lower lapse risk"],
+  ["Long-term reference", "93-95%", "Higher recall at the cost of more reviews"],
+];
+
 const faqs = [
   {
     q: "What is FSRS in one sentence?",
@@ -190,6 +196,36 @@ export default function FsrsGuidePage() {
             create cards through MCP, follow your template schema with <Code>get_template_schema</Code>{" "}
             before bulk writes.
           </ArticleBody>
+        </ArticleSection>
+
+        <ArticleSection id="retention-targets">
+          <ArticleH2>How to pick a retention target</ArticleH2>
+          <ArticleBody>
+            FSRS works best when your target retention matches your context. A single universal number
+            is rarely optimal: aggressive targets can inflate workload, while low targets can produce
+            avoidable forgetting before high-stakes exams.
+          </ArticleBody>
+          <ArticleTable
+            columns={["Study context", "Suggested retention target", "Why"]}
+            rows={retentionTargets}
+          />
+          <ArticleBody>
+            Start near 90-92% for most learners, then adjust after 2-3 weeks by looking at real
+            outcomes: overdue count, daily review time, and lapse frequency. Small changes are usually
+            better than large jumps.
+          </ArticleBody>
+        </ArticleSection>
+
+        <ArticleSection id="card-quality-checklist">
+          <ArticleH2>Card quality checklist for better FSRS results</ArticleH2>
+          <ArticleSteps
+            items={[
+              <>Use one clear question per card. Ambiguous prompts create noisy ratings and weaker interval predictions.</>,
+              <>Prefer concrete answers over broad summaries. Specific recall events improve scheduling accuracy.</>,
+              <>Add context only when needed. Extra text should disambiguate, not overwhelm the recall step.</>,
+              <>Review recent lapses weekly and rewrite the worst 10 cards. FSRS performs best when input quality keeps improving.</>,
+            ]}
+          />
         </ArticleSection>
 
         <ArticleSection id="faq">
