@@ -168,6 +168,49 @@ create_cards(deckId, templateId, cards[])`}</CodeBlock>
           </ArticleBody>
         </ArticleSection>
 
+        <ArticleSection id="validation">
+          <ArticleH2>Validation checks before and after create_cards</ArticleH2>
+          <ArticleBody>
+            Reliable automation uses a guardrail contract, not only a prompt. Before writes, verify
+            deckId and templateId exist and ensure each card contains required fields. After writes,
+            sample-check new cards for duplicated prompts and malformed answers.
+          </ArticleBody>
+          <CodeBlock>{`{
+  "preflight": {
+    "deck_exists": true,
+    "template_exists": true,
+    "required_fields_present": true,
+    "batch_size": 25
+  },
+  "post_write": {
+    "created": 25,
+    "failed": 0,
+    "spot_check_count": 5,
+    "duplicate_prompt_rate": "<2%"
+  }
+}`}</CodeBlock>
+          <ArticleBody>
+            Keeping batch size between 20 and 50 cards limits blast radius when a mapping bug slips
+            through and makes rollback easier.
+          </ArticleBody>
+        </ArticleSection>
+
+        <ArticleSection id="failure-handling">
+          <ArticleH2>Failure handling pattern for production runs</ArticleH2>
+          <ArticleSteps
+            items={[
+              "Stop on schema mismatch; do not retry with guessed fields.",
+              "Log failed records with source snippet and error reason.",
+              "Patch mapper rules, then rerun only failed records.",
+              "Run a final spot-check before enabling the next full batch.",
+            ]}
+          />
+          <ArticleBody>
+            This pattern keeps data quality high and prevents silent corruption of established study
+            decks.
+          </ArticleBody>
+        </ArticleSection>
+
         <ArticleSection id="faq">
           <ArticleH2>FAQ</ArticleH2>
           <ArticleFaq items={faqs} />

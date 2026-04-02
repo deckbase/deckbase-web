@@ -160,6 +160,35 @@ export default function OcrStudyWorkflowsPage() {
           </ArticleBody>
         </ArticleSection>
 
+        <ArticleSection id="capture-scorecard">
+          <ArticleH2>Capture quality scorecard (use before generation)</ArticleH2>
+          <ArticleSteps
+            items={[
+              "Legibility: text is sharp at normal zoom, no motion blur, and no heavy glare patches.",
+              "Framing: full lines are visible and page margins are not clipped by camera edges.",
+              "Noise control: headers/footers and page numbers are isolated so they can be removed quickly.",
+              "Chunk size: scan by concept block rather than whole chapters to reduce correction load.",
+            ]}
+          />
+          <ArticleBody>
+            If two or more checks fail, rescan before card generation. A 60-second rescan usually
+            saves much more time than repairing dozens of low-quality cards later.
+          </ArticleBody>
+        </ArticleSection>
+
+        <ArticleSection id="repair-rules">
+          <ArticleH2>When to edit cards vs regenerate from source</ArticleH2>
+          <ArticleBody>
+            Edit the card when the extraction is mostly correct and the issue is phrasing or
+            granularity. Regenerate from source when OCR introduces factual corruption, missing
+            negations, broken formulas, or mixed sections from unrelated paragraphs.
+          </ArticleBody>
+          <ArticleBody>
+            A simple rule works well: if you need more than 20-30 seconds to fix a single card,
+            regenerate that batch from cleaner input and re-review with stricter chunking.
+          </ArticleBody>
+        </ArticleSection>
+
         <ArticleSection id="faq">
           <ArticleH2>FAQ</ArticleH2>
           <ArticleFaq items={faqs} />

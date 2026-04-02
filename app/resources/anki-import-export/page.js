@@ -172,6 +172,39 @@ export default function AnkiImportExportPage() {
           </ArticleBody>
         </ArticleSection>
 
+        <ArticleSection id="readiness-checklist">
+          <ArticleH2>Migration readiness checklist (before you move everything)</ArticleH2>
+          <ArticleSteps
+            items={[
+              "Identify your active decks from the last 30 days first. Move those before archived material.",
+              "Set a daily review floor (for example: 15-25 minutes) so migration does not interrupt consistency.",
+              "Define your card quality rule: one prompt, one expected answer, one clear context.",
+              "Keep one fallback export from each major deck until your first 2 weeks are stable.",
+            ]}
+          />
+          <ArticleBody>
+            This approach reduces risk because you migrate the highest-value material first and keep
+            a clean rollback path. Most failed migrations come from trying to reformat everything at
+            once before review habits stabilize.
+          </ArticleBody>
+        </ArticleSection>
+
+        <ArticleSection id="two-week-plan">
+          <ArticleH2>A practical 14-day transition plan</ArticleH2>
+          <ArticleSteps
+            items={[
+              "Days 1-3: Import one active deck, clean only obvious issues, and resume reviews immediately.",
+              "Days 4-7: Add new cards from current study inputs (notes/PDFs) inside Deckbase only.",
+              "Days 8-10: Measure friction points (duplicate cards, unclear prompts, overloaded cards) and fix in batches.",
+              "Days 11-14: Decide what stays in Anki vs what becomes Deckbase-native, then standardize templates.",
+            ]}
+          />
+          <ArticleBody>
+            By the end of week 2, you should have clear evidence on retention quality and workflow
+            speed. Keep the setup that preserves daily completion and lowest lapse rate.
+          </ArticleBody>
+        </ArticleSection>
+
         <ArticleSection id="faq">
           <ArticleH2>FAQ</ArticleH2>
           <ArticleFaq items={faqs} />

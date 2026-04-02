@@ -33,7 +33,7 @@ export const metadata = {
     template: "%s | Deckbase",
   },
   description:
-    "Deckbase turns notes, PDFs, and scans into AI flashcards with FSRS scheduling. Study on iOS and Android, automate workflows with MCP, and migrate with Anki-friendly import/export.",
+    "Deckbase turns notes, PDFs, and scans into AI flashcards with FSRS scheduling. Study on iOS and Android, automate with MCP, and migrate with Anki-friendly import/export.",
   keywords: [
     "flashcards",
     "AI flashcards",

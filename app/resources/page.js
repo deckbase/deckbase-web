@@ -139,6 +139,27 @@ const related = [
   { href: "/features", label: "All features", icon: Sparkles },
 ];
 
+const startHere = [
+  {
+    href: "/resources/fsrs-guide",
+    title: "I need better long-term retention",
+    description:
+      "Start with FSRS fundamentals, then apply a daily workflow you can maintain for months.",
+  },
+  {
+    href: "/resources/ocr-study-workflows",
+    title: "I want to convert books/PDFs faster",
+    description:
+      "Use the OCR pipeline to reduce noisy inputs before generation so reviews stay high quality.",
+  },
+  {
+    href: "/resources/mcp-study-automation-examples",
+    title: "I want automation without broken cards",
+    description:
+      "Follow production-safe MCP patterns with schema checks, batching, and post-write validation.",
+  },
+];
+
 /* ─── tag styles ────────────────────────────────────────────────────────── */
 
 const tagStyles = {
@@ -276,8 +297,9 @@ export default function ResourcesPage() {
           Guides &amp; articles
         </h1>
         <p className="text-white/50 text-base sm:text-lg leading-relaxed max-w-[500px]">
-          MCP setup guides and in-depth articles. For the technical API and MCP
-          reference, see{" "}
+          Study operations playbook for serious learners: FSRS strategy, OCR-to-card
+          workflows, MCP automation patterns, and practical migration guides. For
+          technical API and MCP reference, see{" "}
           <Link href="/docs" className="text-accent hover:underline underline-offset-2">
             Docs
           </Link>
@@ -289,6 +311,28 @@ export default function ResourcesPage() {
       <section id="quick-links" className="scroll-mt-28 flex flex-col gap-3">
         <SectionLabel>Featured</SectionLabel>
         <HeroCard item={heroGuide} />
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <SectionLabel>Start Here</SectionLabel>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {startHere.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="group rounded-xl border border-white/[0.08] bg-white/[0.02] p-4 hover:bg-white/[0.05] hover:border-white/[0.14] transition-all duration-200"
+            >
+              <p className="text-sm font-semibold text-white/85 mb-1.5 group-hover:text-white transition-colors">
+                {item.title}
+              </p>
+              <p className="text-[12px] text-white/45 leading-relaxed">{item.description}</p>
+              <span className="inline-flex items-center gap-1 mt-3 text-[12px] text-accent/90">
+                Open guide
+                <ArrowRight className="w-3.5 h-3.5" />
+              </span>
+            </Link>
+          ))}
+        </div>
       </section>
 
       {/* Guides grid */}

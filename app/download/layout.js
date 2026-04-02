@@ -6,7 +6,7 @@ import { absoluteUrl } from "@/lib/site-url";
 export const metadata = {
   title: "Download Deckbase — iOS & Android | Scan. Build. Remember.",
   description:
-    "Download Deckbase for iPhone and Android. Turn books and PDFs into AI flashcards with spaced repetition. Free to start.",
+    "Download Deckbase for iPhone and Android. Turn books and PDFs into AI flashcards with spaced repetition and start free with no setup friction.",
   openGraph: {
     title: "Download Deckbase — iOS & Android",
     description:
