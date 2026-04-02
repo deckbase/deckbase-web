@@ -8,6 +8,7 @@ import {
   ArticleSection,
   ArticleH2,
   ArticleBody,
+  ArticleTable,
   ArticleSteps,
   ArticleFaq,
   ArticleRelated,
@@ -68,6 +69,29 @@ const faqs = [
     q: "Do MCP automations replace manual review?",
     a: "No. MCP speeds up creation; learners still need quality control and daily review discipline for retention.",
   },
+];
+
+const automationModes = [
+  ["Pilot mode", "10-25 cards", "Validate schema mapping and review quality"],
+  ["Weekly production mode", "25-75 cards", "Keep duplicate rate low and spot-check outputs"],
+  ["Bulk migration mode", "75-200 cards", "Require staged rollouts and strict failure logging"],
+  ["Maintenance mode", "As needed", "Repair weak cards and update templates incrementally"],
+];
+
+const guardrailRows = [
+  ["Template validation", "Wrong block mapping writes unusable cards", "Always run get_template_schema before writes"],
+  ["Deck targeting", "Cards land in wrong deck", "Explicitly pass deckId and verify against list_decks"],
+  ["Dedupe control", "Repeated prompts pollute reviews", "Check prompt uniqueness inside each batch"],
+  ["Post-write sampling", "Silent quality regressions", "Manual sample 10-20% of newly created cards"],
+  ["Failure logging", "Hard to fix recurring mapper bugs", "Persist failed records with source + error reason"],
+];
+
+const failureRows = [
+  ["Schema mismatch errors", "Template changed but mapper did not", "Refresh schema and remap required block IDs"],
+  ["Cards created with blank fields", "Source normalization missing", "Add preflight validation for required values"],
+  ["High duplicate prompt rate", "Weak dedupe logic", "Hash normalized front-side text before create_cards"],
+  ["Low retention after automation", "Prompts too broad or low-context", "Introduce card-quality lint rules"],
+  ["Deck clutter after large runs", "No rollout gates", "Use staged batches and pause on quality threshold failure"],
 ];
 
 const jsonLd = {
@@ -208,6 +232,94 @@ create_cards(deckId, templateId, cards[])`}</CodeBlock>
           <ArticleBody>
             This pattern keeps data quality high and prevents silent corruption of established study
             decks.
+          </ArticleBody>
+        </ArticleSection>
+
+        <ArticleSection id="automation-modes">
+          <ArticleH2>Automation modes by workload</ArticleH2>
+          <ArticleBody>
+            A common mistake is using the same MCP strategy for every workload. Reliable systems use
+            different operating modes based on risk and volume. Small pilot batches optimize learning,
+            while larger production runs prioritize safety and observability.
+          </ArticleBody>
+          <ArticleTable
+            columns={["Mode", "Typical batch size", "Primary objective"]}
+            rows={automationModes}
+          />
+          <ArticleBody>
+            Start in pilot mode until your prompt format and template mapping are stable. Scale only
+            when sampled card quality remains consistently high.
+          </ArticleBody>
+        </ArticleSection>
+
+        <ArticleSection id="guardrails">
+          <ArticleH2>Guardrails that keep MCP card automation reliable</ArticleH2>
+          <ArticleBody>
+            Production-safe automation is mostly guardrails. Model output quality can vary across runs,
+            so deterministic checks are essential before and after write operations.
+          </ArticleBody>
+          <ArticleTable
+            columns={["Guardrail", "Why it matters", "Implementation"]}
+            rows={guardrailRows}
+          />
+          <ArticleBody>
+            These controls reduce silent failure modes and protect active study decks from malformed
+            imports.
+          </ArticleBody>
+        </ArticleSection>
+
+        <ArticleSection id="quality-linting">
+          <ArticleH2>Card-quality linting rules before create_cards</ArticleH2>
+          <ArticleBody>
+            Treat card generation like a content pipeline with linting. If a card fails lint rules,
+            reject it before write. This improves downstream retention and reduces manual cleanup.
+          </ArticleBody>
+          <ArticleSteps
+            items={[
+              "Enforce one recall target per card; reject prompts that ask two questions at once.",
+              "Cap front-side prompt length to avoid overloaded recall steps.",
+              "Require non-empty answer fields and context tags for ambiguous terms.",
+              "Block cards with near-identical prompts in the same batch.",
+              "Sample and rate a subset before promoting batch to main deck.",
+            ]}
+          />
+          <CodeBlock>{`# pseudo validation contract
+if (!deckId || !templateId) reject("missing target")
+if (!requiredFieldsPresent(card)) reject("schema violation")
+if (isDuplicatePrompt(card.front)) reject("duplicate")
+if (card.front.length > 180) reject("prompt too long")`}</CodeBlock>
+        </ArticleSection>
+
+        <ArticleSection id="failure-matrix">
+          <ArticleH2>Failure matrix for fast incident response</ArticleH2>
+          <ArticleBody>
+            When a run goes wrong, fast classification is more important than perfect diagnosis.
+            Categorize errors, fix one class at a time, and rerun only failed records.
+          </ArticleBody>
+          <ArticleTable
+            columns={["Failure signal", "Likely root cause", "First recovery action"]}
+            rows={failureRows}
+          />
+          <ArticleBody>
+            This pattern keeps your MCP workflows resilient while preserving study continuity for
+            learners already using the affected decks.
+          </ArticleBody>
+        </ArticleSection>
+
+        <ArticleSection id="weekly-ops">
+          <ArticleH2>Weekly operations routine for MCP automation</ArticleH2>
+          <ArticleSteps
+            items={[
+              "Audit last week’s failed records and patch mapper rules where needed.",
+              "Review duplicate and blank-field rates across recent batches.",
+              "Spot-check 20 newly generated cards for clarity and retention suitability.",
+              "Retire weak prompt patterns and update generation instructions.",
+              "Document one measurable improvement for next week’s run.",
+            ]}
+          />
+          <ArticleBody>
+            Weekly operations are what make automation sustainable. Without this layer, batch quality
+            tends to drift and review performance declines over time.
           </ArticleBody>
         </ArticleSection>
 
