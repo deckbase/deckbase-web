@@ -69,6 +69,20 @@ const retentionTargets = [
   ["Long-term reference", "93-95%", "Higher recall at the cost of more reviews"],
 ];
 
+const workloadScenarios = [
+  ["200 cards, 20 min/day", "90%", "Manageable workload, good baseline for consistency"],
+  ["200 cards, 20 min/day", "93%", "Higher recall with moderate extra review load"],
+  ["400 cards, 25 min/day", "90%", "Sustainable for many exam learners if card quality is strong"],
+  ["400 cards, 25 min/day", "95%", "Often too expensive unless the material is truly high stakes"],
+];
+
+const troubleshootingRows = [
+  ["Review queue feels overwhelming", "Retention target too high or too many new cards", "Lower new-card rate first, then reduce target by 1-2 points"],
+  ["Frequent surprise lapses", "Cards are ambiguous or overstuffed", "Split complex prompts and add context tags"],
+  ["Intervals feel too long", "Overrated recall quality", "Rate answers more strictly for two weeks"],
+  ["Progress stalls after 2-3 weeks", "No card maintenance loop", "Rewrite weakest cards weekly and remove low-value items"],
+];
+
 const faqs = [
   {
     q: "What is FSRS in one sentence?",
@@ -226,6 +240,101 @@ export default function FsrsGuidePage() {
               <>Review recent lapses weekly and rewrite the worst 10 cards. FSRS performs best when input quality keeps improving.</>,
             ]}
           />
+        </ArticleSection>
+
+        <ArticleSection id="workload-planning">
+          <ArticleH2>Workload planning: retention is a budget decision</ArticleH2>
+          <ArticleBody>
+            FSRS is powerful because it makes trade-offs explicit. Higher retention targets can reduce
+            forgetting, but they usually increase daily review cost. Lower targets reduce workload,
+            but can raise lapse risk before exams. The right setting depends on your available time,
+            card volume, and consequence of forgetting.
+          </ArticleBody>
+          <ArticleBody>
+            Instead of chasing a single &quot;best&quot; number, treat retention as a budget: how many minutes
+            per day can you actually sustain over months, not just one motivated week? Most learners
+            improve faster when they pick a target that they can maintain consistently.
+          </ArticleBody>
+          <ArticleTable
+            columns={["Scenario", "Retention target", "Expected trade-off"]}
+            rows={workloadScenarios}
+          />
+          <ArticleBody>
+            A practical default is 90-92% while you stabilize habits. Move upward only when your
+            completion rate stays high and your daily review time is predictable.
+          </ArticleBody>
+        </ArticleSection>
+
+        <ArticleSection id="thirty-day-plan">
+          <ArticleH2>A practical 30-day FSRS adoption plan</ArticleH2>
+          <ArticleBody>
+            The biggest mistake with spaced repetition is optimizing settings before the workflow is
+            stable. This 30-day plan prioritizes consistency first, then tuning. It works for medical
+            learners, certification prep, language study, and technical domains where recall quality
+            matters beyond short-term exams.
+          </ArticleBody>
+          <ArticleSteps
+            items={[
+              <>
+                <strong className="text-white/75">Days 1-7: establish baseline.</strong> Keep sessions
+                short and daily. Cap new cards to a level you can review without backlog growth.
+              </>,
+              <>
+                <strong className="text-white/75">Days 8-14: fix card quality.</strong> Review your
+                worst cards and rewrite unclear prompts. Prioritize one concept per card.
+              </>,
+              <>
+                <strong className="text-white/75">Days 15-21: tune retention gently.</strong> If lapses
+                are high, increase quality before adjusting retention. If workload is too heavy,
+                reduce new cards before lowering retention.
+              </>,
+              <>
+                <strong className="text-white/75">Days 22-30: lock your operating mode.</strong> Keep
+                the settings that produce stable completion and acceptable lapse rates, then avoid
+                frequent parameter changes.
+              </>,
+            ]}
+          />
+          <ArticleBody>
+            By day 30, you should know your sustainable card volume, your realistic retention target,
+            and where your card authoring process still creates avoidable errors.
+          </ArticleBody>
+        </ArticleSection>
+
+        <ArticleSection id="troubleshooting">
+          <ArticleH2>FSRS troubleshooting guide</ArticleH2>
+          <ArticleBody>
+            Most FSRS failures are not algorithm failures. They come from poor card inputs, inflated
+            self-ratings, or unsustainable new-card volume. Use the table below to diagnose quickly
+            before making large configuration changes.
+          </ArticleBody>
+          <ArticleTable
+            columns={["Symptom", "Likely cause", "First fix to try"]}
+            rows={troubleshootingRows}
+          />
+          <ArticleBody>
+            Keep troubleshooting iterative. Change one variable at a time and monitor for 7-10 days.
+            This prevents confusing signal overlap and helps you identify what actually improved recall.
+          </ArticleBody>
+        </ArticleSection>
+
+        <ArticleSection id="exam-vs-long-term">
+          <ArticleH2>Exam prep vs long-term mastery: two valid FSRS modes</ArticleH2>
+          <ArticleBody>
+            Exam prep mode emphasizes recall reliability over a fixed horizon (for example 6-12
+            weeks), often with moderate-to-high retention targets and strict daily completion. In this
+            mode, trimming low-yield cards is usually more effective than endlessly increasing review
+            time.
+          </ArticleBody>
+          <ArticleBody>
+            Long-term mastery mode optimizes sustainability across months or years. You may run a
+            slightly lower target with higher card quality and cleaner tagging. The objective shifts
+            from short-term score maximization to durable knowledge with manageable workload.
+          </ArticleBody>
+          <ArticleBody>
+            Both modes are valid. Choose the one that matches your timeline, then keep rules stable
+            long enough to evaluate outcomes from real review data.
+          </ArticleBody>
         </ArticleSection>
 
         <ArticleSection id="faq">

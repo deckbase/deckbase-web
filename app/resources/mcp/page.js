@@ -135,6 +135,12 @@ const evaluatorNotes = [
   "References are aligned with the public MCP docs so implementation details stay verifiable.",
 ];
 
+const rolloutRows = [
+  ["Pilot", "10-25 cards", "Verify template mapping, answer quality, and deck routing"],
+  ["Small batch", "25-50 cards", "Check duplicate prompts and malformed back-side fields"],
+  ["Scaled run", "50-200 cards", "Track failure logs and rerun failed records only"],
+];
+
 const jsonLd = {
   "@context": "https://schema.org",
   "@graph": [
@@ -358,6 +364,30 @@ export default function ResourcesMcpPage() {
               </div>
             ))}
           </div>
+        </ArticleSection>
+
+        <ArticleSection id="rollout-pattern">
+          <ArticleH2>Production rollout pattern that prevents deck pollution</ArticleH2>
+          <ArticleBody>
+            Teams often fail with MCP by jumping from a successful single-card demo to large writes
+            without quality gates. A better pattern is staged rollout with explicit checks at each
+            batch size. This reduces cleanup cost and protects active decks used for daily review.
+          </ArticleBody>
+          <ArticleTable
+            columns={["Stage", "Suggested batch size", "Primary validation goal"]}
+            rows={rolloutRows}
+          />
+          <ArticleBody>
+            Keep a simple acceptance rule before each stage: at least 90% of sampled cards are
+            immediately usable without manual rewrite. If quality drops below that level, pause,
+            patch mapping rules, and rerun only failed records instead of regenerating everything.
+          </ArticleBody>
+          <CodeBlock>{`# minimal guardrail checklist
+1) list_decks -> confirm target deckId
+2) get_template_schema -> validate required blockId fields
+3) create_cards in small batch
+4) spot-check random sample
+5) scale only after acceptance threshold passes`}</CodeBlock>
         </ArticleSection>
 
         <ArticleSection id="faq">

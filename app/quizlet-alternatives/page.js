@@ -105,6 +105,13 @@ const decisionRows = [
   ],
 ];
 
+const firstMonthRows = [
+  ["Review completion rate", ">=80% of planned days", "If low, reduce daily new cards before changing apps"],
+  ["Lapse rate", "Declining by week 3-4", "If flat or rising, rewrite ambiguous cards and shorten prompts"],
+  ["Time per review session", "Stable or slightly lower", "If rising sharply, trim low-value cards and split overloaded prompts"],
+  ["Card creation friction", "Under 10 minutes per focused batch", "If high, switch to cleaner source capture or simpler template defaults"],
+];
+
 const faqs = [
   {
     q: "What is the best Quizlet alternative for long-term retention?",
@@ -316,6 +323,24 @@ export default function QuizletAlternativesPage() {
               you actually open the app. Keep the system that you can sustain.
             </ArticleCard>
           </ArticleCardGrid>
+        </ArticleSection>
+
+        <ArticleSection id="measure-first-month">
+          <ArticleH2>How to measure your first month after switching</ArticleH2>
+          <ArticleBody>
+            The best Quizlet alternative is the one that improves real retention metrics, not just
+            feature checklists. During your first 4 weeks, track behavior and outcomes together: how
+            often you complete reviews, how often cards lapse, and how much time each session needs.
+          </ArticleBody>
+          <ArticleTable
+            columns={["Metric", "Healthy signal", "If this is off-track"]}
+            rows={firstMonthRows}
+          />
+          <ArticleBody>
+            This approach prevents tool-hopping. If completion and lapse metrics improve by week 3,
+            keep the workflow and tune card quality. If metrics stall, reduce card volume and tighten
+            question clarity before changing platforms again.
+          </ArticleBody>
         </ArticleSection>
 
         <ArticleSection id="try-deckbase">
