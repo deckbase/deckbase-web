@@ -32,6 +32,21 @@ const quickLinks = [
   },
 ];
 
+const workflowCards = [
+  {
+    title: "Connect your MCP client",
+    body: "Use the setup guide to configure Cursor, VS Code, Claude Code, or another MCP-compatible client with Deckbase authentication.",
+  },
+  {
+    title: "Validate schema first",
+    body: "Before creating cards in bulk, inspect template schemas and required fields so generated records stay consistent.",
+  },
+  {
+    title: "Run staged batches",
+    body: "Start with small write batches, sample outputs, and scale only after card quality and duplicate rate look healthy.",
+  },
+];
+
 export default function DocsIndexClient() {
   return (
     <motion.article
@@ -128,6 +143,44 @@ export default function DocsIndexClient() {
               </Link>
             );
           })}
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-white/30 mb-1">
+          Start here
+        </p>
+        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-5 sm:p-6">
+          <p className="text-[13px] text-white/55 leading-relaxed mb-4">
+            If you are new to Deckbase integration, start with the MCP setup path and then move to
+            tool-level reference. This order reduces authentication errors and prevents schema-related
+            write failures when creating cards programmatically.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {workflowCards.map((item) => (
+              <article key={item.title} className="rounded-xl border border-white/[0.07] bg-black/20 p-3.5">
+                <h3 className="text-sm font-semibold text-white/85 mb-1.5">{item.title}</h3>
+                <p className="text-[12px] text-white/45 leading-relaxed">{item.body}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-white/30 mb-1">
+          Integration notes
+        </p>
+        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-5 sm:p-6 space-y-3">
+          <p className="text-[13px] text-white/50 leading-relaxed">
+            Production integrations should treat card creation as an operational pipeline. Keep
+            request logs, validate required template fields before writes, and spot-check generated
+            cards before scaling batch size.
+          </p>
+          <p className="text-[13px] text-white/50 leading-relaxed">
+            For teams, define one canonical template strategy and one retry policy. This avoids
+            duplicate prompt drift and makes incident response much faster when mapper rules change.
+          </p>
         </div>
       </section>
 

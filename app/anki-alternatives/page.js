@@ -70,6 +70,20 @@ const faqs = [
   { q: "How does Deckbase compare to Anki?", a: "Deckbase emphasizes AI card generation and a streamlined mobile experience with FSRS. Anki offers unmatched customization and community decks. See the dedicated Deckbase vs Anki comparison for a feature-by-feature table." },
 ];
 
+const decisionRows = [
+  ["You want fastest path from source to cards", "High", "Medium", "Deckbase"],
+  ["You want deep add-on customization", "Low", "Very high", "Anki"],
+  ["You prioritize classroom-style sharing", "Medium", "Low", "Quizlet or RemNote"],
+  ["You need mobile-first daily consistency", "High", "Medium", "Deckbase"],
+];
+
+const firstMonthRows = [
+  ["Review completion", ">=80% planned days", "Sustainability of your workflow"],
+  ["Lapse trend", "Flat or down by week 3", "Card quality plus scheduler fit"],
+  ["Session time", "Stable or improving", "Whether review load is manageable"],
+  ["Card creation friction", "Under 10-15 min per batch", "How realistic long-term use will be"],
+];
+
 const jsonLd = {
   "@context": "https://schema.org",
   "@graph": [
@@ -197,6 +211,45 @@ export default function AnkiAlternativesPage() {
               from zero.
             </ArticleCard>
           </ArticleCardGrid>
+        </ArticleSection>
+
+        <ArticleSection id="decision-framework">
+          <ArticleH2>Decision framework: pick by workflow constraints</ArticleH2>
+          <ArticleBody>
+            Most &quot;Anki alternatives&quot; pages compare features, but real outcomes usually depend on
+            workflow constraints: how quickly you can build accurate cards, how consistently you review,
+            and how much setup complexity you can sustain over months.
+          </ArticleBody>
+          <ArticleTable
+            columns={[
+              "Constraint",
+              "Speed priority",
+              "Customization priority",
+              "Likely best fit",
+            ]}
+            rows={decisionRows}
+          />
+          <ArticleBody>
+            If you feel stuck between options, run a 2-week pilot with one active topic and compare
+            completion and lapse metrics rather than relying on first impressions.
+          </ArticleBody>
+        </ArticleSection>
+
+        <ArticleSection id="first-month-scorecard">
+          <ArticleH2>First-month scorecard after switching from Anki</ArticleH2>
+          <ArticleBody>
+            A successful migration improves behavior and outcomes together. During the first month,
+            track the metrics below weekly. If metrics regress, reduce new-card volume and improve card
+            quality before changing tools again.
+          </ArticleBody>
+          <ArticleTable
+            columns={["Metric", "Healthy signal", "What it indicates"]}
+            rows={firstMonthRows}
+          />
+          <ArticleBody>
+            This prevents tool-hopping and gives you objective evidence on whether your new setup is
+            actually improving retention.
+          </ArticleBody>
         </ArticleSection>
 
         <ArticleSection id="try-deckbase">

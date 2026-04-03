@@ -916,6 +916,56 @@ url = "${mcpUrl}"`;
           </AnimatePresence>
         </motion.div>
 
+        <motion.section
+          className="mt-10 rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5 sm:p-6"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.2 }}
+        >
+          <h2 className="text-lg sm:text-xl font-semibold text-white mb-3">
+            Operational checklist for stable MCP workflows
+          </h2>
+          <p className="text-sm text-white/55 leading-relaxed mb-3">
+            Treat Deckbase MCP as a production integration, not only a prompt convenience layer.
+            Teams that run schema preflight checks, staged writes, and post-write sampling usually
+            keep card quality high while scaling throughput. Teams that skip these steps often see
+            duplicate prompts, malformed fields, and unnecessary review fatigue.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+            {[
+              {
+                title: "Before write",
+                body: "Verify deckId, templateId, and required block IDs with list_decks/list_templates/get_template_schema.",
+              },
+              {
+                title: "During write",
+                body: "Use small batches first and apply dedupe checks to front-side prompt text before create_cards.",
+              },
+              {
+                title: "After write",
+                body: "Sample new cards for clarity and retention suitability before increasing batch size.",
+              },
+              {
+                title: "Weekly ops",
+                body: "Review failed records, patch mapper rules, and document one quality improvement for next run.",
+              },
+            ].map((item) => (
+              <article key={item.title} className="rounded-xl border border-white/[0.07] bg-black/25 p-3.5">
+                <h3 className="text-sm font-semibold text-white/85 mb-1.5">{item.title}</h3>
+                <p className="text-[12px] text-white/45 leading-relaxed">{item.body}</p>
+              </article>
+            ))}
+          </div>
+          <p className="text-xs text-white/35 leading-relaxed">
+            If you need implementation-level details for tools and parameters, use the
+            <Link href="/docs/mcp-server" className="text-accent hover:underline underline-offset-2 ml-1">
+              MCP server reference
+            </Link>
+            .
+          </p>
+        </motion.section>
+
         {/* Bottom CTA */}
         <motion.div
           className="mt-10 flex flex-col sm:flex-row items-center justify-between gap-4 p-5 rounded-2xl border border-white/[0.06] bg-white/[0.02]"

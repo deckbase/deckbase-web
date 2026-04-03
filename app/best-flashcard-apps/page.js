@@ -8,6 +8,7 @@ import {
   ArticleSection,
   ArticleH2,
   ArticleBody,
+  ArticleTable,
   ArticleCardGrid,
   ArticleCard,
   ArticleFaq,
@@ -73,6 +74,20 @@ const methodology = [
   "Scheduling quality: support for FSRS (or equivalent adaptive spacing) for long-term retention.",
   "Creation speed vs control: how quickly users can create accurate cards from notes, PDFs, and books.",
   "Mobile consistency: whether review quality stays high on iOS/Android, where most users actually study.",
+];
+
+const scenarioRows = [
+  ["Medical exams", "Retention reliability over long windows", "FSRS quality and card clarity standards"],
+  ["Language learning", "Vocabulary plus contextual usage", "Fast card creation and sentence-friendly templates"],
+  ["Professional certification", "Limited daily time", "Low-friction review loop and predictable session length"],
+  ["General knowledge", "Sustainable long-term habit", "Simple UX with consistent daily completion"],
+];
+
+const scorecardRows = [
+  ["Completion rate", ">=80% planned days", "Whether your routine is sustainable"],
+  ["Lapse trend", "Down by week 3-4", "How well cards + scheduler support recall"],
+  ["Setup overhead", "Low after week 1", "Long-term adoption risk"],
+  ["Mobile review quality", "No major friction", "Real-world usability for daily study"],
 ];
 
 const faqs = [
@@ -232,6 +247,40 @@ export default function BestFlashcardAppsPage() {
               Deckbase vs RemNote
             </Link>
             .
+          </ArticleBody>
+        </ArticleSection>
+
+        <ArticleSection id="best-by-scenario">
+          <ArticleH2>Best flashcard app by study scenario</ArticleH2>
+          <ArticleBody>
+            There is no universal winner across all use cases. The right app depends on your study
+            environment, tolerance for setup complexity, and how strict your long-term recall target
+            needs to be.
+          </ArticleBody>
+          <ArticleTable
+            columns={["Scenario", "Primary requirement", "What to prioritize"]}
+            rows={scenarioRows}
+          />
+          <ArticleBody>
+            This framing helps avoid choosing based on marketing features that do not improve your
+            day-to-day review outcomes.
+          </ArticleBody>
+        </ArticleSection>
+
+        <ArticleSection id="evaluation-scorecard">
+          <ArticleH2>30-day evaluation scorecard</ArticleH2>
+          <ArticleBody>
+            To validate your choice, run a 30-day trial with one active study topic and track the
+            metrics below weekly. Keep the app that improves consistency and recall, not only speed of
+            initial setup.
+          </ArticleBody>
+          <ArticleTable
+            columns={["Metric", "Healthy signal", "Why it matters"]}
+            rows={scorecardRows}
+          />
+          <ArticleBody>
+            If completion drops or session time spikes, improve card quality first. Many performance
+            problems come from weak card design rather than the app itself.
           </ArticleBody>
         </ArticleSection>
 

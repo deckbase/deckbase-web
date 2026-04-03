@@ -1,30 +1,50 @@
-# SEO (website) docs
+# SEO docs — deckbase.co
 
-Docs in this folder cover **website SEO** for deckbase.co: action plans, audits, competitor pages, and DataForSEO MCP.
+Website SEO for deckbase.co (Next.js, `deckbase-web` repo).
 
-**Full index:** [../README.md](../README.md)  
-**Tracked checklist:** [TODO.md](./TODO.md) · [IndexNow](./INDEXNOW.md) · [Cloudflare AI bots](./CLOUDFLARE-AI-BOTS.md) · [Ghost blog](./ghost/README.md)
-
----
-
-## Repo scope (read this first)
-
-**This repository (`deckbase-web`)** is the **Next.js** app (`app/`, `components/`). Several items in [ACTION-PLAN.md](./ACTION-PLAN.md) and [FULL-AUDIT-REPORT.md](./FULL-AUDIT-REPORT.md) apply here (e.g. `app/layout.js` schema, canonicals, `app/sitemap.js`, marketing routes).
-
-**Other items in those files** refer to the **Flutter / mobile app repo** (e.g. `lib/main.dart`, `pubspec.yaml`, `assets/fonts/`, Flutter `web/manifest.json`, RevenueCat `kIsWeb` guards). Treat those as **mobile-track** tasks unless you merge repos.
-
-| Doc | Notes |
-| --- | --- |
-| [ACTION-PLAN.md](./ACTION-PLAN.md) | Mixed Next.js + Flutter; use the table above to filter. |
-| [FULL-AUDIT-REPORT.md](./FULL-AUDIT-REPORT.md) | Audit date 2026-03-11; “Stack” line conflates repos—prefer this README for scope. |
-| [COMPETITOR-PAGES.md](./COMPETITOR-PAGES.md) | `/deckbase-vs-anki` and `/deckbase-vs-quizlet` exist under `app/`; `app/sitemap.js` already lists them. |
-| [DATA_FOR_SEO_MCP_PROMPTS.md](./DATA_FOR_SEO_MCP_PROMPTS.md) | Prompt library for DataForSEO MCP; not repo-specific. |
-| [KEYWORD_RESEARCH_RELATED_KEYWORDS_REPORT.md](./KEYWORD_RESEARCH_RELATED_KEYWORDS_REPORT.md) | DataForSEO **related keywords** (US, en): `ai flashcards`, `anki alternatives` — Mar 2026. |
-| [SEO_KEYWORD_ACTION_PLAN.md](./SEO_KEYWORD_ACTION_PLAN.md) | Keyword priorities and checklist derived from that research. |
-| [ghost/README.md](./ghost/README.md) | Ghost CMS: MCP (`@fanyangmeng/ghost-mcp`), Admin API key format, `npm run ghost:publish-initial`, post-publish SEO checklist. |
+> **Start here:** [TODO.md](./TODO.md) — living checklist of open/done items.
 
 ---
 
-## Canonical site URL (implementation)
+## Repo scope
 
-Marketing URLs, `metadataBase`, sitemap, and JSON-LD use **`lib/site-url.js`**. Default is **`https://www.deckbase.co`**. Override with **`NEXT_PUBLIC_SITE_URL`** (see `.env.example`) for preview/staging hosts.
+**`deckbase-web`** = Next.js app (`app/`, `components/`, `lib/`). Items referencing `lib/main.dart`, `pubspec.yaml`, or Flutter-specific files belong to the **mobile repo**, not here.
+
+**Canonical URL** — set in `lib/site-url.js` (`https://www.deckbase.co`). Override via `NEXT_PUBLIC_SITE_URL` for staging.
+
+---
+
+## Folder map
+
+| Folder / File | What's inside |
+|---|---|
+| [TODO.md](./TODO.md) | **Living checklist** — open and completed SEO tasks |
+| [action-plans/](./action-plans/) | Strategic action plans (historical snapshots) |
+| [audits/](./audits/) | Point-in-time audit reports and ranking analyses |
+| [keywords/](./keywords/) | Keyword research reports and keyword action plans |
+| [technical/](./technical/) | Technical SEO configs (images, IndexNow, Cloudflare AI bots) |
+| [competitor-pages/](./competitor-pages/) | Competitor comparison pages (`/deckbase-vs-anki`, etc.) |
+| [dataforseo/](./dataforseo/) | DataForSEO MCP prompts and implementation notes |
+| [competitive/](./competitive/) | Deep competitive intelligence (battle cards, matrix, review mining) |
+| [ghost/](./ghost/) | Ghost CMS blog — MCP setup, publish workflow, SEO checklist |
+| [mobile/](./mobile/) | App store listings (iOS, Android) |
+
+---
+
+## Quick links by task
+
+**Running an audit** → [audits/FULL-AUDIT-REPORT.md](./audits/FULL-AUDIT-REPORT.md)
+
+**Keyword strategy** → [keywords/SEO_KEYWORD_ACTION_PLAN.md](./keywords/SEO_KEYWORD_ACTION_PLAN.md) · [keywords/KEYWORD_RESEARCH_RELATED_KEYWORDS_REPORT.md](./keywords/KEYWORD_RESEARCH_RELATED_KEYWORDS_REPORT.md)
+
+**AI/GEO readiness** → [audits/GEO-ANALYSIS.md](./audits/GEO-ANALYSIS.md)
+
+**Competitor pages** (`/deckbase-vs-*`) → [competitor-pages/COMPETITOR-PAGES.md](./competitor-pages/COMPETITOR-PAGES.md) · [competitor-pages/COMPETITOR-PAGES-AUDIT.md](./competitor-pages/COMPETITOR-PAGES-AUDIT.md)
+
+**Using DataForSEO MCP** → [dataforseo/DATA_FOR_SEO_MCP_PROMPTS.md](./dataforseo/DATA_FOR_SEO_MCP_PROMPTS.md)
+
+**Publishing a blog post** → [ghost/README.md](./ghost/README.md)
+
+**Technical configs** → [technical/](./technical/) (image optimization, IndexNow, Cloudflare AI bots)
+
+**Competitive intelligence** → [competitive/deckbase/](./competitive/deckbase/) (battle cards, pricing, review mining)
