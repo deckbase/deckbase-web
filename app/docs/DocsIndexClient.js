@@ -206,6 +206,10 @@ export default function DocsIndexClient() {
             Keep your integration checklist versioned so onboarding new contributors does not require
             reverse-engineering previous MCP setup decisions.
           </p>
+          <p className="text-[13px] text-white/50 leading-relaxed mt-1">
+            When possible, include a short runbook for rollback and reprocessing failed batches so
+            production updates remain safe even when templates evolve.
+          </p>
         </div>
       </section>
 
