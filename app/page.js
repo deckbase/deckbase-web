@@ -46,11 +46,20 @@ export default function Home() {
         transition={{ duration: 1 }}
         className="relative min-h-screen bg-black pt-[calc(5rem+env(safe-area-inset-top,0px))] pb-6 overflow-x-hidden overflow-hidden"
       >
+        {/* Dot grid texture */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundImage: "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.045) 1px, transparent 0)",
+            backgroundSize: "48px 48px",
+          }}
+        />
         {/* Ambient background glows */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-accent/20 rounded-full blur-[120px] opacity-60" />
-          <div className="absolute top-1/3 right-1/3 w-80 h-80 bg-purple-600/15 rounded-full blur-[100px] opacity-50" />
-          <div className="absolute bottom-1/3 left-1/2 w-64 h-64 bg-accent/10 rounded-full blur-[80px]" />
+          <div className="absolute top-1/4 left-1/4 w-[560px] h-[560px] bg-accent/30 rounded-full blur-[150px] opacity-75" />
+          <div className="absolute top-1/3 right-1/4 w-[420px] h-[420px] bg-purple-600/25 rounded-full blur-[130px] opacity-65" />
+          <div className="absolute bottom-1/4 left-[55%] w-80 h-80 bg-cyan-500/15 rounded-full blur-[100px]" />
+          <div className="absolute -top-20 right-0 w-72 h-72 bg-purple-500/15 rounded-full blur-[90px]" />
         </div>
 
         <div className="relative z-20 max-w-6xl mx-auto px-3.5 sm:px-4 py-10 sm:py-16 lg:py-24">
@@ -70,13 +79,6 @@ export default function Home() {
                   AI-powered MCP + Anki-ready workflows
                 </span>
               </motion.div>
-
-              <p className="mb-5 max-w-2xl text-sm sm:text-base text-white/70 leading-relaxed">
-                Deckbase is an AI flashcard app that converts notes, PDFs, and scanned
-                pages into spaced-repetition flashcards with FSRS. Study on iOS and
-                Android, automate with MCP, and migrate with Anki-friendly APKG
-                import/export.
-              </p>
 
               {/* Title */}
               <motion.div
@@ -128,6 +130,21 @@ export default function Home() {
                 <GooglePlayDownloadButton />
                 <AppStoreDownloadButton />
               </motion.div>
+
+              {/* Trust strip */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1.1, duration: 0.8 }}
+                className="flex flex-wrap items-center justify-center lg:justify-start gap-x-4 gap-y-2 mt-5"
+              >
+                {["Free to download", "iOS & Android", "FSRS algorithm", "Anki APKG"].map((label, i) => (
+                  <span key={i} className="flex items-center gap-1.5 text-xs text-white/35">
+                    <span className="w-1 h-1 rounded-full bg-accent/60 inline-block" />
+                    {label}
+                  </span>
+                ))}
+              </motion.div>
             </div>
 
             {/* Right: App mockup */}
@@ -147,7 +164,7 @@ export default function Home() {
                   height={1125}
                   quality={100}
                   priority
-                  className="relative rounded-3xl shadow-2xl w-full max-w-[220px] md:max-w-[260px] lg:max-w-[300px]"
+                  className="relative rounded-3xl shadow-2xl w-full max-w-[240px] md:max-w-[300px] lg:max-w-[360px]"
                 />
               </div>
             </motion.div>
@@ -160,31 +177,31 @@ export default function Home() {
             transition={{ delay: 1.1, duration: 0.8 }}
             className="grid grid-cols-1 md:grid-cols-3 gap-4"
           >
-            <div className="flex flex-col items-center text-center sm:flex-row sm:items-start sm:text-left gap-4 p-5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/[0.08] hover:border-accent/30 transition-all duration-300 group">
-              <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center group-hover:bg-accent/30 transition-colors">
+            <div className="flex flex-col items-center text-center sm:flex-row sm:items-start sm:text-left gap-4 p-5 rounded-xl bg-white/[0.07] border border-white/[0.12] hover:bg-white/[0.10] hover:border-accent/40 transition-all duration-300 group">
+              <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-accent/25 flex items-center justify-center group-hover:bg-accent/35 transition-colors">
                 <Brain className="w-5 h-5 text-accent" />
               </div>
               <div>
                 <h3 className="font-semibold text-white text-sm mb-1">AI-Powered Generation</h3>
-                <p className="text-white/40 text-xs leading-relaxed">Turn source material into bulk AI flashcards in seconds with cleaner first drafts.</p>
+                <p className="text-white/50 text-xs leading-relaxed">Turn source material into bulk AI flashcards in seconds with cleaner first drafts.</p>
               </div>
             </div>
-            <div className="flex flex-col items-center text-center sm:flex-row sm:items-start sm:text-left gap-4 p-5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/[0.08] hover:border-notion-yellow/30 transition-all duration-300 group">
-              <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-notion-yellow/10 flex items-center justify-center group-hover:bg-notion-yellow/20 transition-colors">
+            <div className="flex flex-col items-center text-center sm:flex-row sm:items-start sm:text-left gap-4 p-5 rounded-xl bg-white/[0.07] border border-white/[0.12] hover:bg-white/[0.10] hover:border-notion-yellow/40 transition-all duration-300 group">
+              <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-notion-yellow/15 flex items-center justify-center group-hover:bg-notion-yellow/25 transition-colors">
                 <Clock className="w-5 h-5 text-notion-yellow" />
               </div>
               <div>
                 <h3 className="font-semibold text-white text-sm mb-1">Spaced Repetition</h3>
-                <p className="text-white/40 text-xs leading-relaxed">Review at the optimal time for efficient, consistent learning.</p>
+                <p className="text-white/50 text-xs leading-relaxed">Review at the optimal time for efficient, consistent learning.</p>
               </div>
             </div>
-            <div className="flex flex-col items-center text-center sm:flex-row sm:items-start sm:text-left gap-4 p-5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/[0.08] hover:border-notion-purple/30 transition-all duration-300 group">
-              <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-notion-purple/10 flex items-center justify-center group-hover:bg-notion-purple/20 transition-colors">
+            <div className="flex flex-col items-center text-center sm:flex-row sm:items-start sm:text-left gap-4 p-5 rounded-xl bg-white/[0.07] border border-white/[0.12] hover:bg-white/[0.10] hover:border-notion-purple/40 transition-all duration-300 group">
+              <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-notion-purple/15 flex items-center justify-center group-hover:bg-notion-purple/25 transition-colors">
                 <Zap className="w-5 h-5 text-notion-purple" />
               </div>
               <div>
                 <h3 className="font-semibold text-white text-sm mb-1">Beautiful Flexible Card UI</h3>
-                <p className="text-white/40 text-xs leading-relaxed">Study in a clean, customizable interface with support for text, image, and audio-rich cards.</p>
+                <p className="text-white/50 text-xs leading-relaxed">Study in a clean, customizable interface with support for text, image, and audio-rich cards.</p>
               </div>
             </div>
           </motion.div>
@@ -199,8 +216,12 @@ export default function Home() {
         transition={{ duration: 0.8 }}
         className="relative py-24 bg-black overflow-hidden"
       >
-        {/* Subtle divider glow */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-px h-16 bg-gradient-to-b from-transparent to-white/10" />
+        {/* Section ambient glow */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-accent/10 rounded-full blur-[160px]" />
+        </div>
+        {/* Divider line */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
 
         <div className="relative z-20 max-w-4xl mx-auto px-4 text-center">
           <motion.div
@@ -232,7 +253,7 @@ export default function Home() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.2, duration: 0.8 }}
-            className="text-lg text-white/40 leading-relaxed mb-16 max-w-2xl mx-auto"
+            className="text-lg text-white/55 leading-relaxed mb-16 max-w-2xl mx-auto"
           >
             Deckbase combines AI card generation, template-based editing, MCP automation, and Anki APKG import/export so your study workflow stays fast, flexible, and consistent.
           </motion.p>
@@ -243,11 +264,11 @@ export default function Home() {
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.4, duration: 0.8 }}
-              className="p-8 rounded-2xl bg-white/[0.03] border border-white/10"
+              className="p-8 rounded-2xl bg-white/[0.06] border border-white/[0.14]"
             >
-              <div className="text-xs uppercase tracking-widest text-white/25 mb-3 font-medium">Before</div>
-              <h3 className="text-xl font-semibold mb-3 text-white/60">Fragmented Study Workflow</h3>
-              <p className="text-white/35 leading-relaxed text-sm">
+              <div className="text-xs uppercase tracking-widest text-white/40 mb-3 font-medium">Before</div>
+              <h3 className="text-xl font-semibold mb-3 text-white/75">Fragmented Study Workflow</h3>
+              <p className="text-white/50 leading-relaxed text-sm">
                 Your notes, files, and flashcards live in separate tools, so creating and organizing cards takes extra time and breaks focus.
               </p>
             </motion.div>
