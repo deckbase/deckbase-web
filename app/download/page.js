@@ -179,6 +179,10 @@ export default function DownloadPage() {
               completion. This staged approach usually produces better long-term retention than trying
               to migrate every study source on day one.
             </p>
+            <p className="text-[13px] sm:text-sm text-gray-300/85 leading-relaxed mt-2">
+              If you are moving from another flashcard app, keep your previous deck export until your
+              new daily review loop is stable for at least two weeks.
+            </p>
           </section>
         </div>
       </div>

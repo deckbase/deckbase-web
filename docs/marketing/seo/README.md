@@ -8,6 +8,20 @@ Website SEO for deckbase.co (Next.js, `deckbase-web` repo).
 
 ---
 
+## STRICT RULE — for all AI agents and contributors
+
+**`TODO.md` is the single source of truth for all SEO tasks. This rule is non-negotiable.**
+
+- **NEVER create a new `TODO*.md` file** anywhere under this directory tree.
+- **NEVER create a new `ACTION-PLAN*.md`** or any file whose primary content is a task list or prioritised work list.
+- When an audit, keyword report, ranking analysis, or any research produces open tasks → **add them to `TODO.md`**, not to a new file.
+- Research output (reports, battle cards, keyword universes, etc.) may be saved as new files in the appropriate subfolder. Only the *task list* extracted from that research belongs in `TODO.md`.
+- If you find an existing file in a subfolder that duplicates tasks already in `TODO.md`, consolidate into `TODO.md` and remove the duplicate — never maintain two task lists in parallel.
+
+**Why:** Multiple scattered TODO/action-plan files caused tasks to be lost or duplicated. One file, one list.
+
+---
+
 ## Repo scope
 
 **`deckbase-web`** = Next.js app (`app/`, `components/`, `lib/`). Items referencing `lib/main.dart`, `pubspec.yaml`, or Flutter-specific files belong to the **mobile repo**, not here.

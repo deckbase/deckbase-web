@@ -202,6 +202,10 @@ export default function DocsIndexClient() {
             For production use, pair this documentation with a weekly operational review: check recent
             write failures, template drift, and duplicate prompt rates before scaling automation volume.
           </p>
+          <p className="text-[13px] text-white/50 leading-relaxed mt-1">
+            Keep your integration checklist versioned so onboarding new contributors does not require
+            reverse-engineering previous MCP setup decisions.
+          </p>
         </div>
       </section>
 
