@@ -107,6 +107,18 @@ const faqs = [
       "You can use Deckbase on a free tier with manual cards and core study flows. AI-powered card generation and other premium capabilities require a paid plan (Basic or Pro). See the Pricing page for current limits.",
   },
   {
+    q: "Is Deckbase a free flashcard app for iOS and Android?",
+    a: (
+      <>
+        Yes, Deckbase offers a free tier and mobile apps on iOS and Android. You can start with
+        manual cards and core review workflows, then upgrade only if you need higher-volume AI
+        generation or advanced automation.
+      </>
+    ),
+    answerPlain:
+      "Yes, Deckbase offers a free tier and mobile apps on iOS and Android. You can start with manual cards and core review workflows, then upgrade only if you need higher-volume AI generation or advanced automation.",
+  },
+  {
     q: "Is Deckbase an AI flashcard generator and flashcard maker?",
     a: "Yes. Subscribers can generate flashcards from text and documents using AI, organized into decks and templates you control. You can edit cards anytime before review.",
     answerPlain:
@@ -301,6 +313,11 @@ export default function AiFlashcardsPage() {
             before they enter your review queue. Paste text, upload documents, or
             combine sources; keep quality high by treating AI output as a starting
             point, not the final answer.
+          </ArticleBody>
+          <ArticleBody>
+            If you are evaluating tools for <strong>flashcard maker from PDF free</strong> style
+            queries, compare free-tier limits directly and test one real chapter end to end before
+            committing to a migration.
           </ArticleBody>
         </ArticleSection>
 

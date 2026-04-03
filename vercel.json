@@ -1,5 +1,5 @@
 {
   "framework": "nextjs",
-  "buildCommand": "npm run build",
+  "buildCommand": "if [ \"$VERCEL_ENV\" = \"production\" ]; then npm run seo:pseo-gate; fi && npm run build",
   "outputDirectory": ".next"
 }

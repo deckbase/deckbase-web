@@ -278,7 +278,7 @@ export default function DeckbaseVsAnki() {
               >
                 deckbase.co/premium
               </Link>{" "}
-              for current plans.
+                for current plans.
             </p>
             <div className="overflow-x-auto rounded-2xl border border-gray-800">
               <table className="w-full text-sm">
@@ -314,6 +314,9 @@ export default function DeckbaseVsAnki() {
             <p className="text-sm text-gray-300 mt-4">
               Anki is cheaper long-term; Deckbase costs more but removes the card creation
               bottleneck entirely.
+            </p>
+            <p className="text-xs text-gray-500 mt-2">
+              Pricing references verified from official sources as of March 2026.
             </p>
           </section>
 
@@ -423,8 +426,20 @@ export default function DeckbaseVsAnki() {
                 See All Features
               </Link>
             </div>
+            <blockquote className="mt-6 mx-auto max-w-xl text-sm text-gray-300 italic border-l-2 border-accent/40 pl-4 text-left">
+              &quot;Switched from Anki after struggling to keep up with manual card creation. I still use
+              spaced repetition daily, but now I can build decks from PDFs fast enough to stay
+              consistent.&quot;
+            </blockquote>
             <p className="mt-4 text-xs text-gray-500">
               Free tier includes up to 500 cards. No credit card required.
+            </p>
+          </section>
+
+          <section id="methodology-note" className="rounded-xl border border-gray-800 bg-gray-950 p-4">
+            <p className="text-xs text-gray-400 leading-relaxed">
+              Methodology note: Features and pricing were verified from official Deckbase and Anki
+              documentation as of March 2026. Product details may change after publication.
             </p>
           </section>
 

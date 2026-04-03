@@ -18,7 +18,8 @@
     "optimize:logo": "node scripts/optimize-app-logo.mjs",
     "optimize:mock-images": "node scripts/optimize-mock-images.mjs",
     "generate:preview-audio": "node scripts/generate-preview-sample-audio.js",
-    "ghost:publish-initial": "node scripts/ghost-publish-initial-post.mjs"
+    "ghost:publish-initial": "node scripts/ghost-publish-initial-post.mjs",
+    "seo:pseo-gate": "node scripts/pseo-quality-gate.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",

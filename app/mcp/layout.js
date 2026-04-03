@@ -3,14 +3,21 @@ import { breadcrumbSchema } from "@/lib/seo-schema";
 import { absoluteUrl } from "@/lib/site-url";
 
 export const metadata = {
-  title: "MCP — AI Flashcards via Model Context Protocol | Deckbase",
+  title: "Flashcard MCP Server — Deckbase Model Context Protocol",
   description:
-    "Connect Cursor, Claude Code, and VS Code to Deckbase via MCP. Use hosted /api/mcp with OAuth or API key to create and sync decks and cards.",
+    "Deckbase MCP server for flashcards: connect Cursor, Claude Code, and VS Code to create and sync decks and cards via hosted /api/mcp.",
+  keywords: [
+    "flashcard mcp",
+    "mcp flashcards",
+    "model context protocol flashcards",
+    "deckbase mcp",
+    "ai flashcard mcp server",
+  ],
   alternates: { canonical: "/mcp" },
   openGraph: {
-    title: "Deckbase MCP — Flashcards for AI tools",
+    title: "Deckbase Flashcard MCP Server",
     description:
-      "Model Context Protocol setup: manage Deckbase decks and cards from your editor; same library on web and mobile.",
+      "Set up Deckbase MCP to manage flashcard decks and cards from AI tools with synced web and mobile study workflows.",
     url: absoluteUrl("/mcp"),
     siteName: "Deckbase",
   },

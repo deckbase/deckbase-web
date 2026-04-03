@@ -55,6 +55,8 @@ Website SEO for deckbase.co (Next.js, `deckbase-web` repo).
 
 **AI/GEO readiness** → [audits/GEO-ANALYSIS.md](./audits/GEO-ANALYSIS.md)
 
+**MCP ranking analysis** → [audits/FLASHCARD_MCP_RANKING_REPORT.md](./audits/FLASHCARD_MCP_RANKING_REPORT.md)
+
 **Competitor pages** (`/deckbase-vs-*`) → [competitor-pages/COMPETITOR-PAGES.md](./competitor-pages/COMPETITOR-PAGES.md) · [competitor-pages/COMPETITOR-PAGES-AUDIT.md](./competitor-pages/COMPETITOR-PAGES-AUDIT.md)
 
 **Using DataForSEO MCP** → [dataforseo/DATA_FOR_SEO_MCP_PROMPTS.md](./dataforseo/DATA_FOR_SEO_MCP_PROMPTS.md)

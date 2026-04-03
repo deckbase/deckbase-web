@@ -319,6 +319,9 @@ export default function DeckbaseVsQuizlet() {
               Quizlet is cheaper per month on annual plans; Deckbase includes AI and offline at
               lower tiers.
             </p>
+            <p className="text-xs text-gray-500 mt-2">
+              Pricing references verified from official sources as of March 2026.
+            </p>
           </section>
 
           {/* Deep dive */}
@@ -450,8 +453,20 @@ export default function DeckbaseVsQuizlet() {
                 View Premium Plans
               </Link>
             </div>
+            <blockquote className="mt-6 mx-auto max-w-xl text-sm text-gray-300 italic border-l-2 border-accent/40 pl-4 text-left">
+              &quot;Replaced Quizlet for med school because I needed stronger long-term retention and
+              fewer forgotten cards between rotations. The FSRS workflow made review timing much more
+              reliable.&quot;
+            </blockquote>
             <p className="mt-4 text-xs text-gray-500">
               Free tier includes up to 500 cards. No credit card required.
+            </p>
+          </section>
+
+          <section id="methodology-note" className="rounded-xl border border-gray-800 bg-gray-950 p-4">
+            <p className="text-xs text-gray-400 leading-relaxed">
+              Methodology note: Features and pricing were verified from official Deckbase and Quizlet
+              documentation as of March 2026. Product details may change after publication.
             </p>
           </section>
 

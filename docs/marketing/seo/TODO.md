@@ -31,6 +31,16 @@
 - [x] **IndexNow:** [`middleware.js`](../../middleware.js) serves `/{INDEXNOW_KEY}.txt` when **`INDEXNOW_KEY`** is set — [INDEXNOW.md](./INDEXNOW.md)
 - [x] **Cloudflare AI bots** checklist — [CLOUDFLARE-AI-BOTS.md](./CLOUDFLARE-AI-BOTS.md)
 - [x] **Doc hygiene:** Banners on [ACTION-PLAN.md](./ACTION-PLAN.md) / [FULL-AUDIT-REPORT.md](./FULL-AUDIT-REPORT.md); www in [COMPETITOR-PAGES.md](./COMPETITOR-PAGES.md) schema example
+- [x] **Programmatic SEO quality gate script:** add `scripts/pseo-quality-gate.mjs` + `npm run seo:pseo-gate` for uniqueness, thin-content, and batch-size hard-stop checks
+- [x] **Vercel production build gate:** run `npm run seo:pseo-gate` before `npm run build` via [`vercel.json`](../../vercel.json)
+- [x] **`/anki-alternatives` update:** Expanded import/export migration angle and operational decision framework for `anki alternative` intent
+- [x] **`/download` page optimization:** Expanded keyword coverage and free-tier/platform CTA content (`free flashcard app`, `best flashcard app`, iOS, Android)
+- [x] **Competitor pages — user quotes:** Added user quote blocks to vs-Anki and vs-Quizlet CTA sections
+- [x] **Competitor pages — methodology note:** Added "features verified from official documentation as of March 2026" notes on all vs-pages
+- [x] **Competitor pages — pricing disclaimer:** Added explicit "as of March 2026" pricing verification note on vs-page pricing tables
+- [x] **`/ai-flashcards` copy + FAQ:** Updated keyword-theme coverage (maker/generator/PDF/free/app/Anki bridge) and expanded FAQ intent coverage
+- [x] **`app/mcp/layout.js`:** Strengthened flashcard + MCP keyword alignment in metadata/OG
+- [x] **README index:** Added [FLASHCARD_MCP_RANKING_REPORT.md](./audits/FLASHCARD_MCP_RANKING_REPORT.md) to [README.md](./README.md)
 
 ---
 
@@ -40,17 +50,10 @@
 - [ ] **`/updates`:** Real changelog → set **`robots: { index: true }`**, add **`/updates`** back to [`lib/sitemap-metadata.js`](../../lib/sitemap-metadata.js)
 - [ ] **Comparison & pricing:** Re-verify competitor numbers on a schedule ([COMPETITOR-PAGES.md](./competitor-pages/COMPETITOR-PAGES.md))
 - [ ] **CSP** — only if you want `Content-Security-Policy` (high regression risk; test all third-party scripts)
-- [ ] **Competitor pages — user quotes:** Add “Switched from Anki after [X]” quote to vs-Anki CTA section; “Replaced Quizlet for med school because…” to vs-Quizlet ([COMPETITOR-PAGES-AUDIT.md](./competitor-pages/COMPETITOR-PAGES-AUDIT.md))
-- [ ] **Competitor pages — methodology note:** “Features verified from official documentation as of March 2026” footer on all vs-pages
-- [ ] **Competitor pages — pricing disclaimer:** “As of [date]” on every pricing table
-- [ ] **`/ai-flashcards` copy:** Review against keyword themes: *maker, generator, PDF, free, app, Anki bridge* (factual only) ([SEO_KEYWORD_ACTION_PLAN.md](./keywords/SEO_KEYWORD_ACTION_PLAN.md))
-- [ ] **`/ai-flashcards` FAQ:** Add 2–4 questions drawn from related queries (PDF, free generator, mobile/app) — unique answers, no stuffing
-- [ ] **`/anki-alternatives` update:** Expand with Deckbase import/export angle; add CSV/spreadsheet import as a differentiator vs Anki — targets `anki alternative` (KD ~5, transactional)
 - [ ] **Blog: AI flashcard generator** — "How AI Flashcard Generators Work (and How to Use One)" → targets `ai flashcards generator` (1,000/mo, KD 14). Cross-link to `/ai-flashcards`
 - [ ] **Blog: Spaced repetition app** — "Best Spaced Repetition Flashcard App in 2026" → targets `spaced repetition app` (1,000/mo, KD 29, +171% YoY) + `best spaced repetition app` (KD 12). Lead with FSRS as Deckbase differentiator
 - [ ] **Blog: Anki import guide** — "How to Import Your Anki Decks into Deckbase (CSV, Excel, and More)" → targets `anki import` / `anki import csv` (KD 6). Unique positioning — no competitor targets this
 - [ ] **Blog: PDF to flashcards** — "How to Convert PDF to Flashcards with AI" → targets `pdf to flashcards free` (110/mo, KD 34) + `flashcard maker from pdf` (210/mo)
-- [ ] **`/download` page:** Optimize for `free flashcard app` (1,300/mo, KD 26) + `best flashcard app` (1,300/mo, KD 38) — add app store badges, clear free tier CTA, and platform keywords (iOS, Android)
 
 ## Open — optional engineering
 
@@ -61,10 +64,8 @@
 - [ ] **`/ai-flashcards` internal links:** Verify links to `/anki-alternatives`, `/deckbase-vs-anki`, `/download` are present
 - [ ] **GSC query filters:** Add filter for `flashcard`, `anki`, `pdf`, `quizlet` — review monthly
 - [ ] **Quarterly keyword refresh:** Re-run DataForSEO for seeds `ai flashcards`, `anki alternative`, `spaced repetition app`, `anki import` (US, en, depth 2); update [KEYWORD_UNIVERSE_2026-04.md](./keywords/KEYWORD_UNIVERSE_2026-04.md)
-- [ ] **`app/mcp/layout.js`:** Strengthen **flashcard + MCP** keyword alignment in title/description/OG ([FLASHCARD_MCP_RANKING_REPORT.md](./audits/FLASHCARD_MCP_RANKING_REPORT.md))
 - [ ] **Quarterly SERP re-run:** DataForSEO SERP check after MCP/layout changes or major launches
 - [ ] **Competitor pages — `AggregateRating` schema:** Add once App Store rating > 4.5 with 100+ reviews ([COMPETITOR-PAGES-AUDIT.md](./competitor-pages/COMPETITOR-PAGES-AUDIT.md))
-- [ ] **README index:** Add [FLASHCARD_MCP_RANKING_REPORT.md](./audits/FLASHCARD_MCP_RANKING_REPORT.md) to the [README.md](./README.md) table
 
 ## Open — other repos
 

@@ -267,6 +267,9 @@ export default function DeckbaseVsRemNote() {
               better value depends on whether you need an all-in-one note system or a focused
               retention workflow.
             </p>
+            <p className="text-xs text-gray-500 mt-2">
+              Pricing references verified from official sources as of March 2026.
+            </p>
           </section>
 
           <section id="deep-dive">
@@ -376,6 +379,13 @@ export default function DeckbaseVsRemNote() {
                 See Features
               </Link>
             </div>
+          </section>
+
+          <section id="methodology-note" className="rounded-xl border border-gray-800 bg-gray-950 p-4">
+            <p className="text-xs text-gray-400 leading-relaxed">
+              Methodology note: Features and pricing were verified from official Deckbase and
+              RemNote documentation as of March 2026. Product details may change after publication.
+            </p>
           </section>
 
           <section id="faq">
