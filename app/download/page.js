@@ -174,6 +174,11 @@ export default function DownloadPage() {
               <li>Prioritize clear prompts over large card volume in week one.</li>
               <li>Use short daily sessions so review consistency becomes automatic.</li>
             </ul>
+            <p className="text-[13px] sm:text-sm text-gray-300/85 leading-relaxed mt-3">
+              Once your first week is stable, add one new topic at a time and keep monitoring review
+              completion. This staged approach usually produces better long-term retention than trying
+              to migrate every study source on day one.
+            </p>
           </section>
         </div>
       </div>

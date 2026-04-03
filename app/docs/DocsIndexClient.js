@@ -198,6 +198,10 @@ export default function DocsIndexClient() {
             If you are implementing team workflows, document your template rules and batch acceptance
             gates directly in your repo so future updates stay consistent.
           </p>
+          <p className="text-[13px] text-white/50 leading-relaxed mt-1">
+            For production use, pair this documentation with a weekly operational review: check recent
+            write failures, template drift, and duplicate prompt rates before scaling automation volume.
+          </p>
         </div>
       </section>
 
