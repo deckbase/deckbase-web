@@ -159,6 +159,22 @@ export default function DownloadPage() {
               ))}
             </div>
           </section>
+
+          <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 sm:p-7">
+            <h2 className="text-xl sm:text-2xl font-semibold text-white mb-3">
+              Before you download: setup tips that save time
+            </h2>
+            <p className="text-sm sm:text-base text-gray-300 leading-relaxed mb-3">
+              The fastest way to get value is starting with one active study topic instead of importing
+              everything at once. Create a small initial deck, run daily reviews for one week, then
+              expand gradually once your workflow feels stable.
+            </p>
+            <ul className="list-disc pl-5 space-y-1.5 text-[13px] sm:text-sm text-gray-300/90 leading-relaxed">
+              <li>Pick one current subject and keep your first deck under 150 cards.</li>
+              <li>Prioritize clear prompts over large card volume in week one.</li>
+              <li>Use short daily sessions so review consistency becomes automatic.</li>
+            </ul>
+          </section>
         </div>
       </div>
     </motion.section>

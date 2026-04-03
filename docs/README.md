@@ -4,75 +4,95 @@ Index of project documentation. Use this to find specs, setup guides, and featur
 
 ---
 
+## Public (MCP-served)
+
+Docs in `public/` are served via the MCP `list_docs` / `read_doc` tools. All other folders are internal only.
+
+| Doc | Description |
+|-----|-------------|
+| [public/MCP.md](./public/MCP.md) | MCP server reference: endpoints, tools, auth. |
+| [public/MCP-AI-CARD-WORKFLOW.md](./public/MCP-AI-CARD-WORKFLOW.md) | AI card creation workflow via MCP. |
+
+---
+
 ## Features
 
 | Doc | Description |
-|-----|--------------|
+|-----|-------------|
 | [features/DECKBASE_WEBAPP_DEV_GUIDE.md](./features/DECKBASE_WEBAPP_DEV_GUIDE.md) | Web app developer guide: stack, Firebase, data models, routes, UI. |
-| [features/FIREBASE_STRUCTURE_MOBILE.md](./features/FIREBASE_STRUCTURE_MOBILE.md) | Firebase layout for mobile: Auth, Firestore paths, Storage, rules model. |
-| [features/FIREBASE_MCP_CURSOR.md](./features/FIREBASE_MCP_CURSOR.md) | Official Firebase MCP in Cursor (`firestore_get_documents`, etc.). |
 | [features/DECK_STUDY_MODE_WEB_DOCUMENTATION.md](./features/DECK_STUDY_MODE_WEB_DOCUMENTATION.md) | Deck study mode on web. |
 | [features/FILE_TO_AI_CARDS_FEATURE.md](./features/FILE_TO_AI_CARDS_FEATURE.md) | File-to-AI cards: upload PDF/Word/Excel, AI maps content to template. |
 | [features/FILE_TO_AI_CARDS_IMPLEMENTATION_PLAN.md](./features/FILE_TO_AI_CARDS_IMPLEMENTATION_PLAN.md) | Implementation plan for File-to-AI cards. |
 | [features/FSRS_AND_FIREBASE_ADDENDUM.md](./features/FSRS_AND_FIREBASE_ADDENDUM.md) | FSRS scheduling and Firebase integration addendum. |
-| [features/ELEVENLABS_API_MOBILE.md](./features/ELEVENLABS_API_MOBILE.md) | ElevenLabs text-to-speech API for mobile. |
-| [features/AI_IMAGE_FAL_FEASIBILITY.md](./features/AI_IMAGE_FAL_FEASIBILITY.md) | **AI images (fal.ai)** — models, pricing, credits, style library, reference images. See also [PRICING](./subscription/PRICING.md), [SUBSCRIPTION_FEATURES_CHECK](./subscription/SUBSCRIPTION_FEATURES_CHECK.md). |
+| [features/IMAGE_BLOCK_CROP_ASPECT.md](./features/IMAGE_BLOCK_CROP_ASPECT.md) | Image block crop/aspect ratio spec. |
+| [features/IMPORT_FLOWS_SEPARATION_PLAN.md](./features/IMPORT_FLOWS_SEPARATION_PLAN.md) | Import flows separation plan. |
+| [features/AI_IMAGE_FAL_FEASIBILITY.md](./features/AI_IMAGE_FAL_FEASIBILITY.md) | AI images (fal.ai) — models, pricing, credits, style library. |
+| [features/MCP.md](./features/MCP.md) | MCP feature spec (internal, extended). |
+| [features/FIREBASE_STRUCTURE_MOBILE.md](./features/FIREBASE_STRUCTURE_MOBILE.md) | Firebase layout for mobile: Auth, Firestore paths, Storage, rules. |
+| [features/FIREBASE_MCP_CURSOR.md](./features/FIREBASE_MCP_CURSOR.md) | Firebase MCP in Cursor (`firestore_get_documents`, etc.). |
+| [features/ELEVENLABS_API_MOBILE.md](./features/ELEVENLABS_API_MOBILE.md) | ElevenLabs TTS API for mobile. |
+| [features/AI_IMAGE_API_MOBILE.md](./features/AI_IMAGE_API_MOBILE.md) | AI image API for mobile. |
 | [features/MOBILE_ADD_CARDS_WITH_AI.md](./features/MOBILE_ADD_CARDS_WITH_AI.md) | Add-cards-with-AI API and flow for mobile. |
 | [features/MOBILE_DEFAULT_TEMPLATE_PER_DECK.md](./features/MOBILE_DEFAULT_TEMPLATE_PER_DECK.md) | Default template per deck (mobile). |
-| [features/MOBILE_MEDIA_SYNC.md](./features/MOBILE_MEDIA_SYNC.md) | Audio/image media: Storage + Firestore + card `media_ids` contract for mobile → web. |
+| [features/MOBILE_MEDIA_SYNC.md](./features/MOBILE_MEDIA_SYNC.md) | Audio/image media: Storage + Firestore + card `media_ids` contract. |
+| [features/MOBILE_GENERATE_FROM_DOC_IMG.md](./features/MOBILE_GENERATE_FROM_DOC_IMG.md) | Generate cards from document/image on mobile. |
+| [features/MOBILE_IMPORT_SPREADSHEET.md](./features/MOBILE_IMPORT_SPREADSHEET.md) | Spreadsheet import on mobile. |
+| [features/MOBILE_EXPORT.md](./features/MOBILE_EXPORT.md) | Deck export on mobile. |
 | [features/STATE_BASED_SYNC_MOBILE.md](./features/STATE_BASED_SYNC_MOBILE.md) | State-based sync for mobile. |
-| [features/DELETED_AT_MOBILE.md](./features/DELETED_AT_MOBILE.md) | Soft delete: `deleted_at` + `is_deleted` contract for mobile (aligned with web & retention purge). |
+| [features/DELETED_AT_MOBILE.md](./features/DELETED_AT_MOBILE.md) | Soft delete: `deleted_at` + `is_deleted` contract (mobile + web). |
+| [features/IS_VIP_MOBILE.md](./features/IS_VIP_MOBILE.md) | VIP/Pro subscription check on mobile. |
+| [features/feasibility-back-side-support.md](./features/feasibility-back-side-support.md) | Feasibility analysis: card back-side support. |
+| [features/back-support-implementation-checklist.md](./features/back-support-implementation-checklist.md) | Implementation checklist: card back-side support. |
+| [features/mobile-back-support-implementation.md](./features/mobile-back-support-implementation.md) | Mobile implementation: card back-side support. |
 
 ---
 
 ## Subscription
 
 | Doc | Description |
-|-----|--------------|
-| [subscription/PRICING.md](./subscription/PRICING.md) | Subscription pricing: Free, Basic ($5.99/mo), Pro ($11.99/mo) and feature limits. Cross-links [**AI_IMAGE_FAL_FEASIBILITY**](./features/AI_IMAGE_FAL_FEASIBILITY.md) for fal.ai image credits. |
-| [subscription/CONFIGURE_REVENUECAT.md](./subscription/CONFIGURE_REVENUECAT.md) | Step-by-step RevenueCat setup for the Deckbase project. |
+|-----|-------------|
+| [subscription/PRICING.md](./subscription/PRICING.md) | Subscription pricing: Free, Basic ($5.99/mo), Pro ($11.99/mo) and feature limits. |
+| [subscription/CONFIGURE_REVENUECAT.md](./subscription/CONFIGURE_REVENUECAT.md) | Step-by-step RevenueCat setup. |
 | [subscription/REVENUECAT_SUBSCRIPTIONS.md](./subscription/REVENUECAT_SUBSCRIPTIONS.md) | How RevenueCat subscriptions work on web (usage, gating). |
+| [subscription/SUBSCRIPTION_FEATURES_CHECK.md](./subscription/SUBSCRIPTION_FEATURES_CHECK.md) | Feature gates by subscription tier. |
 
 ---
 
-## Others (integrations & setup)
+## API & Infrastructure
 
 | Doc | Description |
-|-----|--------------|
-| [others/STORAGE_CORS.md](./others/STORAGE_CORS.md) | Firebase Storage CORS configuration. |
+|-----|-------------|
+| [api/ELEVENLABS_VOICES.md](./api/ELEVENLABS_VOICES.md) | ElevenLabs voice catalog and IDs. |
+| [api/IMPORT_AI_BLOCKS_530_INVESTIGATION.md](./api/IMPORT_AI_BLOCKS_530_INVESTIGATION.md) | Investigation: import AI blocks 530 error. |
+| [api/STORAGE_CORS.md](./api/STORAGE_CORS.md) | Firebase Storage CORS configuration. |
+| [api/VOICE_SAMPLE_STORAGE_SETUP.md](./api/VOICE_SAMPLE_STORAGE_SETUP.md) | Voice sample storage setup. |
 
 ---
 
-## SEO & ASO
+## Marketing
 
-### SEO (website / search)
+All marketing docs live in `marketing/`. SEO is a subcategory at `marketing/seo/`.
 
-| Doc | Description |
-|-----|--------------|
-| [seo/TODO.md](./seo/TODO.md) | Living SEO checklist (done vs open; links to other seo docs). |
-| [seo/INDEXNOW.md](./seo/INDEXNOW.md) | IndexNow key file + ping (Bing). |
-| [seo/CLOUDFLARE-AI-BOTS.md](./seo/CLOUDFLARE-AI-BOTS.md) | CDN vs AI crawler blocks checklist. |
-| [seo/ACTION-PLAN.md](./seo/ACTION-PLAN.md) | SEO action plan for deckbase.co. |
-| [seo/COMPETITOR-PAGES.md](./seo/COMPETITOR-PAGES.md) | Competitor pages. |
-| [seo/DATA_FOR_SEO_MCP_PROMPTS.md](./seo/DATA_FOR_SEO_MCP_PROMPTS.md) | DataForSEO MCP prompts. |
-| [seo/FULL-AUDIT-REPORT.md](./seo/FULL-AUDIT-REPORT.md) | Full SEO audit report. |
+### SEO (Search Engine Optimization)
 
-### SEO & ASO tools / specs
+> Full index: [marketing/seo/README.md](./marketing/seo/README.md)
 
 | Doc | Description |
-|-----|--------------|
-| [seo_tools/BASIC_UI_LOGIN_SEO_ASO.md](./seo_tools/BASIC_UI_LOGIN_SEO_ASO.md) | Basic UI: login, SEO, and ASO screens. |
-| [seo_tools/SEO_GA4_SEARCH_CONSOLE_SETUP.md](./seo_tools/SEO_GA4_SEARCH_CONSOLE_SETUP.md) | GA4 and Search Console setup. |
-| [seo_tools/SEO_COMMAND_CENTER_FLOW.md](./seo_tools/SEO_COMMAND_CENTER_FLOW.md) | SEO command center flow. |
-| [seo_tools/SEO_BUSINESS_SPEC_FEASIBILITY.md](./seo_tools/SEO_BUSINESS_SPEC_FEASIBILITY.md) | SEO business spec and feasibility. |
-| [seo_tools/SEO_STEP4_SPEC_FEASIBILITY.md](./seo_tools/SEO_STEP4_SPEC_FEASIBILITY.md) | SEO step 4 spec and feasibility. |
+|-----|-------------|
+| [marketing/seo/TODO.md](./marketing/seo/TODO.md) | **Living checklist** — open and done SEO tasks. Start here. |
+| [marketing/seo/audits/FULL-AUDIT-REPORT.md](./marketing/seo/audits/FULL-AUDIT-REPORT.md) | Full SEO audit report (2026-03-11). |
+| [marketing/seo/audits/GEO-ANALYSIS.md](./marketing/seo/audits/GEO-ANALYSIS.md) | AI/GEO search readiness analysis. |
+| [marketing/seo/keywords/SEO_KEYWORD_ACTION_PLAN.md](./marketing/seo/keywords/SEO_KEYWORD_ACTION_PLAN.md) | Keyword priorities and action plan. |
+| [marketing/seo/keywords/KEYWORD_RESEARCH_RELATED_KEYWORDS_REPORT.md](./marketing/seo/keywords/KEYWORD_RESEARCH_RELATED_KEYWORDS_REPORT.md) | DataForSEO related keywords report. |
+| [marketing/seo/competitor-pages/COMPETITOR-PAGES.md](./marketing/seo/competitor-pages/COMPETITOR-PAGES.md) | Competitor comparison pages (`/deckbase-vs-*`). |
+| [marketing/seo/technical/](./marketing/seo/technical/) | Technical SEO: image optimization, IndexNow, Cloudflare AI bots. |
+| [marketing/seo/dataforseo/DATA_FOR_SEO_MCP_PROMPTS.md](./marketing/seo/dataforseo/DATA_FOR_SEO_MCP_PROMPTS.md) | DataForSEO MCP prompt library. |
+| [marketing/seo/ghost/README.md](./marketing/seo/ghost/README.md) | Ghost CMS blog — publish workflow and SEO checklist. |
+| [marketing/seo/competitive/](./marketing/seo/competitive/) | Competitive intelligence: battle cards, pricing, review mining. |
+| [marketing/seo/mobile/](./marketing/seo/mobile/) | App store listings (iOS, Android). |
 
-### ASO (app store optimization)
+### Launch & Campaigns
 
 | Doc | Description |
-|-----|--------------|
-| [seo_tools/ASO_DATA_PIPELINE_ARCHITECTURE.md](./seo_tools/ASO_DATA_PIPELINE_ARCHITECTURE.md) | ASO data pipeline architecture (GCP, BigQuery, DataForSEO). |
-| [seo_tools/ASO_PDCA_IMPROVEMENT_PLAN.md](./seo_tools/ASO_PDCA_IMPROVEMENT_PLAN.md) | ASO PDCA improvement plan. |
-| [seo_tools/ASO_LISTING_ANALYSIS_FLOW.md](./seo_tools/ASO_LISTING_ANALYSIS_FLOW.md) | ASO listing analysis flow. |
-| [seo_tools/ASO_COMPETITORS_RESEARCH_PLAN.md](./seo_tools/ASO_COMPETITORS_RESEARCH_PLAN.md) | ASO competitors research plan. |
-| [seo_tools/ANDROID_IOS_ASO.md](./seo_tools/ANDROID_IOS_ASO.md) | Android and iOS ASO. |
+|-----|-------------|
+| [marketing/product-hunt-launch-kit.md](./marketing/product-hunt-launch-kit.md) | Product Hunt launch kit. |

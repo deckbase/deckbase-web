@@ -184,23 +184,6 @@ export default function DocsIndexClient() {
         </div>
       </section>
 
-      <section className="flex flex-col gap-3">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-white/30 mb-1">
-          Docs workflow
-        </p>
-        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-5 sm:p-6">
-          <p className="text-[13px] text-white/50 leading-relaxed mb-3">
-            Recommended reading order for new integrations: setup page first, MCP Server reference
-            second, then production rollout checks. This path minimizes authentication mistakes and
-            schema mismatch errors during card creation.
-          </p>
-          <p className="text-[13px] text-white/50 leading-relaxed">
-            If you are implementing team workflows, document your template rules and batch acceptance
-            gates directly in your repo so future updates stay consistent.
-          </p>
-        </div>
-      </section>
-
       {/* Footer note */}
       <p className="text-[13px] text-white/25 border-t border-white/[0.06] pt-6 flex items-center gap-1.5">
         For other links (Download, Contact), see{" "}

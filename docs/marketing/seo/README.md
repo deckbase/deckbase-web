@@ -4,6 +4,8 @@ Website SEO for deckbase.co (Next.js, `deckbase-web` repo).
 
 > **Start here:** [TODO.md](./TODO.md) — living checklist of open/done items.
 
+> **Rule:** Only `README.md` and `TODO.md` live directly in this folder. Every other file must go inside a named subfolder.
+
 ---
 
 ## Repo scope

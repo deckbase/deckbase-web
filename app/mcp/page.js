@@ -964,6 +964,10 @@ url = "${mcpUrl}"`;
             </Link>
             .
           </p>
+          <p className="text-xs text-white/30 leading-relaxed mt-2">
+            For teams, standardizing this checklist as a shared runbook usually improves card quality
+            consistency and reduces avoidable reruns.
+          </p>
         </motion.section>
 
         {/* Bottom CTA */}

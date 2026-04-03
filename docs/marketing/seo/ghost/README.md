@@ -2,7 +2,7 @@
 
 The **Ghost** publication is separate from this Next.js app. Use it for **long-form content** and queries that do not map cleanly to a single marketing route. Posts should **link to deckbase.co** (canonical product URLs) using the same origin as production: **`https://www.deckbase.co`** unless you override with `NEXT_PUBLIC_SITE_URL` / `GHOST_DECKBASE_SITE_URL`.
 
-**Related:** [SEO_KEYWORD_ACTION_PLAN.md](../SEO_KEYWORD_ACTION_PLAN.md) (themes: AI flashcards, PDF, Anki alternatives).
+**Related:** [SEO_KEYWORD_ACTION_PLAN.md](../keywords/SEO_KEYWORD_ACTION_PLAN.md) (themes: AI flashcards, PDF, Anki alternatives).
 
 ---
 
@@ -40,7 +40,7 @@ Search engines reward **helpful, specific content**, not a fixed daily schedule.
 - **Default stance:** Prefer **quality over volume**. For a small product blog, **about 1–2 solid posts per week** (or **2–4 per month**) is often more sustainable than daily publishing.
 - **When to publish more:** Only when you have **new angles** (new keywords, FAQs, comparisons) and are not recycling the same topic under different titles.
 - **Risks of posting too often:** Thin or rushed pages, **keyword cannibalization** (several posts competing for the same query), and ongoing burden to keep facts and links accurate.
-- **Measure:** Align topics with [SEO_KEYWORD_ACTION_PLAN.md](../SEO_KEYWORD_ACTION_PLAN.md) and review **Google Search Console** quarterly—not a fixed posts-per-day quota.
+- **Measure:** Align topics with [SEO_KEYWORD_ACTION_PLAN.md](../keywords/SEO_KEYWORD_ACTION_PLAN.md) and review **Google Search Console** quarterly—not a fixed posts-per-day quota.
 
 ---
 
