@@ -75,9 +75,11 @@ const ContactForm = () => {
             typeof payload.error === "string"
               ? payload.error
               : "Something went wrong. Please try again or email hello@deckbase.co.";
+          const code =
+            typeof payload.code === "string" ? ` (${payload.code})` : "";
           const detail =
             typeof payload.detail === "string" ? ` — ${payload.detail}` : "";
-          setSubmitError(`${base}${detail}`.trim());
+          setSubmitError(`${base}${code}${detail}`.trim());
           return;
         }
 

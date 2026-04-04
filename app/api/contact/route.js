@@ -1,12 +1,44 @@
 import { Resend } from "resend";
 import { NextResponse } from "next/server";
 
-// Org Resend: sender must be @codeyourreality.com (verified); see .env.example.
+/**
+ * Shared org Resend (free tier): one verified domain — codeyourreality.com.
+ * See org note "Contact forms and Resend". If Vercel still has FROM_EMAIL=@deckbase.co,
+ * Resend returns "domain is not verified"; we coerce to this domain.
+ */
+const VERIFIED_SEND_DOMAIN = "codeyourreality.com";
 const DEFAULT_FROM = "forms@codeyourreality.com";
 
-const CONTACT_EMAIL = process.env.CONTACT_EMAIL || "hawk20605@gmail.com";
-const rawFrom = process.env.FROM_EMAIL || DEFAULT_FROM;
-const FROM_EMAIL = rawFrom.includes("<") ? rawFrom : `Deckbase <${rawFrom}>`;
+function extractEmailFromFromField(value) {
+  const v = String(value || "").trim();
+  const angle = v.match(/<([^>]+)>/);
+  return (angle ? angle[1] : v).trim();
+}
+
+function isOnVerifiedSendDomain(emailAddr) {
+  const host = emailAddr.split("@")[1]?.toLowerCase();
+  if (!host) return false;
+  return (
+    host === VERIFIED_SEND_DOMAIN || host.endsWith(`.${VERIFIED_SEND_DOMAIN}`)
+  );
+}
+
+/** Resend `from`: must be @VERIFIED_SEND_DOMAIN; env FROM_EMAIL only used when it matches. */
+function resolveResendFrom() {
+  const raw = (process.env.FROM_EMAIL || DEFAULT_FROM).trim();
+  const addr = extractEmailFromFromField(raw);
+  if (isOnVerifiedSendDomain(addr)) {
+    return raw.includes("<") ? raw : `Deckbase <${addr}>`;
+  }
+  console.warn(
+    `[contact] FROM_EMAIL must be @${VERIFIED_SEND_DOMAIN} (org Resend). Got "${raw}". Using ${DEFAULT_FROM}.`
+  );
+  return `Deckbase <${DEFAULT_FROM}>`;
+}
+
+const CONTACT_TO = (
+  process.env.CONTACT_EMAIL || "hawk20605@gmail.com"
+).trim();
 
 export async function POST(request) {
   try {
@@ -35,10 +67,11 @@ export async function POST(request) {
       });
 
     const resend = new Resend(process.env.RESEND_API_KEY);
+    const from = resolveResendFrom();
     const { data, error } = await resend.emails.send({
-      from: FROM_EMAIL.trim(),
-      to: CONTACT_EMAIL,
-      replyTo: email,
+      from: from.trim(),
+      to: CONTACT_TO,
+      replyTo: String(email).trim(),
       subject: `[Deckbase] Contact from ${name}`,
       text: [
         `Product: Deckbase (deckbase.co contact form)`,
@@ -55,7 +88,10 @@ export async function POST(request) {
 
     if (error) {
       console.error("Contact email Resend error:", error);
-      const body = { error: "Failed to send message" };
+      const body = {
+        error: "Failed to send message",
+        ...(error?.name ? { code: error.name } : {}),
+      };
       const exposeDetail =
         process.env.NODE_ENV === "development" ||
         process.env.CONTACT_FORM_DEBUG === "true";
