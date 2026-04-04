@@ -46,6 +46,7 @@
 - [x] **CodeYourReality publish:** Published `Flashcard Automation Quality Checklist: 12 Gates Before You Scale` — https://www.codeyourreality.com/blog/flashcard-automation-quality-checklist
 - [x] **CodeYourReality publish:** Published `MCP vs API for Study Automation: Which Should You Use?` — https://www.codeyourreality.com/blog/mcp-vs-api-study-automation
 - [x] **CodeYourReality publish:** Published `Deckbase vs Quizlet for Serious Learners (2026)` — https://www.codeyourreality.com/blog/deckbase-vs-quizlet-serious-learners-2026
+- [x] **CodeYourReality publish:** Published `How to Build a Flashcard QA Workflow in 30 Minutes` — https://www.codeyourreality.com/blog/flashcard-qa-workflow-30-minutes
 
 ---
 
@@ -65,7 +66,7 @@
 - [ ] **IndexNow ping in CI** after deploy (curl IndexNow API with `INDEXNOW_KEY`)
 - [ ] **New landing URLs:** `/anki-alternatives`, `/best-flashcard-apps`, etc. ([COMPETITOR-PAGES-AUDIT.md](./competitor-pages/COMPETITOR-PAGES-AUDIT.md) backlog)
 - [ ] **Publishing cadence:** Maintain 2 posts/week for 8 weeks, then 1 new post/week + 1 refresh/week
-- [ ] **Week 1 backlog:** `How to Build a Flashcard QA Workflow in 30 Minutes`
+- [x] **Week 1 backlog:** `How to Build a Flashcard QA Workflow in 30 Minutes`
 - [ ] **Week 2 backlog:** `Best AI Flashcard Apps in 2026: What Actually Matters` + `PDF to Flashcards: 7 Mistakes That Hurt Retention`
 - [ ] **Week 3 backlog:** `Anki vs Deckbase for Fast-Moving Study Workflows` + `Cursor MCP Setup for Flashcards: Step-by-Step`
 - [ ] **Week 4 backlog:** `Quizlet Alternative for Long-Term Retention: What to Choose` + `How to Reduce Flashcard Review Time Without Forgetting More`

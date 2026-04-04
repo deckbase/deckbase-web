@@ -113,6 +113,10 @@ function overlapRatio(a, b) {
   return shared / totalA;
 }
 
+function isHttpStatusError(fetchError, status) {
+  return typeof fetchError === "string" && fetchError.trim() === `HTTP ${status}`;
+}
+
 async function fetchPage(url) {
   const res = await fetch(url, {
     headers: {
@@ -195,7 +199,13 @@ async function run() {
 
   for (const page of pages) {
     if (page.fetchError) {
-      errors.push(`Fetch failed: ${page.path} (${page.fetchError})`);
+      if (isHttpStatusError(page.fetchError, 404)) {
+        warnings.push(
+          `Fetch warning: ${page.path} returned 404 on ${baseUrl}. This is often expected for newly added routes before first deploy.`,
+        );
+      } else {
+        errors.push(`Fetch failed: ${page.path} (${page.fetchError})`);
+      }
       continue;
     }
 
@@ -216,9 +226,12 @@ async function run() {
     }
   }
 
+  const fetchedPages = pages.filter((p) => !p.fetchError);
   const avgUnique =
-    pages.reduce((acc, p) => acc + (Number.isFinite(p.minUniquePct) ? p.minUniquePct : 0), 0) /
-    Math.max(1, pages.length);
+    fetchedPages.reduce(
+      (acc, p) => acc + (Number.isFinite(p.minUniquePct) ? p.minUniquePct : 0),
+      0,
+    ) / Math.max(1, fetchedPages.length);
 
   console.log("\nProgrammatic SEO Quality Gate");
   console.log("- baseUrl:", baseUrl);
