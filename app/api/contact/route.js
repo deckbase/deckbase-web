@@ -55,7 +55,11 @@ export async function POST(request) {
 
     if (error) {
       console.error("Contact email Resend error:", error);
-      return NextResponse.json({ error: "Failed to send message" }, { status: 502 });
+      const body = { error: "Failed to send message" };
+      if (process.env.NODE_ENV === "development" && error?.message) {
+        body.detail = error.message;
+      }
+      return NextResponse.json(body, { status: 502 });
     }
 
     return NextResponse.json({ success: true, id: data?.id });

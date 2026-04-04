@@ -8,8 +8,6 @@ import { PhoneInput } from "react-international-phone";
 import "react-international-phone/style.css";
 import { InfinitySpin } from "react-loader-spinner";
 import { MdCancel } from "react-icons/md";
-import { db } from "@/utils/firebase";
-import { addDoc, collection } from "firebase/firestore";
 
 const AREAS = [
   { key: "loaUsage", label: "App Usage Help" },
@@ -65,26 +63,6 @@ const ContactForm = () => {
       setIsLoading(true);
       setSubmitError(null);
       try {
-        try {
-          const contactsCollectionRef = collection(db, "contacts");
-          await addDoc(contactsCollectionRef, {
-            name: values.name,
-            email: values.email,
-            phone: values.phone,
-            comment: values.comment,
-            areaOfInterest: {
-              loaUsage: values.areaOfInterest.loaUsage,
-              developerSupport: values.areaOfInterest.developerSupport,
-              devBuildRequest: values.areaOfInterest.devBuildRequest,
-              partnership: values.areaOfInterest.partnership,
-              others: values.areaOfInterest.others,
-            },
-            timestamp: new Date(),
-          });
-        } catch (firestoreError) {
-          console.error("Firestore write failed (non-fatal):", firestoreError);
-        }
-
         const res = await fetch("/api/contact", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -93,9 +71,15 @@ const ContactForm = () => {
         const payload = await res.json().catch(() => ({}));
 
         if (!res.ok) {
-          setSubmitError(
-            typeof payload.error === "string" ? payload.error : "Something went wrong. Please try again or email hello@deckbase.co."
-          );
+          const base =
+            typeof payload.error === "string"
+              ? payload.error
+              : "Something went wrong. Please try again or email hello@deckbase.co.";
+          const detail =
+            process.env.NODE_ENV === "development" && typeof payload.detail === "string"
+              ? ` ${payload.detail}`
+              : "";
+          setSubmitError(`${base}${detail}`.trim());
           return;
         }
 
