@@ -79,6 +79,21 @@ const pilotRows = [
   ["Lapse concentration", "Focused in few tags", "Targeted repair can recover quality"],
 ];
 
+const ocrSignalRows = [
+  ["Character Error Rate (CER)", "<2.0% on sampled lines", "High symbol/term corruption risk"],
+  ["Word Error Rate (WER)", "<5.0% on sampled paragraphs", "Prompt ambiguity and answer drift"],
+  ["Layout merge rate", "<3 merged line errors / 100 lines", "Mixed concepts in one card"],
+  ["Table extraction fidelity", ">=90% cell integrity", "Numerical fact loss in conversion"],
+  ["Equation preservation", "Critical formulas manually verified", "False confidence in STEM cards"],
+];
+
+const domainRows = [
+  ["Medicine", "Drug names and dosage units", "Use unit-normalization and contraindication context fields"],
+  ["Law", "Clause references and exceptions", "Split holdings and exceptions into separate cards"],
+  ["Engineering", "Symbol-heavy formulas", "Manual verification pass for equations and notation"],
+  ["Language", "Accent marks and morphology", "Keep lemma and usage examples in separate fields"],
+];
+
 const faqs = [
   {
     q: "Can I run this as a free PDF-to-flashcards workflow?",
@@ -219,6 +234,19 @@ export default function PdfToFlashcardsWorkflowPage() {
           />
         </ArticleSection>
 
+        <ArticleSection id="ocr-signals">
+          <ArticleH2>OCR quality signals to track before generation</ArticleH2>
+          <ArticleBody>
+            For stable production quality, monitor OCR signal metrics before card generation. You do
+            not need perfect extraction, but you do need a clear threshold where regeneration is
+            cheaper than large-scale card repair.
+          </ArticleBody>
+          <ArticleTable
+            columns={["Signal", "Healthy threshold", "Risk when ignored"]}
+            rows={ocrSignalRows}
+          />
+        </ArticleSection>
+
         <ArticleSection id="seven-day-pilot">
           <ArticleH2>7-day pilot with pass/fail metrics</ArticleH2>
           <ArticleSteps
@@ -250,6 +278,18 @@ export default function PdfToFlashcardsWorkflowPage() {
           />
         </ArticleSection>
 
+        <ArticleSection id="domain-adaptations">
+          <ArticleH2>Domain-specific adaptations</ArticleH2>
+          <ArticleBody>
+            A single OCR policy rarely fits every subject. High-stakes domains need stricter
+            verification because extraction errors can produce confident but wrong cards.
+          </ArticleBody>
+          <ArticleTable
+            columns={["Domain", "High-risk artifact", "Recommended adaptation"]}
+            rows={domainRows}
+          />
+        </ArticleSection>
+
         <ArticleSection id="faq">
           <ArticleH2>FAQ</ArticleH2>
           <ArticleFaq items={faqs} />
@@ -261,7 +301,7 @@ export default function PdfToFlashcardsWorkflowPage() {
             links={[
               { href: "/resources/ocr-study-workflows", label: "OCR study workflows" },
               {
-                href: "https://code-your-reality.ghost.io/how-to-convert-pdf-to-flashcards-with-ai/",
+                href: "https://www.codeyourreality.com/blog/how-to-convert-pdf-to-flashcards-with-ai",
                 label: "Published blog: How to convert PDF to flashcards with AI",
               },
               { href: "/ai-flashcards", label: "AI flashcards product page" },

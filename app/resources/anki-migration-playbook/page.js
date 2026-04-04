@@ -95,6 +95,23 @@ const scenarioRows = [
   ],
 ];
 
+const edgeCaseRows = [
+  ["Cloze cards", "Missing cloze markers after import", "Validate sample cloze rendering before full migration"],
+  ["Suspended cards", "Unexpected active review load", "Export suspension state and re-apply after import"],
+  ["Leech cards", "Chronic failures pollute queue", "Tag leeches and run rewrite/archive policy"],
+  ["Media refs", "Broken image or audio pointers", "Run broken-media scan on first 100 cards"],
+  ["Deck options", "Interval behavior mismatch", "Run 14-day metrics before scaling additional decks"],
+];
+
+const csvColumnRows = [
+  ["note_id", "Stable row identity", "Prevents accidental duplicate ingestion"],
+  ["front_text", "Prompt field", "Normalize punctuation and unicode variants"],
+  ["back_text", "Answer field", "Keep direct answer in first sentence"],
+  ["context_hint", "Optional disambiguation", "Use short domain context only"],
+  ["tags_pipe", "Taxonomy grouping", "Use pipe-delimited canonical tags"],
+  ["source_ref", "Traceability", "Store chapter/page for QA backtracking"],
+];
+
 const faqs = [
   {
     q: "Should I use APKG or CSV first?",
@@ -254,6 +271,36 @@ export default function AnkiMigrationPlaybookPage() {
           />
         </ArticleSection>
 
+        <ArticleSection id="anki-edge-cases">
+          <ArticleH2>Anki-specific edge cases to handle before scale</ArticleH2>
+          <ArticleBody>
+            Most migration regressions come from edge cases that look small in a sample and become
+            expensive at volume. Check cloze rendering, suspended card states, leech behavior, and
+            media references before importing additional decks.
+          </ArticleBody>
+          <ArticleTable
+            columns={["Edge case", "Common failure", "Mitigation"]}
+            rows={edgeCaseRows}
+          />
+        </ArticleSection>
+
+        <ArticleSection id="csv-contract">
+          <ArticleH2>CSV import contract for repeatable migrations</ArticleH2>
+          <ArticleBody>
+            If you run recurring imports, define a fixed CSV contract and version it. This reduces
+            schema drift across operators and makes QA automation easier. A practical baseline is a
+            six-column contract with identity, prompt, answer, context, taxonomy, and source fields.
+          </ArticleBody>
+          <ArticleTable
+            columns={["Column", "Role", "Constraint"]}
+            rows={csvColumnRows}
+          />
+          <ArticleBody>
+            Keep UTF-8 encoding, enforce normalized line breaks, and avoid hidden spreadsheet formulas
+            in export cells. Those small constraints prevent silent import corruption.
+          </ArticleBody>
+        </ArticleSection>
+
         <ArticleSection id="stabilization-plan">
           <ArticleH2>14-day stabilization protocol</ArticleH2>
           <ArticleSteps
@@ -285,7 +332,7 @@ export default function AnkiMigrationPlaybookPage() {
             links={[
               { href: "/resources/anki-import-export", label: "Anki import/export migration guide" },
               {
-                href: "https://code-your-reality.ghost.io/how-to-import-your-anki-decks-into-deckbase-csv-excel-and-more/",
+                href: "https://www.codeyourreality.com/blog/how-to-import-your-anki-decks-into-deckbase-csv-excel-and-more",
                 label: "Published blog: How to import your Anki decks",
               },
               { href: "/deckbase-vs-anki", label: "Deckbase vs Anki" },
