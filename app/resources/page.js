@@ -62,6 +62,24 @@ const guides = [
     tag: "Guide",
     readTime: "5 min read",
   },
+  {
+    href: "/resources/anki-migration-playbook",
+    title: "Anki migration playbook",
+    description:
+      "Implementation playbook for APKG/CSV migration, field mapping, QA gates, and 14-day stabilization.",
+    icon: Layers,
+    tag: "Guide",
+    readTime: "8 min read",
+  },
+  {
+    href: "/resources/pdf-to-flashcards-workflow",
+    title: "PDF to flashcards workflow",
+    description:
+      "Operational OCR-to-card system with chunking rules, quality gates, and weekly maintenance loops.",
+    icon: FileText,
+    tag: "Guide",
+    readTime: "8 min read",
+  },
 ];
 
 const articles = [
@@ -153,10 +171,22 @@ const startHere = [
       "Use the OCR pipeline to reduce noisy inputs before generation so reviews stay high quality.",
   },
   {
+    href: "/resources/pdf-to-flashcards-workflow",
+    title: "I need a repeatable PDF-to-cards system",
+    description:
+      "Follow a full workflow with input cleanup, generation settings, QA gates, and pilot pass/fail checks.",
+  },
+  {
     href: "/resources/mcp-study-automation-examples",
     title: "I want automation without broken cards",
     description:
       "Follow production-safe MCP patterns with schema checks, batching, and post-write validation.",
+  },
+  {
+    href: "/resources/anki-migration-playbook",
+    title: "I am moving from Anki and want low risk",
+    description:
+      "Use a staged migration plan with mapping tables, duplicate controls, and stabilization metrics.",
   },
 ];
 

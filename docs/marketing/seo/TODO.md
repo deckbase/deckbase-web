@@ -2,7 +2,7 @@
 
 **Purpose:** Single checklist for website SEO work. Source detail lives in [ACTION-PLAN.md](./ACTION-PLAN.md), [FULL-AUDIT-REPORT.md](./FULL-AUDIT-REPORT.md), and [COMPETITOR-PAGES.md](./COMPETITOR-PAGES.md). Update this file when items ship.
 
-**Last reviewed:** 2026-04-03  
+**Last reviewed:** 2026-04-04  
 **Keyword universe:** [keywords/KEYWORD_UNIVERSE_2026-04.md](./keywords/KEYWORD_UNIVERSE_2026-04.md)
 
 ---
@@ -41,6 +41,11 @@
 - [x] **`/ai-flashcards` copy + FAQ:** Updated keyword-theme coverage (maker/generator/PDF/free/app/Anki bridge) and expanded FAQ intent coverage
 - [x] **`app/mcp/layout.js`:** Strengthened flashcard + MCP keyword alignment in metadata/OG
 - [x] **README index:** Added [FLASHCARD_MCP_RANKING_REPORT.md](./audits/FLASHCARD_MCP_RANKING_REPORT.md) to [README.md](./README.md)
+- [x] **New resources pages:** Added `/resources/anki-migration-playbook` and `/resources/pdf-to-flashcards-workflow`; linked from `/resources` and added to sitemap metadata
+- [x] **CodeYourReality publish:** Published `How to Use MCP for Flashcard Automation (Cursor + Claude)` — https://www.codeyourreality.com/blog/mcp-flashcard-automation-cursor-claude
+- [x] **CodeYourReality publish:** Published `Flashcard Automation Quality Checklist: 12 Gates Before You Scale` — https://www.codeyourreality.com/blog/flashcard-automation-quality-checklist
+- [x] **CodeYourReality publish:** Published `MCP vs API for Study Automation: Which Should You Use?` — https://www.codeyourreality.com/blog/mcp-vs-api-study-automation
+- [x] **CodeYourReality publish:** Published `Deckbase vs Quizlet for Serious Learners (2026)` — https://www.codeyourreality.com/blog/deckbase-vs-quizlet-serious-learners-2026
 
 ---
 
@@ -50,16 +55,20 @@
 - [ ] **`/updates`:** Real changelog → set **`robots: { index: true }`**, add **`/updates`** back to [`lib/sitemap-metadata.js`](../../lib/sitemap-metadata.js)
 - [ ] **Comparison & pricing:** Re-verify competitor numbers on a schedule ([COMPETITOR-PAGES.md](./competitor-pages/COMPETITOR-PAGES.md))
 - [ ] **CSP** — only if you want `Content-Security-Policy` (high regression risk; test all third-party scripts)
-- [ ] **Blog: AI flashcard generator** — "How AI Flashcard Generators Work (and How to Use One)" → targets `ai flashcards generator` (1,000/mo, KD 14). Cross-link to `/ai-flashcards`
-- [ ] **Blog: Spaced repetition app** — "Best Spaced Repetition Flashcard App in 2026" → targets `spaced repetition app` (1,000/mo, KD 29, +171% YoY) + `best spaced repetition app` (KD 12). Lead with FSRS as Deckbase differentiator
-- [ ] **Blog: Anki import guide** — "How to Import Your Anki Decks into Deckbase (CSV, Excel, and More)" → targets `anki import` / `anki import csv` (KD 6). Unique positioning — no competitor targets this
-- [ ] **Blog: PDF to flashcards** — "How to Convert PDF to Flashcards with AI" → targets `pdf to flashcards free` (110/mo, KD 34) + `flashcard maker from pdf` (210/mo)
+- [x] **Blog: AI flashcard generator** — "How AI Flashcard Generators Work (and How to Use One)" → targets `ai flashcards generator` (1,000/mo, KD 14). Cross-link to `/ai-flashcards` *(published: https://www.codeyourreality.com/blog/how-ai-flashcard-generators-work-and-how-to-use-one; source: [`ghost/AI-FLASHCARD-GENERATOR-BLOG-DRAFT.md`](./ghost/AI-FLASHCARD-GENERATOR-BLOG-DRAFT.md), [`ghost/BLOG-DRAFTS-GHOST-HTML.md`](./ghost/BLOG-DRAFTS-GHOST-HTML.md))*
+- [x] **Blog: Spaced repetition app** — "Best Spaced Repetition Flashcard App in 2026" → targets `spaced repetition app` (1,000/mo, KD 29, +171% YoY) + `best spaced repetition app` (KD 12). Lead with FSRS as Deckbase differentiator *(published: https://www.codeyourreality.com/blog/best-spaced-repetition-flashcard-app-in-2026; source: [`ghost/SPACED-REPETITION-APP-BLOG-DRAFT.md`](./ghost/SPACED-REPETITION-APP-BLOG-DRAFT.md), [`ghost/BLOG-DRAFTS-GHOST-HTML.md`](./ghost/BLOG-DRAFTS-GHOST-HTML.md))*
+- [x] **Blog: Anki import guide** — "How to Import Your Anki Decks into Deckbase (CSV, Excel, and More)" → targets `anki import` / `anki import csv` (KD 6). Unique positioning — no competitor targets this *(published: https://www.codeyourreality.com/blog/how-to-import-your-anki-decks-into-deckbase-csv-excel-and-more; source: [`ghost/ANKI-IMPORT-BLOG-DRAFT.md`](./ghost/ANKI-IMPORT-BLOG-DRAFT.md), [`ghost/BLOG-DRAFTS-GHOST-HTML.md`](./ghost/BLOG-DRAFTS-GHOST-HTML.md))*
+- [x] **Blog: PDF to flashcards** — "How to Convert PDF to Flashcards with AI" → targets `pdf to flashcards free` (110/mo, KD 34) + `flashcard maker from pdf` (210/mo) *(published: https://www.codeyourreality.com/blog/how-to-convert-pdf-to-flashcards-with-ai; source: [`ghost/PDF-TO-FLASHCARDS-BLOG-DRAFT.md`](./ghost/PDF-TO-FLASHCARDS-BLOG-DRAFT.md), [`ghost/BLOG-DRAFTS-GHOST-HTML.md`](./ghost/BLOG-DRAFTS-GHOST-HTML.md))*
 
 ## Open — optional engineering
 
 - [ ] **IndexNow ping in CI** after deploy (curl IndexNow API with `INDEXNOW_KEY`)
 - [ ] **New landing URLs:** `/anki-alternatives`, `/best-flashcard-apps`, etc. ([COMPETITOR-PAGES-AUDIT.md](./competitor-pages/COMPETITOR-PAGES-AUDIT.md) backlog)
-- [ ] **Blog / guides** for non-brand queries
+- [ ] **Publishing cadence:** Maintain 2 posts/week for 8 weeks, then 1 new post/week + 1 refresh/week
+- [ ] **Week 1 backlog:** `How to Build a Flashcard QA Workflow in 30 Minutes`
+- [ ] **Week 2 backlog:** `Best AI Flashcard Apps in 2026: What Actually Matters` + `PDF to Flashcards: 7 Mistakes That Hurt Retention`
+- [ ] **Week 3 backlog:** `Anki vs Deckbase for Fast-Moving Study Workflows` + `Cursor MCP Setup for Flashcards: Step-by-Step`
+- [ ] **Week 4 backlog:** `Quizlet Alternative for Long-Term Retention: What to Choose` + `How to Reduce Flashcard Review Time Without Forgetting More`
 - [ ] **hreflang** when real localized pages exist
 - [ ] **`/ai-flashcards` internal links:** Verify links to `/anki-alternatives`, `/deckbase-vs-anki`, `/download` are present
 - [ ] **GSC query filters:** Add filter for `flashcard`, `anki`, `pdf`, `quizlet` — review monthly
