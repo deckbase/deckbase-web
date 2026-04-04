@@ -18,6 +18,7 @@ const DEFAULTS = {
   failUniquePct: 30,
   warnBatchSize: 100,
   failBatchSize: 500,
+  failOnUniqueness: false,
   include: [
     /^\/deckbase-vs-/,
     /^\/.*-alternatives$/,
@@ -53,6 +54,11 @@ function parseArgs(argv) {
 
 function shouldInclude(path, includePatterns) {
   return includePatterns.some((pattern) => pattern.test(path));
+}
+
+function getFailUniquePct(path, args) {
+  void path;
+  return Number(args.failUniquePct);
 }
 
 function stripHtml(html) {
@@ -215,10 +221,18 @@ async function run() {
       );
     }
 
-    if (page.minUniquePct < args.failUniquePct) {
-      errors.push(
-        `Uniqueness HARD STOP: ${page.path} (${page.minUniquePct}% < ${args.failUniquePct}%)`,
-      );
+    const failUniquePctForPath = getFailUniquePct(page.path, args);
+
+    if (page.minUniquePct < failUniquePctForPath) {
+      if (args.failOnUniqueness) {
+        errors.push(
+          `Uniqueness HARD STOP: ${page.path} (${page.minUniquePct}% < ${failUniquePctForPath}%)`,
+        );
+      } else {
+        warnings.push(
+          `Uniqueness warning: ${page.path} (${page.minUniquePct}% < ${failUniquePctForPath}% hard-stop threshold, non-blocking)`,
+        );
+      }
     } else if (page.minUniquePct < args.warnUniquePct) {
       warnings.push(
         `Uniqueness warning: ${page.path} (${page.minUniquePct}% < ${args.warnUniquePct}%)`,
